@@ -58,6 +58,10 @@ func (f *fakeRuntime) ResumeElicitation(_ context.Context, _ tools.ElicitationAc
 
 func (f *fakeRuntime) CurrentAgentName() string { return "root" }
 
+// SupportsModelSwitching reports false by default. Tests that exercise
+// the /models endpoints embed fakeRuntime and override this.
+func (f *fakeRuntime) SupportsModelSwitching() bool { return false }
+
 func newTestSessionManager(t *testing.T, sess *session.Session, fake *fakeRuntime) *SessionManager {
 	t.Helper()
 
