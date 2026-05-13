@@ -34,6 +34,13 @@ type activeRuntimes struct {
 	titleGen *sessiontitle.Generator // Title generator (includes fallback models)
 
 	streaming sync.Mutex // Held while a RunStream is in progress; serialises concurrent requests
+
+	// modelSwitch serialises concurrent SetSessionAgentModel calls on the
+	// same session. It is held across the (potentially slow) runtime I/O
+	// so we never overlap a SetAgentModel + rollback pair with another
+	// switch on the same session, while still allowing other sessions to
+	// make progress.
+	modelSwitch sync.Mutex
 }
 
 // SessionManager manages sessions for HTTP and Connect-RPC servers.
@@ -811,9 +818,6 @@ var ErrSessionNotRunning = errors.New("session not found or not running")
 // config, a synthetic choice is appended (mirrors App.AvailableModels via
 // the shared runtime.DecorateModelChoices helper).
 func (sm *SessionManager) AvailableSessionModels(ctx context.Context, sessionID string) (string, string, []runtime.ModelChoice, error) {
-	sm.mux.Lock()
-	defer sm.mux.Unlock()
-
 	rs, ok := sm.runtimeSessions.Load(sessionID)
 	if !ok {
 		return "", "", nil, ErrSessionNotRunning
@@ -824,12 +828,24 @@ func (sm *SessionManager) AvailableSessionModels(ctx context.Context, sessionID 
 	}
 
 	agentName := rs.runtime.CurrentAgentName()
+
+	// Snapshot the override and custom-model history under sm.mux so the
+	// read is atomic with respect to SetSessionAgentModel writes. The
+	// (potentially slow) runtime.AvailableModels call must NOT happen
+	// under sm.mux: it can perform network I/O (provider discovery,
+	// models.dev catalog lookup) and would block every other session
+	// operation in the manager.
+	sm.mux.Lock()
 	current := ""
 	var customRefs []string
 	if rs.session != nil {
 		current = rs.session.AgentModelOverrides[agentName]
-		customRefs = rs.session.CustomModelsUsed
+		if n := len(rs.session.CustomModelsUsed); n > 0 {
+			customRefs = make([]string, n)
+			copy(customRefs, rs.session.CustomModelsUsed)
+		}
 	}
+	sm.mux.Unlock()
 
 	choices := runtime.DecorateModelChoices(rs.runtime.AvailableModels(ctx), current, customRefs)
 	return agentName, current, choices, nil
@@ -842,10 +858,13 @@ func (sm *SessionManager) AvailableSessionModels(ctx context.Context, sessionID 
 //
 // On store-write failure the in-memory session state and the runtime
 // override are rolled back so the next call observes a consistent state.
+//
+// Concurrent SetSessionAgentModel calls on the same session are
+// serialised via the session-scoped modelSwitch lock so the runtime,
+// session and store never observe interleaved updates. The manager-wide
+// sm.mux is only held briefly while reading or mutating session fields,
+// never while calling into the runtime or the store.
 func (sm *SessionManager) SetSessionAgentModel(ctx context.Context, sessionID, modelRef string) (string, string, error) {
-	sm.mux.Lock()
-	defer sm.mux.Unlock()
-
 	rs, ok := sm.runtimeSessions.Load(sessionID)
 	if !ok {
 		return "", "", ErrSessionNotRunning
@@ -855,26 +874,35 @@ func (sm *SessionManager) SetSessionAgentModel(ctx context.Context, sessionID, m
 		return "", "", ErrModelSwitchingNotSupported
 	}
 
+	rs.modelSwitch.Lock()
+	defer rs.modelSwitch.Unlock()
+
 	agentName := rs.runtime.CurrentAgentName()
+	sess := rs.session
 
 	// Snapshot current state so we can roll back if persistence fails
 	// after we've already mutated the runtime + in-memory session.
-	sess := rs.session
 	var (
-		hadOverride        bool
-		prevOverride       string
-		prevCustomLen      int
-		hadOverridesMap    bool
-		appendedCustomUsed bool
+		hadOverride     bool
+		prevOverride    string
+		prevCustomLen   int
+		hadOverridesMap bool
 	)
 	if sess != nil {
+		sm.mux.Lock()
 		hadOverridesMap = sess.AgentModelOverrides != nil
 		if hadOverridesMap {
 			prevOverride, hadOverride = sess.AgentModelOverrides[agentName]
 		}
 		prevCustomLen = len(sess.CustomModelsUsed)
+		sm.mux.Unlock()
 	}
 
+	// Runtime mutation runs without sm.mux so it doesn't block other
+	// session operations during slow provider creation. The per-session
+	// modelSwitch lock above keeps SetAgentModel + UpdateSession + any
+	// rollback atomic with respect to other model-switch calls on this
+	// session.
 	if err := rs.runtime.SetAgentModel(ctx, agentName, modelRef); err != nil {
 		return "", "", err
 	}
@@ -883,6 +911,8 @@ func (sm *SessionManager) SetSessionAgentModel(ctx context.Context, sessionID, m
 		return agentName, modelRef, nil
 	}
 
+	var appendedCustomUsed bool
+	sm.mux.Lock()
 	if modelRef == "" {
 		delete(sess.AgentModelOverrides, agentName)
 	} else {
@@ -898,10 +928,12 @@ func (sm *SessionManager) SetSessionAgentModel(ctx context.Context, sessionID, m
 			appendedCustomUsed = true
 		}
 	}
+	sm.mux.Unlock()
 
 	if err := sm.sessionStore.UpdateSession(ctx, sess); err != nil {
-		// Roll back: restore in-memory map and runtime so callers don't see
-		// a runtime/store mismatch on the next request.
+		// Roll back in-memory under sm.mux first so concurrent readers
+		// (e.g. AvailableSessionModels) never see the half-applied state.
+		sm.mux.Lock()
 		if hadOverride {
 			sess.AgentModelOverrides[agentName] = prevOverride
 		} else {
@@ -913,6 +945,8 @@ func (sm *SessionManager) SetSessionAgentModel(ctx context.Context, sessionID, m
 		if appendedCustomUsed {
 			sess.CustomModelsUsed = sess.CustomModelsUsed[:prevCustomLen]
 		}
+		sm.mux.Unlock()
+
 		rollback := prevOverride
 		if !hadOverride {
 			rollback = ""
