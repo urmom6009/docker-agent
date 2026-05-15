@@ -111,7 +111,7 @@ jobs:
           cache-to: type=gha,mode=min,scope=buildx
 
   build-and-push-image:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.repository == 'docker/docker-agent'
     needs: [lint, build-and-test, license-check]
     runs-on: ubuntu-latest
     steps:
