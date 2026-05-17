@@ -185,3 +185,28 @@ func TestMap_Concurrent(t *testing.T) {
 		require.Equal(t, i*2, val)
 	}
 }
+
+func TestMap_Clear(t *testing.T) {
+	m := NewMap[string, int]()
+	m.Store("a", 1)
+	m.Store("b", 2)
+	m.Store("c", 3)
+
+	m.Clear()
+	assert.Equal(t, 0, m.Length())
+
+	_, ok := m.Load("a")
+	assert.False(t, ok)
+
+	// Map is usable after Clear.
+	m.Store("d", 4)
+	val, ok := m.Load("d")
+	assert.True(t, ok)
+	assert.Equal(t, 4, val)
+}
+
+func TestMap_ClearZeroValue(t *testing.T) {
+	var m Map[string, int]
+	m.Clear() // should not panic on zero-value map
+	assert.Equal(t, 0, m.Length())
+}

@@ -74,6 +74,14 @@ func (m *Map[K, V]) LoadOrStore(key K, value V) (V, bool) {
 	return value, false
 }
 
+// Clear removes all entries from the map.
+func (m *Map[K, V]) Clear() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.values = make(map[K]V)
+}
+
 // Range calls f for every key/value pair in the map. Iteration stops early if
 // f returns false.
 //
