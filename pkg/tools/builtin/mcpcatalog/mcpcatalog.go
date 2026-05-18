@@ -463,18 +463,21 @@ func (t *Toolset) handleEnable(ctx context.Context, args EnableArgs) (*tools.Too
 		return tools.ResultError(fmt.Sprintf("unknown server id %q (use %s first to discover available ids)", id, ToolNameSearch)), nil
 	}
 
+	// Pre-flight: warn (don't block) if an api_key server is missing its env var.
+	// We do not block because the user may set the variable later, or rely on
+	// the model to surface the error from the first tool call.
+	// Perform these slow external calls BEFORE acquiring the lock — server data
+	// is immutable (from t.byID), no mutex protection needed here.
+	missing := t.missingAPIKeyEnv(ctx, server)
+	headers := t.expander.ExpandMap(ctx, server.Headers)
+
 	t.mu.Lock()
 	if _, exists := t.enabled[id]; exists {
 		t.mu.Unlock()
 		return tools.ResultSuccess(fmt.Sprintf("server %q is already enabled", id)), nil
 	}
 
-	// Pre-flight: warn (don't block) if an api_key server is missing its env var.
-	// We do not block because the user may set the variable later, or rely on
-	// the model to surface the error from the first tool call.
-	missing := t.missingAPIKeyEnv(ctx, server)
-
-	headers := t.expander.ExpandMap(ctx, server.Headers)
+	// Create the MCP toolset with the pre-computed headers.
 	mcpToolset := mcp.NewRemoteToolset(id, server.URL, server.Transport, headers, nil)
 
 	// Re-attach the captured handlers so OAuth flows behave identically to
