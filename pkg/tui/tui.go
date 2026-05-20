@@ -2376,17 +2376,11 @@ func (m *appModel) cleanupAll() {
 		ed.Cleanup()
 	}
 
-	// Safety net: bubbletea's renderer can deadlock during shutdown when
-	// stdout is wedged — the final flush after tea.Quit tries to
-	// re-acquire the renderer mutex that the still-blocked previous flush
-	// is holding. We race bubbletea's Wait() (which unblocks when Run()
-	// returns) against a deadline; if shutdown stalls past the deadline
-	// we restore the terminal and force-exit so the user isn't stuck with
-	// a wedged TUI.
-	//
-	// shutdownTimeout and exitFunc are package globals that tests mutate;
-	// snapshot them synchronously here so the safety-net goroutine can't
-	// race with t.Cleanup restoring the originals.
+	// Safety net: bubbletea's renderer can deadlock on shutdown if stdout
+	// is wedged — the final flush re-acquires the mutex that the still
+	// blocked previous flush is holding. Race Wait() against a deadline
+	// and force-exit if shutdown stalls. Snapshot the package globals so
+	// they can't race with t.Cleanup.
 	program := m.program
 	if program == nil {
 		return
@@ -2402,14 +2396,10 @@ func (m *appModel) cleanupAll() {
 
 		select {
 		case <-done:
-			// Graceful shutdown completed; nothing to do.
 		case <-time.After(timeout):
 			slog.Warn("Graceful shutdown timed out, forcing exit")
-			// ReleaseTerminal acquires the renderer mutex which may be
-			// the very thing that's stuck (a wedged stdout write inside
-			// the ticker's flush goroutine), so run it in its own
-			// goroutine. We don't wait for it: best-effort terminal
-			// restore, then force-exit no matter what.
+			// ReleaseTerminal grabs the same mutex that's stuck, so
+			// fire-and-forget; exit either way.
 			go func() { _ = program.ReleaseTerminal() }()
 			exit(0)
 		}
