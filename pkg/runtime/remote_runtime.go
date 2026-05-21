@@ -250,9 +250,12 @@ func (r *RemoteRuntime) RunStream(ctx context.Context, sess *session.Session) <-
 		messages := r.convertSessionMessages(sess)
 		r.sessionID = sess.ID
 
+		// Snapshot the queued override but do NOT clear it yet: if the
+		// request fails before the server can persist it, clearing here
+		// would silently drop the user's switch. We only clear after the
+		// server has accepted the request (i.e. RunAgent returned a stream).
 		r.pendingMu.Lock()
 		model := r.pendingModelOverride
-		r.pendingModelOverride = ""
 		r.pendingMu.Unlock()
 
 		var streamChan <-chan Event
@@ -267,6 +270,17 @@ func (r *RemoteRuntime) RunStream(ctx context.Context, sess *session.Session) <-
 		if err != nil {
 			events <- Error(fmt.Sprintf("failed to start remote agent: %v", err))
 			return
+		}
+
+		// Server accepted the request, so the override (if any) has been
+		// forwarded; clear it but only if no concurrent SetAgentModel
+		// queued a newer ref while we were dispatching.
+		if model != "" {
+			r.pendingMu.Lock()
+			if r.pendingModelOverride == model {
+				r.pendingModelOverride = ""
+			}
+			r.pendingMu.Unlock()
 		}
 
 		// Consume events from the agent stream
