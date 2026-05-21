@@ -104,6 +104,7 @@ func TestFilesystemTool_ReadFile_TildePath(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, result.IsError)
 	assert.Equal(t, content, result.Output)
+	assert.Equal(t, ReadFileMeta{LineCount: 1}, result.Meta)
 }
 
 func TestFilesystemTool_WriteFile(t *testing.T) {
@@ -166,6 +167,7 @@ func TestFilesystemTool_ReadFile(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, content, result.Output)
+	assert.Equal(t, ReadFileMeta{LineCount: 1}, result.Meta)
 
 	result, err = tool.handleReadFile(t.Context(), ReadFileArgs{
 		Path: "nonexistent.txt",

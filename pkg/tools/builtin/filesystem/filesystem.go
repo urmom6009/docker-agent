@@ -267,7 +267,6 @@ type ReadFileArgs struct {
 
 type ReadFileMeta struct {
 	Path      string `json:"path"`
-	Content   string `json:"content"`
 	LineCount int    `json:"lineCount"`
 	Error     string `json:"error,omitempty"`
 }
@@ -1086,7 +1085,6 @@ func (t *ToolSet) handleReadMultipleFiles(ctx context.Context, args ReadMultiple
 			Path:    path,
 			Content: text,
 		})
-		entry.Content = text
 		entry.LineCount = strings.Count(text, "\n") + 1
 		meta.Files = append(meta.Files, entry)
 	}
