@@ -54,6 +54,8 @@ type runExecFlags struct {
 	sandbox           bool
 	sandboxTemplate   string
 	sbx               bool
+	noKit             bool
+	kitKeep           bool
 
 	// Exec only
 	exec          bool
@@ -140,6 +142,9 @@ func addRunOrExecFlags(cmd *cobra.Command, flags *runExecFlags) {
 	cmd.PersistentFlags().BoolVar(&flags.sandbox, "sandbox", false, "Run the agent inside a Docker sandbox (requires Docker Desktop with sandbox support)")
 	cmd.PersistentFlags().StringVar(&flags.sandboxTemplate, "template", "docker/sandbox-templates:docker-agent", "Template image for the sandbox (passed to docker sandbox create -t)")
 	cmd.PersistentFlags().BoolVar(&flags.sbx, "sbx", true, "Prefer the sbx CLI backend when available (set --sbx=false to force docker sandbox)")
+	cmd.PersistentFlags().BoolVar(&flags.noKit, "no-kit", false, "Do not stage a docker-agent kit (skills, prompt files) when running in a sandbox")
+	cmd.PersistentFlags().BoolVar(&flags.kitKeep, "kit-keep", false, "Keep the staged docker-agent kit on disk after the run for inspection")
+	_ = cmd.PersistentFlags().MarkHidden("kit-keep")
 	cmd.MarkFlagsMutuallyExclusive("fake", "record")
 	cmd.MarkFlagsMutuallyExclusive("remote", "sandbox")
 	cmd.MarkFlagsMutuallyExclusive("remote", "session-db")
@@ -169,7 +174,7 @@ func (f *runExecFlags) runRunCommand(cmd *cobra.Command, args []string) (command
 	}
 
 	if f.sandbox {
-		return runInSandbox(ctx, cmd, args, &f.runConfig, f.sandboxTemplate, f.sbx)
+		return runInSandbox(ctx, cmd, args, &f.runConfig, f.sandboxTemplate, f.sbx, f.noKit, f.kitKeep)
 	}
 
 	out := cli.NewPrinter(cmd.OutOrStdout())

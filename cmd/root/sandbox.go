@@ -18,12 +18,14 @@ import (
 	"github.com/docker/docker-agent/pkg/environment"
 	"github.com/docker/docker-agent/pkg/paths"
 	"github.com/docker/docker-agent/pkg/sandbox"
+	"github.com/docker/docker-agent/pkg/sandbox/kit"
+	"github.com/docker/docker-agent/pkg/skills"
 )
 
 // runInSandbox delegates the current command to a Docker sandbox.
 // It ensures a sandbox exists (creating or recreating as needed), then
 // executes docker agent inside it via the sandbox exec command.
-func runInSandbox(ctx context.Context, cmd *cobra.Command, args []string, runConfig *config.RuntimeConfig, template string, preferSbx bool) error {
+func runInSandbox(ctx context.Context, cmd *cobra.Command, args []string, runConfig *config.RuntimeConfig, template string, preferSbx, noKit, kitKeep bool) error {
 	if environment.InSandbox() {
 		return fmt.Errorf("already running inside a Docker sandbox (VM %s)", os.Getenv("SANDBOX_VM_ID"))
 	}
@@ -52,7 +54,29 @@ func runInSandbox(ctx context.Context, cmd *cobra.Command, args []string, runCon
 		return fmt.Errorf("resolving workspace path: %w", err)
 	}
 
-	name, err := backend.Ensure(ctx, wd, sandbox.ExtraWorkspace(wd, agentRef), template, configDir)
+	extras := []string{sandbox.ExtraWorkspace(wd, agentRef)}
+
+	var kitResult *kit.Result
+	if !noKit && agentRef != "" {
+		kitResult, err = kit.Build(ctx, kit.Options{
+			AgentRef:    agentRef,
+			EnvProvider: environment.NewDefaultProvider(),
+			HostCwd:     wd,
+			Workspace:   wd,
+		})
+		if err != nil {
+			slog.WarnContext(ctx, "docker-agent kit build failed; continuing without kit", "error", err)
+		} else {
+			extras = append(extras, kitResult.HostDir)
+			defer func() {
+				if !kitKeep {
+					_ = os.RemoveAll(kitResult.HostDir)
+				}
+			}()
+		}
+	}
+
+	name, err := backend.Ensure(ctx, wd, extras, template, configDir)
 	if err != nil {
 		return err
 	}
@@ -66,6 +90,12 @@ func runInSandbox(ctx context.Context, cmd *cobra.Command, args []string, runCon
 	// directly inside the sandbox.
 	if gateway := runConfig.ModelsGateway; gateway != "" {
 		envFlags = append(envFlags, "-e", envModelsGateway+"="+gateway)
+	}
+
+	// Point the in-sandbox resolvers at the staged kit.
+	if kitResult != nil {
+		envFlags = append(envFlags, "-e", skills.KitDirEnv+"="+kit.MountPath)
+		envVars = append(envVars, skills.KitDirEnv+"="+kit.MountPath)
 	}
 
 	dockerCmd := backend.BuildExecCmd(ctx, name, wd, dockerAgentArgs, envFlags, envVars)
@@ -85,7 +115,8 @@ func dockerAgentArgs(cmd *cobra.Command, args []string, configDir string) []stri
 	var dockerAgentArgs []string
 	hasYolo := false
 	cmd.Flags().Visit(func(f *pflag.Flag) {
-		if f.Name == "sandbox" || f.Name == "sbx" || f.Name == "config-dir" {
+		switch f.Name {
+		case "sandbox", "sbx", "config-dir", "no-kit", "kit-keep":
 			return
 		}
 

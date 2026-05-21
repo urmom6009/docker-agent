@@ -87,9 +87,12 @@ func (b *Backend) ForWorkspace(ctx context.Context, wd string) *Existing {
 }
 
 // Ensure makes sure a sandbox exists for the given workspace,
-// creating or recreating it as needed. When template is non-empty it is
-// passed to `docker sandbox create -t`. Returns the sandbox name.
-func (b *Backend) Ensure(ctx context.Context, wd, extra, template, configDir string) (string, error) {
+// creating or recreating it as needed. extras is a list of additional
+// host directories to mount read-only (kit dir, agent yaml dir, ...);
+// duplicates and entries equal to wd are filtered out. When template
+// is non-empty it is passed to `docker sandbox create -t`. Returns
+// the sandbox name.
+func (b *Backend) Ensure(ctx context.Context, wd string, extras []string, template, configDir string) (string, error) {
 	// Resolve wd to an absolute path so that it matches the absolute
 	// workspace paths returned by `docker sandbox ls --json`.
 	absWd, err := filepath.Abs(wd)
@@ -98,11 +101,25 @@ func (b *Backend) Ensure(ctx context.Context, wd, extra, template, configDir str
 	}
 	wd = absWd
 
+	// Filter extras: drop empties, dedupe, and remove anything that
+	// would shadow wd (which is already mounted read-write).
+	dedup := make(map[string]bool, len(extras))
+	dedup[wd] = true
+	cleaned := extras[:0:0]
+	for _, e := range extras {
+		if e == "" || dedup[e] {
+			continue
+		}
+		dedup[e] = true
+		cleaned = append(cleaned, e)
+	}
+	extras = cleaned
+
 	existing := b.ForWorkspace(ctx, wd)
 
 	// If the sandbox exists with the right mounts, reuse it.
 	if existing != nil &&
-		(extra == "" || existing.HasWorkspace(extra)) &&
+		hasAllWorkspaces(existing, extras) &&
 		existing.HasWorkspace(configDir) {
 		slog.DebugContext(ctx, "Reusing existing sandbox", "name", existing.Name)
 		return existing.Name, nil
@@ -121,8 +138,8 @@ func (b *Backend) Ensure(ctx context.Context, wd, extra, template, configDir str
 		createExtra = append(createExtra, "-t", template)
 	}
 	createExtra = append(createExtra, "cagent", wd)
-	if extra != "" && extra != wd {
-		createExtra = append(createExtra, extra+":ro")
+	for _, e := range extras {
+		createExtra = append(createExtra, e+":ro")
 	}
 	// Mount config directory read-only so the sandbox can
 	// read the token file and access user config.
@@ -148,6 +165,17 @@ func (b *Backend) Ensure(ctx context.Context, wd, extra, template, configDir str
 	}
 
 	return created.Name, nil
+}
+
+// hasAllWorkspaces reports whether every entry of extras is mounted
+// in s. Empty extras returns true.
+func hasAllWorkspaces(s *Existing, extras []string) bool {
+	for _, e := range extras {
+		if !s.HasWorkspace(e) {
+			return false
+		}
+	}
+	return true
 }
 
 // BuildExecCmd assembles the sandbox exec command.
