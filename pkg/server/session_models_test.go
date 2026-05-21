@@ -254,7 +254,12 @@ func TestAttachedServer_GetSessionModels_AppendsCustomModels(t *testing.T) {
 	assert.True(t, got.Models[1].IsCustom)
 }
 
-func TestAttachedServer_SetSessionModel_PersistsOverride(t *testing.T) {
+func TestAttachedServer_SetSessionModel_PersistsViaRunAgent(t *testing.T) {
+	// The PATCH /sessions/:id/model endpoint was removed in favour of
+	// folding the model override into POST /sessions/:id/agent/:agent.
+	// This test pins the new path: a runAgent body carrying a model
+	// must apply the override on the runtime AND persist it on the
+	// session as a per-agent override (so the next turn reuses it).
 	t.Parallel()
 
 	ctx := t.Context()
@@ -269,28 +274,32 @@ func TestAttachedServer_SetSessionModel_PersistsOverride(t *testing.T) {
 	sm.AttachRuntime(sess.ID, fake, sess)
 
 	addr := startAttachedServer(t, ctx, sm)
-	resp := httpDoTCP(t, ctx, http.MethodPatch, addr+"/api/sessions/"+sess.ID+"/model",
-		api.SetSessionModelRequest{Model: "anthropic/claude-sonnet-4-0"})
+	resp := httpDoTCP(t, ctx, http.MethodPost,
+		addr+"/api/sessions/"+sess.ID+"/agent/agent.yaml/root",
+		api.RunAgentRequest{
+			Messages: []api.Message{{Content: "hi"}},
+			Model:    "anthropic/claude-sonnet-4-0",
+		})
+	// The body is an SSE stream; we just need confirmation the request
+	// was accepted (no 4xx/5xx) before checking side effects.
+	_ = resp
 
-	var got api.SetSessionModelResponse
-	require.NoError(t, json.Unmarshal(resp, &got))
-	assert.Equal(t, "root", got.Agent)
-	assert.Equal(t, "anthropic/claude-sonnet-4-0", got.Model)
+	require.Eventually(t, func() bool {
+		fake.mu.Lock()
+		defer fake.mu.Unlock()
+		return fake.overrides["root"] == "anthropic/claude-sonnet-4-0"
+	}, 2*time.Second, 10*time.Millisecond, "runtime override was not applied")
 
-	// The runtime must have received the override.
-	fake.mu.Lock()
-	assert.Equal(t, "anthropic/claude-sonnet-4-0", fake.overrides["root"])
-	fake.mu.Unlock()
-
-	// The session in the store must reflect the override and track the
-	// custom model for future picks.
 	stored, err := store.GetSession(ctx, sess.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "anthropic/claude-sonnet-4-0", stored.AgentModelOverrides["root"])
 	assert.Contains(t, stored.CustomModelsUsed, "anthropic/claude-sonnet-4-0")
 }
 
-func TestAttachedServer_SetSessionModel_EmptyClearsOverride(t *testing.T) {
+func TestAttachedServer_RunAgent_EmptyModelLeavesOverrideUntouched(t *testing.T) {
+	// An empty model field on the runAgent body must be a no-op for the
+	// override (it is not a request to clear it). The TUI relies on this
+	// when it sends a regular user turn after a previous /model PATCH.
 	t.Parallel()
 
 	ctx := t.Context()
@@ -301,44 +310,25 @@ func TestAttachedServer_SetSessionModel_EmptyClearsOverride(t *testing.T) {
 	require.NoError(t, store.AddSession(ctx, sess))
 
 	fake := newModelSwitchingRuntime(nil)
+	fake.overrides["root"] = "openai/gpt-4o"
 
 	sm := NewSessionManager(ctx, config.Sources{}, store, 0, &config.RuntimeConfig{})
 	sm.AttachRuntime(sess.ID, fake, sess)
 
 	addr := startAttachedServer(t, ctx, sm)
-	_ = httpDoTCP(t, ctx, http.MethodPatch, addr+"/api/sessions/"+sess.ID+"/model",
-		api.SetSessionModelRequest{Model: ""})
-
-	stored, err := store.GetSession(ctx, sess.ID)
-	require.NoError(t, err)
-	_, exists := stored.AgentModelOverrides["root"]
-	assert.False(t, exists, "override should be cleared")
-}
-
-func TestAttachedServer_SetSessionModel_PostVerbAlsoWorks(t *testing.T) {
-	// The pre-existing pkg/runtime Client.SetAgentModel POSTs to
-	// /api/sessions/:id/model. The server must accept POST as well as
-	// PATCH so RemoteRuntime keeps working without a coordinated bump.
-	t.Parallel()
-
-	ctx := t.Context()
-
-	store := session.NewInMemorySessionStore()
-	sess := session.New()
-	require.NoError(t, store.AddSession(ctx, sess))
-
-	fake := newModelSwitchingRuntime(nil)
-
-	sm := NewSessionManager(ctx, config.Sources{}, store, 0, &config.RuntimeConfig{})
-	sm.AttachRuntime(sess.ID, fake, sess)
-
-	addr := startAttachedServer(t, ctx, sm)
-	_ = httpDoTCP(t, ctx, http.MethodPost, addr+"/api/sessions/"+sess.ID+"/model",
-		api.SetSessionModelRequest{Model: "openai/gpt-4o"})
+	_ = httpDoTCP(t, ctx, http.MethodPost,
+		addr+"/api/sessions/"+sess.ID+"/agent/agent.yaml/root",
+		api.RunAgentRequest{
+			Messages: []api.Message{{Content: "hi"}},
+		})
 
 	fake.mu.Lock()
 	assert.Equal(t, "openai/gpt-4o", fake.overrides["root"])
 	fake.mu.Unlock()
+
+	stored, err := store.GetSession(ctx, sess.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "openai/gpt-4o", stored.AgentModelOverrides["root"])
 }
 
 func TestAttachedServer_GetSessionModels_NotSupported(t *testing.T) {
@@ -445,7 +435,7 @@ func TestSessionManager_SetSessionAgentModel_RuntimeFailureLeavesStateUntouched(
 // Server-side errors (store-write failures, runtime errors that aren't
 // the well-known sentinels) must be reported as 500, not 400. 400 is
 // reserved for client-side mistakes like an invalid request body.
-func TestAttachedServer_SetSessionModel_StoreFailureReturns500(t *testing.T) {
+func TestAttachedServer_RunAgent_StoreFailureReturns500(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -463,8 +453,8 @@ func TestAttachedServer_SetSessionModel_StoreFailureReturns500(t *testing.T) {
 	store.mu.Unlock()
 
 	addr := startAttachedServer(t, ctx, sm)
-	body := bytes.NewReader([]byte(`{"model":"openai/gpt-4o"}`))
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, addr+"/api/sessions/"+sess.ID+"/model", body)
+	body := bytes.NewReader([]byte(`{"messages":[{"role":"user","content":"hi"}],"model":"openai/gpt-4o"}`))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr+"/api/sessions/"+sess.ID+"/agent/agent.yaml/root", body)
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
@@ -496,17 +486,6 @@ func TestAttachedServer_ModelEndpoints_404WhenNotRunning(t *testing.T) {
 	t.Run("GET", func(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr+"/api/sessions/"+sess.ID+"/models", http.NoBody)
 		require.NoError(t, err)
-		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		defer resp.Body.Close()
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-	})
-
-	t.Run("PATCH", func(t *testing.T) {
-		body := bytes.NewReader([]byte(`{"model":"openai/gpt-4o"}`))
-		req, err := http.NewRequestWithContext(ctx, http.MethodPatch, addr+"/api/sessions/"+sess.ID+"/model", body)
-		require.NoError(t, err)
-		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()

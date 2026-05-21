@@ -25,11 +25,13 @@ type RemoteClient interface {
 	// ResumeElicitation sends an elicitation response
 	ResumeElicitation(ctx context.Context, sessionID string, action tools.ElicitationAction, content map[string]any) error
 
-	// RunAgent executes an agent and returns a channel of streaming events
-	RunAgent(ctx context.Context, sessionID, agent string, messages []api.Message) (<-chan Event, error)
+	// RunAgent executes an agent and returns a channel of streaming events.
+	// model, when non-empty, is applied as a persistent override on the
+	// session's current agent before the turn starts.
+	RunAgent(ctx context.Context, sessionID, agent string, messages []api.Message, model string) (<-chan Event, error)
 
-	// RunAgentWithAgentName executes an agent with a specific agent name
-	RunAgentWithAgentName(ctx context.Context, sessionID, agent, agentName string, messages []api.Message) (<-chan Event, error)
+	// RunAgentWithAgentName executes an agent with a specific agent name. See RunAgent for the meaning of model.
+	RunAgentWithAgentName(ctx context.Context, sessionID, agent, agentName string, messages []api.Message, model string) (<-chan Event, error)
 
 	// SteerSession injects user messages into a running session mid-turn
 	SteerSession(ctx context.Context, sessionID string, messages []api.Message) error
@@ -57,9 +59,6 @@ type RemoteClient interface {
 
 	// GetAvailableModels returns available models for the agent
 	GetAvailableModels(ctx context.Context) ([]string, error)
-
-	// SetAgentModel sets the model for the agent in a session
-	SetAgentModel(ctx context.Context, sessionID, model string) error
 
 	// GetSessionMCPPrompts returns available MCP prompts for a session
 	GetSessionMCPPrompts(ctx context.Context, sessionID string) (map[string]any, error)

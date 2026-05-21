@@ -329,23 +329,28 @@ func (c *Client) GetDesktopToken(ctx context.Context) (*api.DesktopTokenResponse
 	return &resp, err
 }
 
-// RunAgent executes an agent and returns a channel of streaming events
-func (c *Client) RunAgent(ctx context.Context, sessionID, agent string, messages []api.Message) (<-chan Event, error) {
-	return c.runAgentWithAgentName(ctx, sessionID, agent, "", messages)
+// RunAgent executes an agent and returns a channel of streaming events. The
+// optional model override is persisted on the session's current agent before
+// the user messages are appended; pass an empty string to leave the existing
+// override (if any) untouched.
+func (c *Client) RunAgent(ctx context.Context, sessionID, agent string, messages []api.Message, model string) (<-chan Event, error) {
+	return c.runAgentWithAgentName(ctx, sessionID, agent, "", messages, model)
 }
 
-// RunAgentWithAgentName executes an agent with a specific agent name and returns a channel of streaming events
-func (c *Client) RunAgentWithAgentName(ctx context.Context, sessionID, agent, agentName string, messages []api.Message) (<-chan Event, error) {
-	return c.runAgentWithAgentName(ctx, sessionID, agent, agentName, messages)
+// RunAgentWithAgentName executes an agent with a specific agent name and
+// returns a channel of streaming events. See [Client.RunAgent] for the
+// semantics of model.
+func (c *Client) RunAgentWithAgentName(ctx context.Context, sessionID, agent, agentName string, messages []api.Message, model string) (<-chan Event, error) {
+	return c.runAgentWithAgentName(ctx, sessionID, agent, agentName, messages, model)
 }
 
-func (c *Client) runAgentWithAgentName(ctx context.Context, sessionID, agent, agentName string, messages []api.Message) (<-chan Event, error) {
+func (c *Client) runAgentWithAgentName(ctx context.Context, sessionID, agent, agentName string, messages []api.Message, model string) (<-chan Event, error) {
 	endpoint := "/api/sessions/" + sessionID + "/agent/" + agent
 	if agentName != "" {
 		endpoint += "/" + agentName
 	}
 
-	jsonBody, err := json.Marshal(messages)
+	jsonBody, err := json.Marshal(api.RunAgentRequest{Messages: messages, Model: model})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling messages: %w", err)
 	}
@@ -592,12 +597,6 @@ func (c *Client) GetAvailableModels(ctx context.Context) ([]string, error) {
 	var models []string
 	err := c.doRequest(ctx, http.MethodGet, "/api/models", nil, &models)
 	return models, err
-}
-
-// SetAgentModel sets the model for the agent in a session.
-func (c *Client) SetAgentModel(ctx context.Context, sessionID, model string) error {
-	req := map[string]string{"model": model}
-	return c.doRequest(ctx, http.MethodPost, "/api/sessions/"+sessionID+"/model", req, nil)
 }
 
 // GetSessionMCPPrompts returns available MCP prompts for a session.

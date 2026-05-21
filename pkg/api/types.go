@@ -271,14 +271,13 @@ type SessionStatusResponse struct {
 	NumMessages  int    `json:"num_messages"`
 }
 
-// SetSessionModelRequest is the body of PATCH /api/sessions/:id/model.
-// An empty Model clears the override and reverts to the agent's default.
-type SetSessionModelRequest struct {
-	Model string `json:"model"`
-}
-
-// SetSessionModelResponse is the response from PATCH /api/sessions/:id/model.
-type SetSessionModelResponse struct {
-	Agent string `json:"agent"`
-	Model string `json:"model,omitempty"`
+// RunAgentRequest is the body of POST /api/sessions/:id/agent/:agent[/:agent_name].
+// It carries the user messages to enqueue plus an optional Model override
+// applied to the session's current agent before the turn starts. The
+// override is persistent (mirrors what setting a model on the session
+// would do) so subsequent turns reuse it. An empty Model leaves the
+// current override untouched.
+type RunAgentRequest struct {
+	Messages []Message `json:"messages"`
+	Model    string    `json:"model,omitempty"`
 }

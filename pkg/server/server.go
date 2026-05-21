@@ -72,12 +72,6 @@ func (s *Server) registerRoutes() {
 	group.PATCH("/sessions/:id/tokens", s.updateSessionTokens)
 	group.PATCH("/sessions/:id/starred", s.setSessionStarred)
 	group.GET("/sessions/:id/models", s.getSessionModels)
-	// PATCH is the canonical verb for updating the agent's model. POST is
-	// also accepted because pkg/runtime Client.SetAgentModel (used by
-	// RemoteRuntime) was historically a POST; keep both so a client
-	// upgrade is not required.
-	group.PATCH("/sessions/:id/model", s.setSessionModel)
-	group.POST("/sessions/:id/model", s.setSessionModel)
 	group.POST("/sessions", s.createSession)
 	group.DELETE("/sessions/:id", s.deleteSession)
 	group.POST("/sessions/:id/agent/:agent", s.runAgent)
@@ -359,15 +353,18 @@ func (s *Server) runAgent(c echo.Context) error {
 
 	slog.Debug("Running agent", "agent_filename", agentFilename, "session_id", sessionID, "current_agent", currentAgent)
 
-	var messages []api.Message
-	if err := json.NewDecoder(c.Request().Body).Decode(&messages); err != nil {
+	var req api.RunAgentRequest
+	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))
 	}
 
-	streamChan, err := s.sm.RunSession(c.Request().Context(), sessionID, agentFilename, currentAgent, messages)
+	streamChan, err := s.sm.RunSession(c.Request().Context(), sessionID, agentFilename, currentAgent, req.Messages, req.Model)
 	if err != nil {
 		if errors.Is(err, ErrSessionBusy) {
 			return echo.NewHTTPError(http.StatusConflict, err.Error())
+		}
+		if errors.Is(err, ErrModelSwitchingNotSupported) {
+			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to run session: %v", err))
 	}
@@ -588,40 +585,6 @@ func (s *Server) getSessionModels(c echo.Context) error {
 		Agent:           agentName,
 		CurrentModelRef: current,
 		Models:          choices,
-	})
-}
-
-// setSessionModel applies a model override on the session's current agent
-// and persists it. An empty `model` clears the override and reverts the
-// agent to its configured default.
-func (s *Server) setSessionModel(c echo.Context) error {
-	sessionID := c.Param("id")
-
-	var req api.SetSessionModelRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))
-	}
-
-	agentName, modelRef, err := s.sm.SetSessionAgentModel(c.Request().Context(), sessionID, req.Model)
-	if err != nil {
-		switch {
-		case errors.Is(err, ErrModelSwitchingNotSupported):
-			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
-		case errors.Is(err, ErrSessionNotRunning):
-			return echo.NewHTTPError(http.StatusNotFound, err.Error())
-		default:
-			// Unknown errors come from the runtime (e.g. an inline model
-			// ref that fails provider creation) or from the session store
-			// (e.g. a write failure). Both are server-side concerns, not
-			// client mistakes, so map to 500. Validation of the request
-			// body itself is handled above by Bind which returns 400.
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-	}
-
-	return c.JSON(http.StatusOK, api.SetSessionModelResponse{
-		Agent: agentName,
-		Model: modelRef,
 	})
 }
 

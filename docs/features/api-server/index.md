@@ -53,8 +53,6 @@ All endpoints are under the `/api` prefix.
 | `POST`   | `/api/sessions/:id/steer`           | Inject messages into a running turn (pre-empts current) |
 | `POST`   | `/api/sessions/:id/followup`        | Enqueue messages to run after the current turn finishes |
 | `GET`    | `/api/sessions/:id/models`          | List available models for the session's current agent   |
-| `PATCH`  | `/api/sessions/:id/model`           | Set or clear the agent's model override                 |
-| `POST`   | `/api/sessions/:id/model`           | Set or clear the agent's model override (backward compat with RemoteRuntime) |
 
 ### Agent Execution
 
@@ -77,19 +75,19 @@ All endpoints are under the `/api` prefix.
 # Run the root agent:
 curl -N -X POST http://localhost:8080/api/sessions/$SID/agent/my-assistant \
   -H "Content-Type: application/json" \
-  -d '[{"role": "user", "content": "Hello!"}]'
+  -d '{"messages":[{"role": "user", "content": "Hello!"}]}'
 
 # Multi-agent config: team.yaml (defines agents: root, coder, reviewer)
 # Start: docker agent serve api team.yaml
 # Run the root agent:
 curl -N -X POST http://localhost:8080/api/sessions/$SID/agent/team \
   -H "Content-Type: application/json" \
-  -d '[{"role": "user", "content": "Review this PR"}]'
+  -d '{"messages":[{"role": "user", "content": "Review this PR"}]}'
 
 # Run a specific sub-agent (reviewer):
 curl -N -X POST http://localhost:8080/api/sessions/$SID/agent/team/reviewer \
   -H "Content-Type: application/json" \
-  -d '[{"role": "user", "content": "Review this PR"}]'
+  -d '{"messages":[{"role": "user", "content": "Review this PR"}]}'
 ```
 
 ### Health
@@ -100,14 +98,19 @@ curl -N -X POST http://localhost:8080/api/sessions/$SID/agent/team/reviewer \
 
 ## Streaming Responses
 
-The agent execution endpoints (`POST /api/sessions/:id/agent/:agent`) return **Server-Sent Events (SSE)**. Each event is a JSON object representing a runtime event (remember that `:agent` is the config filename without the `.yaml` extension):
+The agent execution endpoints (`POST /api/sessions/:id/agent/:agent`) return **Server-Sent Events (SSE)**. The request body is a JSON object with a `messages` array and an optional `model` field. Setting `model` applies a persistent per-agent override on the session before the turn starts (subsequent turns reuse it). An empty or omitted `model` leaves the existing override untouched. (Each event is a JSON object representing a runtime event — remember that `:agent` is the config filename without the `.yaml` extension.):
 
 ```bash
 # Send a message and stream the response
 # (assuming the server was started with: docker agent serve api my-agent.yaml)
 $ curl -N -X POST http://localhost:8080/api/sessions/$SID/agent/my-agent \
   -H "Content-Type: application/json" \
-  -d '[{"role": "user", "content": "Hello!"}]'
+  -d '{"messages":[{"role": "user", "content": "Hello!"}]}'
+
+# Same call, but switch the agent's model for this turn (and persist it):
+$ curl -N -X POST http://localhost:8080/api/sessions/$SID/agent/my-agent \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Hello!"}],"model":"openai/gpt-4o"}'
 
 # Response (SSE stream):
 data: {"type":"stream_started","session_id":"...","agent":"root"}
@@ -148,7 +151,7 @@ $ curl -X POST http://localhost:8080/api/sessions \
 # 3. Run the agent with a message
 $ curl -N -X POST http://localhost:8080/api/sessions/abc-123/agent/my-agent \
   -H "Content-Type: application/json" \
-  -d '[{"role":"user","content":"What files are in the current directory?"}]'
+  -d '{"messages":[{"role":"user","content":"What files are in the current directory?"}]}'
 ```
 
 ## CLI Flags

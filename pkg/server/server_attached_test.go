@@ -305,7 +305,7 @@ func TestAttachedServer_DeleteWithWaitBlocksUntilStreamStops(t *testing.T) {
 	addr := "http://" + ln.Addr().String()
 
 	// Start a stream so the streaming lock is held.
-	ch, err := sm.RunSession(ctx, sess.ID, "agent", "root", []api.Message{{Content: "hello"}})
+	ch, err := sm.RunSession(ctx, sess.ID, "agent", "root", []api.Message{{Content: "hello"}}, "")
 	require.NoError(t, err)
 
 	// DELETE with wait should block until stream finishes (200ms).

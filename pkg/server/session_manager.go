@@ -34,13 +34,6 @@ type activeRuntimes struct {
 	titleGen *sessiontitle.Generator // Title generator (includes fallback models)
 
 	streaming sync.Mutex // Held while a RunStream is in progress; serialises concurrent requests
-
-	// modelSwitch serialises concurrent SetSessionAgentModel calls on the
-	// same session. It is held across the (potentially slow) runtime I/O
-	// so we never overlap a SetAgentModel + rollback pair with another
-	// switch on the same session, while still allowing other sessions to
-	// make progress.
-	modelSwitch sync.Mutex
 }
 
 // SessionManager manages sessions for HTTP and Connect-RPC servers.
@@ -340,7 +333,14 @@ func (sm *SessionManager) WaitStopped(ctx context.Context, sessionID string, tim
 var ErrSessionBusy = errors.New("session is already processing a request")
 
 // RunSession runs a session with the given messages.
-func (sm *SessionManager) RunSession(ctx context.Context, sessionID, agentFilename, currentAgent string, messages []api.Message) (<-chan runtime.Event, error) {
+//
+// When modelOverride is non-empty, it is applied to the session's current
+// agent before any user messages are appended (and persisted via
+// SetSessionAgentModel) so the override is in effect for this turn and
+// every subsequent one. Validation happens before the messages are
+// recorded so a bad ref does not leave an orphaned user message in the
+// history.
+func (sm *SessionManager) RunSession(ctx context.Context, sessionID, agentFilename, currentAgent string, messages []api.Message, modelOverride string) (<-chan runtime.Event, error) {
 	sm.mux.Lock()
 	defer sm.mux.Unlock()
 	sess, err := sm.sessionStore.GetSession(ctx, sessionID)
@@ -383,6 +383,18 @@ func (sm *SessionManager) RunSession(ctx context.Context, sessionID, agentFilena
 		return nil, ErrSessionBusy
 	}
 
+	// Apply the model override (if any) before persisting the user
+	// messages so that an invalid ref does not leave an orphaned user
+	// message in the history. We hold both sm.mux and streaming, so we
+	// can mutate session fields directly; on store-write failure below
+	// we roll the runtime back to its previous override.
+	prevOverride, hadPrevOverride, undoModelOverride, err := sm.applyRunModelOverride(ctx, runtimeSession, modelOverride)
+	if err != nil {
+		runtimeSession.streaming.Unlock()
+		cancel()
+		return nil, err
+	}
+
 	// Now that we hold the streaming lock, it is safe to mutate the session.
 	// Collect user messages for potential title generation
 	var userMessages []string
@@ -394,6 +406,7 @@ func (sm *SessionManager) RunSession(ctx context.Context, sessionID, agentFilena
 	}
 
 	if err := sm.sessionStore.UpdateSession(ctx, sess); err != nil {
+		undoModelOverride(ctx, prevOverride, hadPrevOverride)
 		runtimeSession.streaming.Unlock()
 		cancel()
 		return nil, err
@@ -693,6 +706,72 @@ func (sm *SessionManager) loadTeamWithConfig(ctx context.Context, agentFilename 
 	return teamloader.LoadWithConfig(ctx, agentSource, runConfig)
 }
 
+// applyRunModelOverride applies modelRef as the per-agent model override
+// on the session backing rs. It mirrors the in-memory mutations that
+// SetSessionAgentModel performs, but without acquiring sm.mux (the
+// caller already holds it) and without an explicit store write — the
+// caller's pending UpdateSession persists the override alongside any
+// user messages in a single round trip.
+//
+// Returns the previous override value (and whether one existed) plus an
+// undo function. If the subsequent store write fails the caller must
+// invoke undo to roll the runtime override back; the in-memory session
+// fields are owned by the caller and rolled back inline.
+func (sm *SessionManager) applyRunModelOverride(ctx context.Context, rs *activeRuntimes, modelRef string) (prevOverride string, hadPrev bool, undo func(context.Context, string, bool), err error) {
+	noop := func(context.Context, string, bool) {}
+	if modelRef == "" {
+		return "", false, noop, nil
+	}
+	if !rs.runtime.SupportsModelSwitching() {
+		return "", false, noop, ErrModelSwitchingNotSupported
+	}
+
+	agentName := rs.runtime.CurrentAgentName()
+	sess := rs.session
+
+	if sess != nil && sess.AgentModelOverrides != nil {
+		prevOverride, hadPrev = sess.AgentModelOverrides[agentName]
+	}
+
+	if err := rs.runtime.SetAgentModel(ctx, agentName, modelRef); err != nil {
+		return "", false, noop, err
+	}
+
+	var appendedCustom bool
+	if sess != nil {
+		if sess.AgentModelOverrides == nil {
+			sess.AgentModelOverrides = make(map[string]string)
+		}
+		sess.AgentModelOverrides[agentName] = modelRef
+		if strings.Contains(modelRef, "/") && !slices.Contains(sess.CustomModelsUsed, modelRef) {
+			sess.CustomModelsUsed = append(sess.CustomModelsUsed, modelRef)
+			appendedCustom = true
+		}
+	}
+
+	undo = func(ctx context.Context, prev string, had bool) {
+		rollback := prev
+		if !had {
+			rollback = ""
+		}
+		if rbErr := rs.runtime.SetAgentModel(ctx, agentName, rollback); rbErr != nil {
+			slog.ErrorContext(ctx, "Failed to roll back runtime model override", "agent", agentName, "error", rbErr)
+		}
+		if sess == nil {
+			return
+		}
+		if had {
+			sess.AgentModelOverrides[agentName] = prev
+		} else {
+			delete(sess.AgentModelOverrides, agentName)
+		}
+		if appendedCustom {
+			sess.CustomModelsUsed = sess.CustomModelsUsed[:len(sess.CustomModelsUsed)-1]
+		}
+	}
+	return prevOverride, hadPrev, undo, nil
+}
+
 // applyStoredOverrides applies the persisted per-agent model overrides on
 // the freshly created runtime. Failures are logged at WARN and otherwise
 // ignored: a stored override that no longer resolves (e.g. because the
@@ -852,18 +931,16 @@ func (sm *SessionManager) AvailableSessionModels(ctx context.Context, sessionID 
 }
 
 // SetSessionAgentModel applies modelRef as the model override for the
-// current agent of the session, persists it to the session store, and
-// tracks custom models for later re-selection. Pass an empty modelRef
+// current agent of the session and persists it. Pass an empty modelRef
 // to clear the override and revert to the agent's default model.
 //
 // On store-write failure the in-memory session state and the runtime
 // override are rolled back so the next call observes a consistent state.
 //
-// Concurrent SetSessionAgentModel calls on the same session are
-// serialised via the session-scoped modelSwitch lock so the runtime,
-// session and store never observe interleaved updates. The manager-wide
-// sm.mux is only held briefly while reading or mutating session fields,
-// never while calling into the runtime or the store.
+// The HTTP server no longer exposes this directly: model overrides are
+// folded into the runAgent request body. The method is kept so in-process
+// callers (notably the TUI's App) can switch models without going through
+// HTTP.
 func (sm *SessionManager) SetSessionAgentModel(ctx context.Context, sessionID, modelRef string) (string, string, error) {
 	rs, ok := sm.runtimeSessions.Load(sessionID)
 	if !ok {
@@ -873,9 +950,6 @@ func (sm *SessionManager) SetSessionAgentModel(ctx context.Context, sessionID, m
 	if !rs.runtime.SupportsModelSwitching() {
 		return "", "", ErrModelSwitchingNotSupported
 	}
-
-	rs.modelSwitch.Lock()
-	defer rs.modelSwitch.Unlock()
 
 	agentName := rs.runtime.CurrentAgentName()
 	sess := rs.session

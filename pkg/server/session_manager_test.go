@@ -121,7 +121,7 @@ func TestRunSession_ConcurrentRequestReturnsErrSessionBusy(t *testing.T) {
 	// Start the first stream.
 	ch1, err := sm.RunSession(ctx, sess.ID, "agent", "root", []api.Message{
 		{Content: "first"},
-	})
+	}, "")
 	require.NoError(t, err)
 
 	// Give the goroutine a moment to acquire the streaming lock.
@@ -130,7 +130,7 @@ func TestRunSession_ConcurrentRequestReturnsErrSessionBusy(t *testing.T) {
 	// The second request should fail immediately with ErrSessionBusy.
 	_, err = sm.RunSession(ctx, sess.ID, "agent", "root", []api.Message{
 		{Content: "second"},
-	})
+	}, "")
 	require.ErrorIs(t, err, ErrSessionBusy)
 
 	// Drain first stream to let it complete.
@@ -140,7 +140,7 @@ func TestRunSession_ConcurrentRequestReturnsErrSessionBusy(t *testing.T) {
 	// After the first stream finishes, a new request should succeed.
 	ch3, err := sm.RunSession(ctx, sess.ID, "agent", "root", []api.Message{
 		{Content: "third"},
-	})
+	}, "")
 	require.NoError(t, err)
 	for range ch3 {
 	}
@@ -158,7 +158,7 @@ func TestRunSession_MessagesNotAddedWhenBusy(t *testing.T) {
 
 	ch1, err := sm.RunSession(ctx, sess.ID, "agent", "root", []api.Message{
 		{Content: "first"},
-	})
+	}, "")
 	require.NoError(t, err)
 
 	time.Sleep(50 * time.Millisecond)
@@ -167,7 +167,7 @@ func TestRunSession_MessagesNotAddedWhenBusy(t *testing.T) {
 
 	_, err = sm.RunSession(ctx, sess.ID, "agent", "root", []api.Message{
 		{Content: "should not be added"},
-	})
+	}, "")
 	require.ErrorIs(t, err, ErrSessionBusy)
 
 	// Messages should not have been added.
@@ -190,7 +190,7 @@ func TestRunSession_SequentialRequestsSucceed(t *testing.T) {
 	for range 3 {
 		ch, err := sm.RunSession(ctx, sess.ID, "agent", "root", []api.Message{
 			{Content: "hello"},
-		})
+		}, "")
 		require.NoError(t, err)
 		for range ch {
 		}
@@ -235,7 +235,7 @@ func TestRunSession_DifferentSessionsConcurrently(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		ch, err := sm.RunSession(ctx, sess1.ID, "agent", "root", []api.Message{{Content: "a"}})
+		ch, err := sm.RunSession(ctx, sess1.ID, "agent", "root", []api.Message{{Content: "a"}}, "")
 		assert.NoError(t, err)
 		for range ch {
 		}
@@ -243,7 +243,7 @@ func TestRunSession_DifferentSessionsConcurrently(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		ch, err := sm.RunSession(ctx, sess2.ID, "agent", "root", []api.Message{{Content: "b"}})
+		ch, err := sm.RunSession(ctx, sess2.ID, "agent", "root", []api.Message{{Content: "b"}}, "")
 		assert.NoError(t, err)
 		for range ch {
 		}

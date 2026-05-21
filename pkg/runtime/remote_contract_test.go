@@ -45,11 +45,11 @@ func (s *stubRemoteClient) ResumeElicitation(context.Context, string, tools.Elic
 	return nil
 }
 
-func (s *stubRemoteClient) RunAgent(context.Context, string, string, []api.Message) (<-chan Event, error) {
+func (s *stubRemoteClient) RunAgent(context.Context, string, string, []api.Message, string) (<-chan Event, error) {
 	panic("RunAgent not exercised by the contract test")
 }
 
-func (s *stubRemoteClient) RunAgentWithAgentName(context.Context, string, string, string, []api.Message) (<-chan Event, error) {
+func (s *stubRemoteClient) RunAgentWithAgentName(context.Context, string, string, string, []api.Message, string) (<-chan Event, error) {
 	panic("RunAgentWithAgentName not exercised by the contract test")
 }
 
@@ -87,10 +87,6 @@ func (s *stubRemoteClient) GetSessionTools(context.Context, string) ([]tools.Too
 
 func (s *stubRemoteClient) GetAvailableModels(context.Context) ([]string, error) {
 	return nil, nil
-}
-
-func (s *stubRemoteClient) SetAgentModel(context.Context, string, string) error {
-	return nil
 }
 
 func (s *stubRemoteClient) GetSessionMCPPrompts(context.Context, string) (map[string]any, error) {
