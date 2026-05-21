@@ -366,7 +366,7 @@ func (r *Runner) runSingleEval(ctx context.Context, evalSess *InputSession) (Res
 
 	// Build session from events for database storage
 	result.Session = SessionFromEvents(events, title, userMessages)
-	result.Session.InputID = evalSess.Session.InputID
+	result.Session.InputID = evalSess.InputID
 	result.Session.Evals = evals
 
 	// Re-apply the display title in case a session_title event overrode it.
