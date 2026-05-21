@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/docker/docker-agent/pkg/config"
-	"github.com/docker/docker-agent/pkg/desktop"
 	"github.com/docker/docker-agent/pkg/environment"
 	"github.com/docker/docker-agent/pkg/paths"
 	"github.com/docker/docker-agent/pkg/sandbox"
@@ -109,32 +108,13 @@ func runInSandbox(ctx context.Context, cmd *cobra.Command, args []string, runCon
 	// any additional vars (e.g. MCP tool secrets).
 	envFlags, envVars := sandbox.EnvForAgent(ctx, agentRef, envProvider)
 
-	// Forward the gateway via the docker-agent process env (not as an
-	// inline `-e KEY=VALUE` argument) so a gateway URL that happens to
-	// carry credentials never leaks into the slog'd `docker sandbox
-	// exec` argv.
+	// Forward the gateway by name so a URL with credentials never
+	// shows up in the slog'd `docker sandbox exec` argv. We do not
+	// forward DOCKER_TOKEN: inside the sandbox it must come only from
+	// sandbox-tokens.json (kept fresh by StartTokenWriterIfNeeded).
 	if gateway := runConfig.ModelsGateway; gateway != "" {
 		envFlags = append(envFlags, "-e", envModelsGateway)
 		envVars = append(envVars, envModelsGateway+"="+gateway)
-
-		// Forward a *fresh* Docker Desktop token. We deliberately bypass
-		// envProvider here: that chain consults the OS environment first,
-		// where any pre-existing DOCKER_TOKEN value is by definition stale
-		// (the gateway issues short-lived JWTs that expire roughly
-		// hourly). Going straight to the Docker Desktop backend gives us
-		// the same fresh token that [sandbox.StartTokenWriterIfNeeded]
-		// will keep refreshing in the background; seeding it as an env
-		// var lets the inner agent's startup check
-		// ([config.CheckRequiredEnvVars]) succeed even on existing sandbox
-		// images that read sandbox-tokens.json from the wrong path because
-		// of the persistent-pre-run bug fixed in pkg/cli/flags.go.
-		//
-		// Like the gateway above, the token is forwarded by name only —
-		// it would otherwise show up in the slog'd argv as plaintext.
-		if token := desktop.GetToken(ctx); token != "" {
-			envFlags = append(envFlags, "-e", environment.DockerDesktopTokenEnv)
-			envVars = append(envVars, environment.DockerDesktopTokenEnv+"="+token)
-		}
 	}
 
 	// Point the in-sandbox resolvers at the staged kit. We use the

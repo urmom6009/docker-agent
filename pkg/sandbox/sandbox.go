@@ -291,8 +291,9 @@ func StartTokenWriterIfNeeded(ctx context.Context, dir, modelsGateway string) fu
 	return w.Stop
 }
 
-// proxyManagedEnvVars lists the environment variables that Docker Desktop
-// automatically proxies into sandboxes. We don't need to forward these.
+// proxyManagedEnvVars lists env vars we never forward to the sandbox.
+// Docker Desktop proxies the API keys automatically; DOCKER_TOKEN must
+// come from sandbox-tokens.json, not a one-shot env var.
 var proxyManagedEnvVars = []string{
 	"OPENAI_API_KEY",
 	"ANTHROPIC_API_KEY",
@@ -300,6 +301,7 @@ var proxyManagedEnvVars = []string{
 	"MISTRAL_API_KEY",
 	"XAI_API_KEY",
 	"NEBIUS_API_KEY",
+	environment.DockerDesktopTokenEnv,
 }
 
 // EnvForAgent loads the agent config and gathers the environment
