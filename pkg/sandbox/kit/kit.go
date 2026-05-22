@@ -708,7 +708,7 @@ func (r *Result) PrintSummary(w io.Writer) {
 		return
 	}
 
-	fmt.Fprintf(w, "Preparing docker-agent kit at %s\n", styleHostPath(r.HostDir))
+	fmt.Fprintf(w, "Preparing docker-agent kit at %s\n", styleHostPath(pathx.ShortenHome(r.HostDir)))
 
 	if len(skillFiles) > 0 {
 		fmt.Fprintf(w, "  %s\n", styleSection("skills:"))
