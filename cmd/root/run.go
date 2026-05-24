@@ -170,22 +170,11 @@ func (f *runExecFlags) runRunCommand(cmd *cobra.Command, args []string) (command
 		}()
 	}
 
-	// Resolve alias-driven sandbox opt-in before dispatch so aliases
-	// like `docker-agent run scary-agent` (where the alias declares
-	// sandbox: true) take the sandbox path without an explicit flag.
-	if !f.sandbox && len(args) > 0 {
-		if alias := config.ResolveAlias(args[0]); alias != nil && alias.Sandbox {
-			f.sandbox = true
-		}
-	}
-
-	// Honour `runtime.sandbox: true` declared by the agent author.
-	// Best-effort: a config we can't peek at falls through to the
-	// normal path which will surface the load error properly.
-	if !f.sandbox && len(args) > 0 {
-		if peekAgentSandbox(ctx, args[0]) {
-			f.sandbox = true
-		}
+	// Resolve alias / runtime-declared sandbox opt-in before dispatch.
+	// An explicit --sandbox=<bool> on the CLI always wins, so we only
+	// consult the lower-priority sources when the flag wasn't set.
+	if !cmd.Flags().Changed("sandbox") {
+		f.sandbox = resolveSandboxDefault(ctx, args, f.sandbox)
 	}
 
 	if f.sandbox {
@@ -246,9 +235,10 @@ func (f *runExecFlags) runOrExec(ctx context.Context, out *cli.Printer, args []s
 		if alias.HideToolResults && !f.hideToolResults {
 			f.hideToolResults = true
 		}
-		if alias.Sandbox && !f.sandbox {
-			f.sandbox = true
-		}
+		// alias.Sandbox is consumed earlier in runRunCommand before
+		// dispatch; by the time we reach runOrExec the sandbox path
+		// has already been taken (or the user opted out via
+		// --sandbox=false), so flipping it here would be a no-op.
 	}
 
 	// Build global permissions checker from user config settings.

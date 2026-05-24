@@ -255,6 +255,38 @@ func TestPrintToolInstallAllowance(t *testing.T) {
 	}
 }
 
+func TestResolveSandboxDefault(t *testing.T) {
+	dir := t.TempDir()
+	sbxPath := filepath.Join(dir, "runtime-sandbox.yaml")
+	require.NoError(t, os.WriteFile(sbxPath,
+		[]byte("runtime:\n  sandbox: true\nagents:\n  root:\n    model: openai/gpt-4o\n    description: t\n    instruction: t\n"),
+		0o600))
+	plainPath := filepath.Join(dir, "plain.yaml")
+	require.NoError(t, os.WriteFile(plainPath,
+		[]byte("agents:\n  root:\n    model: openai/gpt-4o\n    description: t\n    instruction: t\n"),
+		0o600))
+
+	tests := []struct {
+		name    string
+		args    []string
+		current bool
+		want    bool
+	}{
+		{"no args, flag false", nil, false, false},
+		{"no args, flag already true", nil, true, true},
+		{"runtime.sandbox: true picked up", []string{sbxPath}, false, true},
+		{"plain agent stays false", []string{plainPath}, false, false},
+		{"current=true short-circuits the load", []string{plainPath}, true, true},
+		{"unresolvable ref stays false", []string{filepath.Join(dir, "missing.yaml")}, false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, resolveSandboxDefault(t.Context(), tt.args, tt.current))
+		})
+	}
+}
+
 func TestPeekAgentSandbox(t *testing.T) {
 	tests := []struct {
 		name string

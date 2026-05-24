@@ -37,6 +37,25 @@ func peekAgentSandbox(ctx context.Context, agentRef string) bool {
 	return cfg != nil && cfg.Runtime != nil && cfg.Runtime.Sandbox
 }
 
+// resolveSandboxDefault decides whether the sandbox path should be
+// taken when the user did not pass --sandbox on the CLI. The first
+// source that declares sandbox: true wins; in priority order:
+//
+//  1. an alias entry (`docker agent alias add ... --sandbox`);
+//  2. the agent's own `runtime.sandbox: true`.
+//
+// Callers must only invoke this when the CLI flag was not set; an
+// explicit --sandbox=<bool> always wins and bypasses this logic.
+func resolveSandboxDefault(ctx context.Context, args []string, current bool) bool {
+	if current || len(args) == 0 {
+		return current
+	}
+	if alias := config.ResolveAlias(args[0]); alias != nil && alias.Sandbox {
+		return true
+	}
+	return peekAgentSandbox(ctx, args[0])
+}
+
 // agentNetworkAllowlist returns the hostnames the agent declared in
 // runtime.network_allowlist. Same best-effort contract as
 // peekAgentSandbox: any failure to load the config returns nil so
