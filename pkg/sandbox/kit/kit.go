@@ -233,12 +233,12 @@ func Build(ctx context.Context, opts Options) (*Result, error) {
 	}
 
 	// Load the team config so we know which prompt files / skills the
-	// agent will request. A failure here is non-fatal: we still want
-	// to ship local skills since they're discovered from $HOME, not
-	// from the config. We log and continue with an empty config.
+	// agent will request. A failure here is non-fatal: we ship an empty
+	// kit (no prompt files, no skills) so the sandbox still boots, but
+	// the agent will fall back to its in-sandbox defaults.
 	cfg, err := loadConfig(ctx, opts)
 	if err != nil {
-		slog.DebugContext(ctx, "kit: agent config unavailable; skipping prompt-file collection", "err", err)
+		slog.DebugContext(ctx, "kit: agent config unavailable; shipping an empty kit", "err", err)
 		cfg = &latestcfg.Config{}
 	}
 
