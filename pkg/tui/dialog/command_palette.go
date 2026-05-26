@@ -3,6 +3,8 @@ package dialog
 import (
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textinput"
@@ -146,16 +148,13 @@ func (d *commandPaletteDialog) filterCommands() {
 
 const commandQueryNoMatch = 1 << 30
 
-// matchesCommandQuery reports whether the given command matches the lowercase
-// query string by searching label, description, or slash command. The
-// category is intentionally excluded: category names act as section headers
-// and matching them would surface every command in a category, drowning out
-// targeted queries (e.g. typing "session" would otherwise match every
-// command in the Session category).
-func matchesCommandQuery(cmd commands.Item, query string) bool {
-	return commandQueryScore(cmd, query) < commandQueryNoMatch
-}
-
+// commandQueryScore returns a relevance score for matching the given command
+// against the lowercase query string by searching label, slash command, or
+// description. Lower scores indicate stronger matches; commandQueryNoMatch
+// means no match. The category is intentionally excluded: category names act
+// as section headers and matching them would surface every command in a
+// category, drowning out targeted queries (e.g. typing "session" would
+// otherwise match every command in the Session category).
 func commandQueryScore(cmd commands.Item, query string) int {
 	label := strings.ToLower(cmd.Label)
 	description := strings.ToLower(cmd.Description)
@@ -193,8 +192,12 @@ func isCommandQueryWordStart(value string, index int) bool {
 	if index == 0 {
 		return true
 	}
-	previous := value[index-1]
-	return previous == ' ' || previous == '-' || previous == '_' || previous == '/' || previous == '.'
+	previous, _ := utf8.DecodeLastRuneInString(value[:index])
+	switch previous {
+	case ' ', '-', '_', '/', '.':
+		return true
+	}
+	return unicode.IsSpace(previous) || unicode.IsPunct(previous)
 }
 
 // buildList builds the visual list of commands grouped by category, with a

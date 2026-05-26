@@ -91,7 +91,7 @@ func TestCommandPaletteFilteringRanksLabelPrefixFirst(t *testing.T) {
 		{
 			Name: "Session",
 			Commands: []commands.Item{
-				{ID: "session.attach", Label: "Attach", SlashCommand: "/attach", Description: "Attach a file to your message", Category: "Session"},
+				{ID: "session.attach", Label: "Attach", SlashCommand: "/attach", Description: "Attach a file to the current message", Category: "Session"},
 				{ID: "session.history", Label: "Sessions", SlashCommand: "/sessions", Description: "Browse and load past sessions", Category: "Session"},
 			},
 		},
