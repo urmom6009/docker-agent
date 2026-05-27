@@ -31,7 +31,7 @@ require (
 	github.com/docker/aijson v0.1.0
 	github.com/docker/cli v29.5.2+incompatible
 	github.com/docker/go-units v0.5.0
-	github.com/docker/portcullis v0.0.0-20260526131538-fc97bf12bbdb
+	github.com/docker/portcullis v0.0.0-20260526171634-3105c185ace7
 	github.com/dop251/goja v0.0.0-20260311135729-065cd970411c
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.10.1
@@ -52,7 +52,7 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/natefinch/atomic v1.0.1
 	github.com/openai/openai-go/v3 v3.37.0
-	github.com/pb33f/libopenapi v0.36.6
+	github.com/pb33f/libopenapi v0.37.1
 	github.com/rivo/uniseg v0.4.7
 	github.com/rumpl/harness v0.0.0-20260519225334-1d956be4fff1
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
