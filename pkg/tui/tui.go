@@ -1470,9 +1470,9 @@ func (m *appModel) replayPendingEvent(sessionID string) tea.Cmd {
 func (m *appModel) replayElicitationEvent(ev *runtime.ElicitationRequestEvent) tea.Cmd {
 	// Check if this is an OAuth flow
 	if ev.Meta != nil {
-		if elicitationType, ok := ev.Meta["cagent/type"].(string); ok && elicitationType == "oauth_flow" {
+		if elicitationType, ok := ev.Meta["docker-agent/type"].(string); ok && elicitationType == "oauth_flow" {
 			var serverURL string
-			if url, ok := ev.Meta["cagent/server_url"].(string); ok {
+			if url, ok := ev.Meta["docker-agent/server_url"].(string); ok {
 				serverURL = url
 			}
 			return core.CmdHandler(dialog.OpenDialogMsg{

@@ -398,9 +398,9 @@ func (r *RemoteRuntime) handleOAuthElicitation(ctx context.Context, req *Elicita
 		return nil
 	}
 
-	slog.DebugContext(ctx, "Handling OAuth elicitation request", "server_url", req.Meta["cagent/server_url"])
+	slog.DebugContext(ctx, "Handling OAuth elicitation request", "server_url", req.Meta["docker-agent/server_url"])
 
-	serverURL, ok := req.Meta["cagent/server_url"].(string)
+	serverURL, ok := req.Meta["docker-agent/server_url"].(string)
 	if !ok {
 		err := errors.New("server_url missing from elicitation metadata")
 		slog.ErrorContext(ctx, "Failed to extract server_url", "error", err)

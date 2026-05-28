@@ -781,8 +781,8 @@ func (t *oauthTransport) handleManagedOAuthFlow(ctx context.Context, authServer,
 		Message:         fmt.Sprintf("The MCP server at %s requires OAuth authorization. Do you want to proceed?", t.baseURL),
 		RequestedSchema: nil,
 		Meta: map[string]any{
-			"cagent/type":       "oauth_flow",
-			"cagent/server_url": t.baseURL,
+			"docker-agent/type":       "oauth_flow",
+			"docker-agent/server_url": t.baseURL,
 		},
 	})
 	if err != nil {
@@ -884,11 +884,11 @@ func (t *oauthTransport) handleUnmanagedOAuthFlow(ctx context.Context, authServe
 		Message:         "OAuth authorization required for " + t.baseURL,
 		RequestedSchema: nil,
 		Meta: map[string]any{
-			"cagent/type":          "oauth_flow",
-			"cagent/server_url":    t.baseURL,
-			"auth_server":          resourceMetadata.AuthorizationServers[0],
-			"auth_server_metadata": authServerMetadata,
-			"resource_metadata":    resourceMetadata,
+			"docker-agent/type":       "oauth_flow",
+			"docker-agent/server_url": t.baseURL,
+			"auth_server":             resourceMetadata.AuthorizationServers[0],
+			"auth_server_metadata":    authServerMetadata,
+			"resource_metadata":       resourceMetadata,
 		},
 	})
 	if err != nil {

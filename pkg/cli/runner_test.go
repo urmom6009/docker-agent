@@ -230,7 +230,7 @@ func TestElicitationAutoDeclineInJSONMode(t *testing.T) {
 			&runtime.ElicitationRequestEvent{
 				Type:    "elicitation_request",
 				Message: "Please authorize",
-				Meta:    map[string]any{"cagent/server_url": "https://example.com"},
+				Meta:    map[string]any{"docker-agent/server_url": "https://example.com"},
 			},
 		},
 	}

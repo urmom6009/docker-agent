@@ -337,10 +337,10 @@ func (p *chatPage) handleElicitationRequest(msg *runtime.ElicitationRequestEvent
 	// Check if this is an OAuth flow by looking at the meta type
 	// Guard against nil Meta map to prevent panic
 	if msg.Meta != nil {
-		if elicitationType, ok := msg.Meta["cagent/type"].(string); ok && elicitationType == "oauth_flow" {
+		if elicitationType, ok := msg.Meta["docker-agent/type"].(string); ok && elicitationType == "oauth_flow" {
 			// OAuth flow - show the OAuth authorization dialog
 			var serverURL string
-			if url, ok := msg.Meta["cagent/server_url"].(string); ok {
+			if url, ok := msg.Meta["docker-agent/server_url"].(string); ok {
 				serverURL = url
 			}
 			dialogCmd := core.CmdHandler(dialog.OpenDialogMsg{

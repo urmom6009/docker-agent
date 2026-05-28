@@ -230,7 +230,7 @@ func Run(ctx context.Context, out *Printer, cfg Config, rt runtime.Runtime, sess
 					}
 				}
 			case *runtime.ElicitationRequestEvent:
-				serverURL, ok := e.Meta["cagent/server_url"].(string)
+				serverURL, ok := e.Meta["docker-agent/server_url"].(string)
 				if !ok || serverURL == "" {
 					slog.WarnContext(ctx, "Skipping elicitation: missing or invalid server_url (non-interactive session?)")
 					_ = rt.ResumeElicitation(ctx, "decline", nil)
