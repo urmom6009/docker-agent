@@ -569,7 +569,7 @@ func (r *LocalRuntime) runTurn(
 	// fire on_error above. The assistant text content is passed
 	// via stop_response, matching the stop event's payload, so
 	// handlers can reuse the same parsing.
-	r.executeAfterLLMCallHooks(ctx, sess, a, res.Content)
+	r.executeAfterLLMCallHooks(ctx, sess, a, modelID.String(), res.Content)
 
 	if usedModel != nil && usedModel.ID() != model.ID() {
 		slog.InfoContext(ctx, "Used fallback model", "agent", a.Name(), "primary", model.ID().String(), "used", usedModel.ID().String())

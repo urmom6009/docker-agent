@@ -189,7 +189,7 @@ func (r *LocalRuntime) runHarnessAgent(ctx context.Context, sess *session.Sessio
 		content = strings.TrimSpace(finalResult)
 	}
 
-	r.executeAfterLLMCallHooks(ctx, sess, a, content)
+	r.executeAfterLLMCallHooks(ctx, sess, a, modelID, content)
 	r.recordHarnessAssistantMessage(sess, a, content, modelID, usage, cost, events)
 	r.executeStopHooks(ctx, sess, a, content, events)
 

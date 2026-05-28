@@ -443,10 +443,11 @@ func (r *LocalRuntime) executeBeforeLLMCallHooks(
 // stop_response (matching the stop event), so handlers can reuse the
 // same parsing logic. Failed model calls fire on_error instead and
 // skip this event.
-func (r *LocalRuntime) executeAfterLLMCallHooks(ctx context.Context, sess *session.Session, a *agent.Agent, responseContent string) {
+func (r *LocalRuntime) executeAfterLLMCallHooks(ctx context.Context, sess *session.Session, a *agent.Agent, modelID, responseContent string) {
 	r.dispatchHook(ctx, a, hooks.EventAfterLLMCall, &hooks.Input{
 		SessionID:       sess.ID,
 		AgentName:       a.Name(),
+		ModelID:         modelID,
 		StopResponse:    responseContent,
 		LastUserMessage: sess.GetLastUserMessageContent(),
 	}, nil)
