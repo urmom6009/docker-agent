@@ -65,12 +65,6 @@ type Toolset struct {
 	byID    map[string]Server
 	env     environment.Provider
 
-	// allowedServers / blockedServers capture the optional offer filters
-	// applied at construction time. They are retained only for reference;
-	// the actual filtering happens once in New via filterCatalog.
-	allowedServers []string
-	blockedServers []string
-
 	mu sync.RWMutex
 	// enabled holds the per-server StartableToolSet wrapper. Wrapping the
 	// inner *mcp.Toolset in a StartableToolSet gives us:
@@ -114,21 +108,28 @@ var (
 )
 
 // Option customizes a Toolset at construction time.
-type Option func(*Toolset)
+type Option func(*options)
+
+// options collects the construction-time settings supplied via Option. It is
+// consumed entirely within New, so nothing leaks onto the long-lived Toolset.
+type options struct {
+	allowedServers []string
+	blockedServers []string
+}
 
 // WithAllowedServers restricts the offered catalog to the given server ids.
 // When the list is non-empty, only these servers are searchable and
 // enableable; every other entry is hidden. An empty or nil list leaves the
 // full catalog in place.
 func WithAllowedServers(ids []string) Option {
-	return func(t *Toolset) { t.allowedServers = ids }
+	return func(o *options) { o.allowedServers = ids }
 }
 
 // WithBlockedServers removes the given server ids from the offered catalog.
 // Block takes precedence over allow: a server present in both lists is
 // blocked.
 func WithBlockedServers(ids []string) Option {
-	return func(t *Toolset) { t.blockedServers = ids }
+	return func(o *options) { o.blockedServers = ids }
 }
 
 // New returns a Toolset backed by the embedded catalog. envProvider is used
@@ -139,17 +140,18 @@ func WithBlockedServers(ids []string) Option {
 // Optional WithAllowedServers / WithBlockedServers options narrow the set of
 // servers the toolset offers by default.
 func New(envProvider environment.Provider, opts ...Option) *Toolset {
-	cat := MustLoad()
+	var cfg options
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	t := &Toolset{
-		catalog:          cat,
+		catalog:          MustLoad(),
 		env:              envProvider,
 		enabled:          make(map[string]*tools.StartableToolSet),
 		removeOAuthToken: mcp.RemoveOAuthToken,
 	}
-	for _, opt := range opts {
-		opt(t)
-	}
-	t.filterCatalog()
+	t.filterCatalog(cfg.allowedServers, cfg.blockedServers)
 	return t
 }
 
@@ -157,9 +159,9 @@ func New(envProvider environment.Provider, opts ...Option) *Toolset {
 // rebuilding Servers, Count and the id index so the rest of the toolset only
 // ever sees the offered subset. Block takes precedence over allow. It always
 // runs (even with no filters) to populate byID.
-func (t *Toolset) filterCatalog() {
-	allow := toIDSet(t.allowedServers)
-	block := toIDSet(t.blockedServers)
+func (t *Toolset) filterCatalog(allowedServers, blockedServers []string) {
+	allow := toIDSet(allowedServers)
+	block := toIDSet(blockedServers)
 
 	if len(allow) > 0 || len(block) > 0 {
 		known := make(map[string]struct{}, len(t.catalog.Servers))
