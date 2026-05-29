@@ -374,6 +374,13 @@ func cloneChatMessage(m chat.Message) chat.Message {
 				fileCopy := *part.File
 				part.File = &fileCopy
 			}
+			if part.Document != nil {
+				docCopy := *part.Document
+				if part.Document.Source.InlineData != nil {
+					docCopy.Source.InlineData = slices.Clone(part.Document.Source.InlineData)
+				}
+				part.Document = &docCopy
+			}
 			m.MultiContent[i] = part
 		}
 	}

@@ -407,7 +407,10 @@ func (c *Client) convertMessages(ctx context.Context, messages []chat.Message) (
 			var blocks []anthropic.ContentBlockParamUnion
 			j := i
 			for j < len(messages) && messages[j].Role == chat.MessageRoleTool {
-				tr := convertToolResultBlock(&messages[j])
+				tr, err := c.convertToolResultBlock(ctx, &messages[j])
+				if err != nil {
+					return nil, err
+				}
 				blocks = append(blocks, tr)
 				j++
 			}
@@ -433,49 +436,39 @@ func (c *Client) convertMessages(ctx context.Context, messages []chat.Message) (
 }
 
 // convertToolResultBlock converts a tool message to an Anthropic tool_result block.
-// If the message contains image content in MultiContent, the images are included
-// as image blocks within the tool_result.
-func convertToolResultBlock(msg *chat.Message) anthropic.ContentBlockParamUnion {
-	// If there are no images in MultiContent, use the simple text-only format.
-	if !hasImageMultiContent(msg.MultiContent) {
-		// tool_result must be present for every preceding tool_use; we cannot skip
-		// it. Normalize whitespace-only content to empty string rather than skipping.
-		content := msg.Content
-		if strings.TrimSpace(content) == "" {
-			content = ""
-		}
-		return anthropic.NewToolResultBlock(msg.ToolCallID, content, msg.IsError)
+// Inline images and documents are included as native blocks within the tool_result.
+func (c *Client) convertToolResultBlock(ctx context.Context, msg *chat.Message) (anthropic.ContentBlockParamUnion, error) {
+	if !hasRichToolResultMultiContent(msg.MultiContent) {
+		return anthropic.NewToolResultBlock(msg.ToolCallID, toolResultText(msg.Content), msg.IsError), nil
 	}
 
-	// Build content blocks with text + images for the tool result.
 	var content []anthropic.ToolResultBlockParamContentUnion
 	for _, part := range msg.MultiContent {
 		switch part.Type {
 		case chat.MessagePartTypeText:
+			if strings.TrimSpace(part.Text) == "" {
+				continue
+			}
 			content = append(content, anthropic.ToolResultBlockParamContentUnion{
 				OfText: &anthropic.TextBlockParam{Text: part.Text},
 			})
 		case chat.MessagePartTypeImageURL:
-			if part.ImageURL == nil {
+			content = append(content, toolResultImageContent(part)...)
+		case chat.MessagePartTypeDocument:
+			if part.Document == nil {
 				continue
 			}
-			if strings.HasPrefix(part.ImageURL.URL, "data:") {
-				urlParts := strings.SplitN(part.ImageURL.URL, ",", 2)
-				if len(urlParts) == 2 {
-					mediaType := extractMediaType(urlParts[0])
-					content = append(content, anthropic.ToolResultBlockParamContentUnion{
-						OfImage: &anthropic.ImageBlockParam{
-							Source: anthropic.ImageBlockParamSourceUnion{
-								OfBase64: &anthropic.Base64ImageSourceParam{
-									Data:      urlParts[1],
-									MediaType: anthropic.Base64ImageSourceMediaType(mediaType),
-								},
-							},
-						},
-					})
-				}
+			docBlocks, err := c.convertDoc(ctx, *part.Document)
+			if err != nil {
+				return anthropic.ContentBlockParamUnion{}, fmt.Errorf("failed to convert tool result document %q: %w", part.Document.Name, err)
 			}
+			content = append(content, stdBlocksToToolResultContent(docBlocks)...)
 		}
+	}
+	if len(content) == 0 {
+		content = append(content, anthropic.ToolResultBlockParamContentUnion{
+			OfText: &anthropic.TextBlockParam{Text: toolResultText(msg.Content)},
+		})
 	}
 
 	toolBlock := anthropic.ToolResultBlockParam{
@@ -483,14 +476,65 @@ func convertToolResultBlock(msg *chat.Message) anthropic.ContentBlockParamUnion 
 		Content:   content,
 		IsError:   anthropic.Bool(msg.IsError),
 	}
-	return anthropic.ContentBlockParamUnion{OfToolResult: &toolBlock}
+	return anthropic.ContentBlockParamUnion{OfToolResult: &toolBlock}, nil
 }
 
-// hasImageMultiContent returns true if the multi-content parts contain any image content.
-func hasImageMultiContent(parts []chat.MessagePart) bool {
+func toolResultText(text string) string {
+	if strings.TrimSpace(text) == "" {
+		return "(no output)"
+	}
+	return text
+}
+
+func toolResultImageContent(part chat.MessagePart) []anthropic.ToolResultBlockParamContentUnion {
+	if part.ImageURL == nil || !strings.HasPrefix(part.ImageURL.URL, "data:") {
+		return nil
+	}
+	urlParts := strings.SplitN(part.ImageURL.URL, ",", 2)
+	if len(urlParts) != 2 {
+		return nil
+	}
+	mediaType := extractMediaType(urlParts[0])
+	return []anthropic.ToolResultBlockParamContentUnion{{
+		OfImage: &anthropic.ImageBlockParam{
+			Source: anthropic.ImageBlockParamSourceUnion{
+				OfBase64: &anthropic.Base64ImageSourceParam{
+					Data:      urlParts[1],
+					MediaType: anthropic.Base64ImageSourceMediaType(mediaType),
+				},
+			},
+		},
+	}}
+}
+
+func stdBlocksToToolResultContent(blocks []anthropic.ContentBlockParamUnion) []anthropic.ToolResultBlockParamContentUnion {
+	out := make([]anthropic.ToolResultBlockParamContentUnion, 0, len(blocks))
+	for _, block := range blocks {
+		switch {
+		case block.OfText != nil:
+			out = append(out, anthropic.ToolResultBlockParamContentUnion{OfText: block.OfText})
+		case block.OfImage != nil:
+			out = append(out, anthropic.ToolResultBlockParamContentUnion{OfImage: block.OfImage})
+		case block.OfDocument != nil:
+			out = append(out, anthropic.ToolResultBlockParamContentUnion{OfDocument: block.OfDocument})
+		}
+	}
+	return out
+}
+
+// hasRichToolResultMultiContent returns true if multi-content contains blocks
+// that need Anthropic's array-shaped tool_result content.
+func hasRichToolResultMultiContent(parts []chat.MessagePart) bool {
 	for _, part := range parts {
-		if part.Type == chat.MessagePartTypeImageURL && part.ImageURL != nil {
-			return true
+		switch part.Type {
+		case chat.MessagePartTypeImageURL:
+			if part.ImageURL != nil {
+				return true
+			}
+		case chat.MessagePartTypeDocument:
+			if part.Document != nil {
+				return true
+			}
 		}
 	}
 	return false

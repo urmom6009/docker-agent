@@ -728,35 +728,46 @@ func (c *Client) convertMessagesToResponseInput(ctx context.Context, messages []
 			input = append(input, item)
 		}
 
-		// For tool messages with image content, inject a follow-up user message
-		// with the images since OpenAI function call outputs only support text.
+		// For tool messages with attachments, inject a follow-up user message
+		// since OpenAI function call outputs only support text.
 		if msg.Role == chat.MessageRoleTool && len(msg.MultiContent) > 0 {
-			var imageParts []responses.ResponseInputContentUnionParam
+			var attachmentParts []responses.ResponseInputContentUnionParam
 			for _, part := range msg.MultiContent {
-				if part.Type == chat.MessagePartTypeImageURL && part.ImageURL != nil {
-					detail := responses.ResponseInputImageContentDetailAuto
-					switch part.ImageURL.Detail {
-					case chat.ImageURLDetailHigh:
-						detail = responses.ResponseInputImageContentDetailHigh
-					case chat.ImageURLDetailLow:
-						detail = responses.ResponseInputImageContentDetailLow
+				switch part.Type {
+				case chat.MessagePartTypeImageURL:
+					if part.ImageURL != nil {
+						detail := responses.ResponseInputImageContentDetailAuto
+						switch part.ImageURL.Detail {
+						case chat.ImageURLDetailHigh:
+							detail = responses.ResponseInputImageContentDetailHigh
+						case chat.ImageURLDetailLow:
+							detail = responses.ResponseInputImageContentDetailLow
+						}
+						attachmentParts = append(attachmentParts, responses.ResponseInputContentUnionParam{
+							OfInputImage: &responses.ResponseInputImageParam{
+								ImageURL: param.NewOpt(part.ImageURL.URL),
+								Detail:   responses.ResponseInputImageDetail(detail),
+							},
+						})
 					}
-					imageParts = append(imageParts, responses.ResponseInputContentUnionParam{
-						OfInputImage: &responses.ResponseInputImageParam{
-							ImageURL: param.NewOpt(part.ImageURL.URL),
-							Detail:   responses.ResponseInputImageDetail(detail),
-						},
-					})
+				case chat.MessagePartTypeDocument:
+					if part.Document != nil {
+						docParts, err := convertDocumentToResponseInput(ctx, *part.Document, c.ID(), c.ModelOptions.ModelsDevStore())
+						if err != nil {
+							slog.WarnContext(ctx, "failed to convert tool result document attachment", "error", err, "doc", part.Document.Name)
+							continue
+						}
+						attachmentParts = append(attachmentParts, docParts...)
+					}
 				}
 			}
-			if len(imageParts) > 0 {
-				// Prepend a text label so the model knows these images came from a tool result
+			if len(attachmentParts) > 0 {
 				label := responses.ResponseInputContentUnionParam{
 					OfInputText: &responses.ResponseInputTextParam{
-						Text: "Attached image(s) from tool result:",
+						Text: "Attached content from tool result:",
 					},
 				}
-				allParts := append([]responses.ResponseInputContentUnionParam{label}, imageParts...)
+				allParts := append([]responses.ResponseInputContentUnionParam{label}, attachmentParts...)
 				input = append(input, responses.ResponseInputItemUnionParam{
 					OfInputMessage: &responses.ResponseInputItemMessageParam{
 						Role:    "user",

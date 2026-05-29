@@ -210,24 +210,11 @@ func convertMessagesToGemini(ctx context.Context, messages []chat.Message, id mo
 		if msg.Role == chat.MessageRoleTool && msg.ToolCallID != "" {
 			response := map[string]any{"result": msg.Content}
 
-			// Check for image content in MultiContent
-			var imageParts []*genai.FunctionResponsePart
-			for _, mc := range msg.MultiContent {
-				if mc.Type == chat.MessagePartTypeImageURL && mc.ImageURL != nil && strings.HasPrefix(mc.ImageURL.URL, "data:") {
-					urlParts := strings.SplitN(mc.ImageURL.URL, ",", 2)
-					if len(urlParts) == 2 {
-						mimeType := extractMimeType(urlParts[0])
-						data, err := base64.StdEncoding.DecodeString(urlParts[1])
-						if err == nil {
-							imageParts = append(imageParts, genai.NewFunctionResponsePartFromBytes(data, mimeType))
-						}
-					}
-				}
-			}
+			attachmentParts := functionResponsePartsFromMultiContent(ctx, msg.MultiContent, id, store)
 
 			var part *genai.Part
-			if len(imageParts) > 0 {
-				part = genai.NewPartFromFunctionResponseWithParts(msg.ToolCallID, response, imageParts)
+			if len(attachmentParts) > 0 {
+				part = genai.NewPartFromFunctionResponseWithParts(msg.ToolCallID, response, attachmentParts)
 			} else {
 				part = genai.NewPartFromFunctionResponse(msg.ToolCallID, response)
 			}
@@ -269,6 +256,45 @@ func convertMessagesToGemini(ctx context.Context, messages []chat.Message, id mo
 		}
 	}
 	return contents
+}
+
+func functionResponsePartsFromMultiContent(ctx context.Context, multiContent []chat.MessagePart, id modelsdev.ID, store *modelsdev.Store) []*genai.FunctionResponsePart {
+	var parts []*genai.FunctionResponsePart
+	for _, part := range multiContent {
+		switch part.Type {
+		case chat.MessagePartTypeImageURL:
+			if part.ImageURL == nil || !strings.HasPrefix(part.ImageURL.URL, "data:") {
+				continue
+			}
+			urlParts := strings.SplitN(part.ImageURL.URL, ",", 2)
+			if len(urlParts) != 2 {
+				continue
+			}
+			mimeType := extractMimeType(urlParts[0])
+			data, err := base64.StdEncoding.DecodeString(urlParts[1])
+			if err == nil {
+				parts = append(parts, genai.NewFunctionResponsePartFromBytes(data, mimeType))
+			}
+		case chat.MessagePartTypeDocument:
+			if part.Document == nil {
+				continue
+			}
+			docPart, err := convertDocument(ctx, *part.Document, id, store)
+			if err != nil {
+				slog.WarnContext(ctx, "failed to convert tool result document attachment", "error", err, "doc", part.Document.Name)
+				continue
+			}
+			if docPart == nil {
+				continue
+			}
+			if docPart.InlineData != nil {
+				parts = append(parts, genai.NewFunctionResponsePartFromBytes(docPart.InlineData.Data, docPart.InlineData.MIMEType))
+			} else if docPart.Text != "" {
+				parts = append(parts, genai.NewFunctionResponsePartFromBytes([]byte(docPart.Text), part.Document.MimeType))
+			}
+		}
+	}
+	return parts
 }
 
 // messageRoleToGemini converts chat.MessageRole to genai.Role

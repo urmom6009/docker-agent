@@ -71,6 +71,16 @@ type ImageContent = MediaContent
 // AudioContent is an alias kept for readability at call sites.
 type AudioContent = MediaContent
 
+// DocumentContent represents inline document-like content returned by a tool.
+// Exactly one of Data or Text should be set. Data is base64-encoded.
+type DocumentContent struct {
+	Name     string `json:"name,omitempty"`
+	URI      string `json:"uri,omitempty"`
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data,omitempty"`
+	Text     string `json:"text,omitempty"`
+}
+
 type ToolCallResult struct {
 	Output  string `json:"output"`
 	IsError bool   `json:"isError,omitempty"`
@@ -79,6 +89,8 @@ type ToolCallResult struct {
 	Images []MediaContent `json:"images,omitempty"`
 	// Audios contains optional audio attachments returned by the tool.
 	Audios []MediaContent `json:"audios,omitempty"`
+	// Documents contains optional inline document attachments returned by the tool.
+	Documents []DocumentContent `json:"documents,omitempty"`
 	// StructuredContent holds optional structured output returned by an MCP
 	// tool whose definition includes an OutputSchema. When non-nil it is the
 	// JSON-decoded structured result from the server.

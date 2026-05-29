@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/docker/docker-agent/pkg/agent"
+	"github.com/docker/docker-agent/pkg/chat"
 	"github.com/docker/docker-agent/pkg/hooks"
 	"github.com/docker/docker-agent/pkg/runtime/toolexec"
 	"github.com/docker/docker-agent/pkg/session"
@@ -102,6 +103,44 @@ func TestDispatcher_RoutesToToolsetHandler(t *testing.T) {
 	require.Len(t, em.responses, 1)
 	assert.Equal(t, `hello {"x":1}`, em.responses[0].Output)
 	assert.False(t, em.responses[0].IsError)
+}
+
+func TestDispatcher_RecordsDocumentToolResult(t *testing.T) {
+	a := newAgent()
+	sess := session.New()
+	sess.ToolsApproved = true
+
+	tool := tools.Tool{
+		Name: "report",
+		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+			return &tools.ToolCallResult{
+				Output: "created report",
+				Documents: []tools.DocumentContent{{
+					Name:     "report.pdf",
+					URI:      "file:///report.pdf",
+					MimeType: "application/pdf",
+					Data:     "UERG",
+				}},
+			}, nil
+		},
+	}
+
+	d := &toolexec.Dispatcher{AgentFor: func(*session.Session) *agent.Agent { return a }}
+	d.Process(t.Context(), sess, []tools.ToolCall{{
+		ID:       "call_report",
+		Function: tools.FunctionCall{Name: "report", Arguments: `{}`},
+	}}, []tools.Tool{tool}, &captureEmitter{})
+
+	require.Len(t, sess.Messages, 1)
+	msg := sess.Messages[0].Message.Message
+	require.Len(t, msg.MultiContent, 2)
+	assert.Equal(t, chat.MessagePartTypeText, msg.MultiContent[0].Type)
+	assert.Equal(t, "created report", msg.MultiContent[0].Text)
+	require.NotNil(t, msg.MultiContent[1].Document)
+	assert.Equal(t, chat.MessagePartTypeDocument, msg.MultiContent[1].Type)
+	assert.Equal(t, "report.pdf", msg.MultiContent[1].Document.Name)
+	assert.Equal(t, "application/pdf", msg.MultiContent[1].Document.MimeType)
+	assert.Equal(t, []byte("PDF"), msg.MultiContent[1].Document.Source.InlineData)
 }
 
 func TestDispatcher_RoutesToRuntimeHandler(t *testing.T) {

@@ -72,11 +72,7 @@ func convertMessages(ctx context.Context, messages []chat.Message, id modelsdev.
 					toolResultBlocks = append(toolResultBlocks, &types.ContentBlockMemberToolResult{
 						Value: types.ToolResultBlock{
 							ToolUseId: aws.String(messages[j].ToolCallID),
-							Content: []types.ToolResultContentBlock{
-								&types.ToolResultContentBlockMemberText{
-									Value: messages[j].Content,
-								},
-							},
+							Content:   convertToolResultContent(ctx, &messages[j], id, store),
 						},
 					})
 				}
@@ -155,6 +151,57 @@ func convertUserContent(ctx context.Context, msg *chat.Message, id modelsdev.ID,
 		})
 	}
 
+	return blocks
+}
+
+func convertToolResultContent(ctx context.Context, msg *chat.Message, id modelsdev.ID, store *modelsdev.Store) []types.ToolResultContentBlock {
+	if len(msg.MultiContent) == 0 {
+		return []types.ToolResultContentBlock{&types.ToolResultContentBlockMemberText{Value: msg.Content}}
+	}
+
+	var blocks []types.ToolResultContentBlock
+	for _, part := range msg.MultiContent {
+		switch part.Type {
+		case chat.MessagePartTypeText:
+			blocks = append(blocks, &types.ToolResultContentBlockMemberText{Value: part.Text})
+		case chat.MessagePartTypeImageURL:
+			if part.ImageURL != nil {
+				if imageBlock := convertImageURL(part.ImageURL); imageBlock != nil {
+					if image, ok := imageBlock.(*types.ContentBlockMemberImage); ok {
+						blocks = append(blocks, &types.ToolResultContentBlockMemberImage{Value: image.Value})
+					}
+				}
+			}
+		case chat.MessagePartTypeDocument:
+			if part.Document == nil {
+				continue
+			}
+			docBlocks, err := convertDocument(ctx, *part.Document, id, store)
+			if err != nil {
+				slog.WarnContext(ctx, "failed to convert tool result document attachment", "error", err, "doc", part.Document.Name)
+				continue
+			}
+			blocks = append(blocks, contentBlocksToToolResultBlocks(docBlocks)...)
+		}
+	}
+	if len(blocks) == 0 {
+		blocks = append(blocks, &types.ToolResultContentBlockMemberText{Value: msg.Content})
+	}
+	return blocks
+}
+
+func contentBlocksToToolResultBlocks(contentBlocks []types.ContentBlock) []types.ToolResultContentBlock {
+	blocks := make([]types.ToolResultContentBlock, 0, len(contentBlocks))
+	for _, block := range contentBlocks {
+		switch block := block.(type) {
+		case *types.ContentBlockMemberText:
+			blocks = append(blocks, &types.ToolResultContentBlockMemberText{Value: block.Value})
+		case *types.ContentBlockMemberImage:
+			blocks = append(blocks, &types.ToolResultContentBlockMemberImage{Value: block.Value})
+		case *types.ContentBlockMemberDocument:
+			blocks = append(blocks, &types.ToolResultContentBlockMemberDocument{Value: block.Value})
+		}
+	}
 	return blocks
 }
 

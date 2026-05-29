@@ -142,10 +142,8 @@ func TestBranchSession(t *testing.T) {
 	})
 
 	t.Run("deep-copies pointer fields in MultiContent", func(t *testing.T) {
-		// Regression test: the previous branch.go cloneChatMessage forgot to
-		// duplicate MessagePart.File, leaving branched sessions sharing the
-		// pointer with the parent. Mutating either side now must NOT affect
-		// the other.
+		// Regression test: MultiContent pointer fields must not be shared
+		// between branched sessions and their parents.
 		parent := &Session{
 			Messages: []Item{NewMessageItem(&Message{
 				Message: chat.Message{
@@ -159,6 +157,14 @@ func TestBranchSession(t *testing.T) {
 							Type: chat.MessagePartTypeFile,
 							File: &chat.MessageFile{Path: "/tmp/parent.txt", MimeType: "text/plain"},
 						},
+						{
+							Type: chat.MessagePartTypeDocument,
+							Document: &chat.Document{
+								Name:     "parent.pdf",
+								MimeType: "application/pdf",
+								Source:   chat.DocumentSource{InlineData: []byte("parent")},
+							},
+						},
 					},
 				},
 			})},
@@ -169,14 +175,18 @@ func TestBranchSession(t *testing.T) {
 		require.Len(t, branched.Messages, 1)
 
 		parts := branched.Messages[0].Message.Message.MultiContent
-		require.Len(t, parts, 2)
+		require.Len(t, parts, 3)
 
 		// Mutate branched copies; parent must be unaffected.
 		parts[0].ImageURL.URL = "http://branched"
 		parts[1].File.Path = "/tmp/branched.txt"
+		parts[2].Document.Name = "branched.pdf"
+		parts[2].Document.Source.InlineData[0] = 'B'
 
 		parentParts := parent.Messages[0].Message.Message.MultiContent
 		assert.Equal(t, "http://parent", parentParts[0].ImageURL.URL, "ImageURL must be deep-copied")
 		assert.Equal(t, "/tmp/parent.txt", parentParts[1].File.Path, "File must be deep-copied")
+		assert.Equal(t, "parent.pdf", parentParts[2].Document.Name, "Document must be deep-copied")
+		assert.Equal(t, []byte("parent"), parentParts[2].Document.Source.InlineData, "Document InlineData must be deep-copied")
 	})
 }

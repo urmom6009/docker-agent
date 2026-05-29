@@ -328,6 +328,7 @@ func TestProcessMCPContent(t *testing.T) {
 		wantIsError    bool
 		wantImages     []tools.MediaContent
 		wantAudios     []tools.MediaContent
+		wantDocuments  []tools.DocumentContent
 		wantStructured any
 	}{
 		// --- text ---
@@ -438,7 +439,7 @@ func TestProcessMCPContent(t *testing.T) {
 			wantOutput: "downloaded hello world",
 		},
 		{
-			name: "embedded blob resource emits a marker",
+			name: "embedded image resource routes to documents",
 			input: callToolResult(&mcp.EmbeddedResource{
 				Resource: &mcp.ResourceContents{
 					URI:      "file:///image.png",
@@ -446,7 +447,70 @@ func TestProcessMCPContent(t *testing.T) {
 					Blob:     []byte("PNGBYTES"),
 				},
 			}),
-			wantOutput: "[embedded resource file:///image.png (image/png, 8 bytes)]",
+			wantOutput:    "no output",
+			wantDocuments: []tools.DocumentContent{{Name: "image.png", URI: "file:///image.png", Data: "UE5HQllURVM=", MimeType: "image/png"}},
+		},
+		{
+			name: "embedded text blob resource routes to documents",
+			input: callToolResult(&mcp.EmbeddedResource{
+				Resource: &mcp.ResourceContents{
+					URI:      "file:///notes.md",
+					MIMEType: "text/markdown",
+					Blob:     []byte("# Notes"),
+				},
+			}),
+			wantOutput:    "no output",
+			wantDocuments: []tools.DocumentContent{{Name: "notes.md", URI: "file:///notes.md", Text: "# Notes", MimeType: "text/markdown"}},
+		},
+		{
+			name: "embedded audio resource routes to audios",
+			input: callToolResult(&mcp.EmbeddedResource{
+				Resource: &mcp.ResourceContents{
+					URI:      "file:///clip.wav",
+					MIMEType: "audio/wav",
+					Blob:     []byte("WAVBYTES"),
+				},
+			}),
+			wantOutput: "no output",
+			wantAudios: []tools.MediaContent{{Data: "V0FWQllURVM=", MimeType: "audio/wav"}},
+		},
+		{
+			name: "text ack and embedded image resource",
+			input: callToolResult(
+				&mcp.TextContent{Text: "here you go"},
+				&mcp.EmbeddedResource{
+					Resource: &mcp.ResourceContents{
+						URI:      "file:///image.jpg",
+						MIMEType: "image/jpeg",
+						Blob:     []byte("JPGBYTES"),
+					},
+				},
+			),
+			wantOutput:    "here you go",
+			wantDocuments: []tools.DocumentContent{{Name: "image.jpg", URI: "file:///image.jpg", Data: "SlBHQllURVM=", MimeType: "image/jpeg"}},
+		},
+		{
+			name: "embedded pdf resource routes to documents",
+			input: callToolResult(&mcp.EmbeddedResource{
+				Resource: &mcp.ResourceContents{
+					URI:      "file:///doc.pdf",
+					MIMEType: "application/pdf",
+					Blob:     []byte("PDFBYTES"),
+				},
+			}),
+			wantOutput:    "no output",
+			wantDocuments: []tools.DocumentContent{{Name: "doc.pdf", URI: "file:///doc.pdf", Data: "UERGQllURVM=", MimeType: "application/pdf"}},
+		},
+		{
+			name: "embedded unsupported blob still emits a marker",
+			input: callToolResult(&mcp.EmbeddedResource{
+				Resource: &mcp.ResourceContents{
+					URI:      "file:///archive.zip",
+					MIMEType: "application/zip",
+					Blob:     []byte("ZIPBYTES"),
+				},
+			}),
+			wantOutput: "[embedded resource file:///archive.zip (application/zip, 8 bytes)]",
 		},
 		{
 			name: "embedded resource with nil contents is no-op",
@@ -494,6 +558,11 @@ func TestProcessMCPContent(t *testing.T) {
 				assert.Equal(t, tt.wantAudios, result.Audios)
 			} else {
 				assert.Empty(t, result.Audios)
+			}
+			if tt.wantDocuments != nil {
+				assert.Equal(t, tt.wantDocuments, result.Documents)
+			} else {
+				assert.Empty(t, result.Documents)
 			}
 			assert.Equal(t, tt.wantStructured, result.StructuredContent)
 		})

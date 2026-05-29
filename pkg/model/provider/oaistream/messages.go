@@ -174,22 +174,33 @@ func convertMessagesWithStore(ctx context.Context, messages []chat.Message, id m
 
 		openaiMessages = append(openaiMessages, openaiMessage)
 
-		// For tool messages with image content, inject a follow-up user message
-		// with the images since OpenAI tool messages only support text.
+		// For tool messages with attachments, inject a follow-up user message
+		// since OpenAI tool messages only support text.
 		if msg.Role == chat.MessageRoleTool && len(msg.MultiContent) > 0 {
-			var imageParts []openai.ChatCompletionContentPartUnionParam
+			var attachmentParts []openai.ChatCompletionContentPartUnionParam
 			for _, part := range msg.MultiContent {
-				if part.Type == chat.MessagePartTypeImageURL && part.ImageURL != nil {
-					imageParts = append(imageParts, openai.ImageContentPart(openai.ChatCompletionContentPartImageImageURLParam{
-						URL:    part.ImageURL.URL,
-						Detail: string(part.ImageURL.Detail),
-					}))
+				switch part.Type {
+				case chat.MessagePartTypeImageURL:
+					if part.ImageURL != nil {
+						attachmentParts = append(attachmentParts, openai.ImageContentPart(openai.ChatCompletionContentPartImageImageURLParam{
+							URL:    part.ImageURL.URL,
+							Detail: string(part.ImageURL.Detail),
+						}))
+					}
+				case chat.MessagePartTypeDocument:
+					if part.Document != nil {
+						docParts, err := convertDocument(ctx, *part.Document, id, store)
+						if err != nil {
+							slog.WarnContext(ctx, "failed to convert tool result document attachment", "error", err, "doc", part.Document.Name)
+							continue
+						}
+						attachmentParts = append(attachmentParts, docParts...)
+					}
 				}
 			}
-			if len(imageParts) > 0 {
-				// Prepend a text label so the model knows these images came from a tool result
-				label := openai.TextContentPart("Attached image(s) from tool result:")
-				allParts := append([]openai.ChatCompletionContentPartUnionParam{label}, imageParts...)
+			if len(attachmentParts) > 0 {
+				label := openai.TextContentPart("Attached content from tool result:")
+				allParts := append([]openai.ChatCompletionContentPartUnionParam{label}, attachmentParts...)
 				openaiMessages = append(openaiMessages, openai.UserMessage(allParts))
 			}
 		}

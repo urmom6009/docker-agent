@@ -638,11 +638,15 @@ func (rt *wasmRuntime) processToolCalls(ctx context.Context, calls []tools.ToolC
 			ToolError:    err != nil,
 		})
 
-		resultMessages = append(resultMessages, chat.Message{
+		msg := chat.Message{
 			Role:       chat.MessageRoleTool,
 			ToolCallID: tc.ID,
 			Content:    output,
-		})
+		}
+		if toolResult != nil && (len(toolResult.Images) > 0 || len(toolResult.Documents) > 0) {
+			msg.MultiContent = chat.BuildToolResultMultiContent(output, toolResult.Images, toolResult.Documents)
+		}
+		resultMessages = append(resultMessages, msg)
 	}
 
 	return resultMessages, handoffAgent, nil

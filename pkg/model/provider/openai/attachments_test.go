@@ -40,6 +40,21 @@ func TestConvertDocumentResponseInput_StrategyB64_Image(t *testing.T) {
 
 // TestConvertDocumentResponseInput_StrategyB64_ImageDropped verifies that an
 // image is dropped for a text-only model.
+func TestConvertDocumentResponseInput_StrategyB64_PDF(t *testing.T) {
+	doc := chat.Document{
+		Name:     "report.pdf",
+		MimeType: "application/pdf",
+		Source:   chat.DocumentSource{InlineData: []byte("%PDF")},
+	}
+
+	parts, err := convertDocumentToResponseInputWithCaps(t.Context(), doc, modelinfo.CapsWith(false, true))
+	require.NoError(t, err)
+	require.Len(t, parts, 1)
+	require.NotNil(t, parts[0].OfInputFile)
+	assert.Equal(t, "report.pdf", parts[0].OfInputFile.Filename.Value)
+	assert.Equal(t, "data:application/pdf;base64,JVBERg==", parts[0].OfInputFile.FileData.Value)
+}
+
 func TestConvertDocumentResponseInput_StrategyB64_ImageDropped(t *testing.T) {
 	doc := chat.Document{
 		Name:     "photo.jpg",

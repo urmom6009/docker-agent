@@ -175,6 +175,7 @@ func TestToolCallResultWithoutPayload(t *testing.T) {
 		Meta:              "metadata",
 		Images:            []MediaContent{{Data: "image", MimeType: "image/png"}},
 		Audios:            []MediaContent{{Data: "audio", MimeType: "audio/wav"}},
+		Documents:         []DocumentContent{{Name: "report.pdf", MimeType: "application/pdf", Data: "pdf"}},
 		StructuredContent: map[string]any{"key": "value"},
 	}
 
@@ -186,5 +187,6 @@ func TestToolCallResultWithoutPayload(t *testing.T) {
 	assert.Equal(t, "metadata", slim.Meta)
 	assert.Nil(t, slim.Images)
 	assert.Nil(t, slim.Audios)
+	assert.Nil(t, slim.Documents)
 	assert.Nil(t, slim.StructuredContent)
 }

@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -729,6 +730,7 @@ func isInitNotificationSendError(err error) bool {
 func processMCPContent(toolResult *mcp.CallToolResult) *tools.ToolCallResult {
 	var text strings.Builder
 	var images, audios []tools.MediaContent
+	var documents []tools.DocumentContent
 
 	for _, c := range toolResult.Content {
 		switch c := c.(type) {
@@ -756,9 +758,17 @@ func processMCPContent(toolResult *mcp.CallToolResult) *tools.ToolCallResult {
 				continue
 			}
 			if len(c.Resource.Blob) > 0 {
-				// Binary blobs can't be inlined as text; surface a marker the model can reason about.
-				fmt.Fprintf(&text, "[embedded resource %s (%s, %d bytes)]",
-					c.Resource.URI, c.Resource.MIMEType, len(c.Resource.Blob))
+				switch {
+				case strings.HasPrefix(c.Resource.MIMEType, "image/"), c.Resource.MIMEType == "application/pdf":
+					documents = append(documents, encodeDocument(c.Resource.Blob, c.Resource.MIMEType, c.Resource.URI))
+				case strings.HasPrefix(c.Resource.MIMEType, "text/"):
+					documents = append(documents, encodeTextDocument(string(c.Resource.Blob), c.Resource.MIMEType, c.Resource.URI))
+				case strings.HasPrefix(c.Resource.MIMEType, "audio/"):
+					audios = append(audios, encodeMedia(c.Resource.Blob, c.Resource.MIMEType))
+				default:
+					fmt.Fprintf(&text, "[embedded resource %s (%s, %d bytes)]",
+						c.Resource.URI, c.Resource.MIMEType, len(c.Resource.Blob))
+				}
 			}
 		}
 	}
@@ -768,6 +778,7 @@ func processMCPContent(toolResult *mcp.CallToolResult) *tools.ToolCallResult {
 		IsError:           toolResult.IsError,
 		Images:            images,
 		Audios:            audios,
+		Documents:         documents,
 		StructuredContent: toolResult.StructuredContent,
 	}
 }
@@ -778,6 +789,51 @@ func encodeMedia(data []byte, mimeType string) tools.MediaContent {
 	return tools.MediaContent{
 		Data:     base64.StdEncoding.EncodeToString(data),
 		MimeType: mimeType,
+	}
+}
+
+func encodeDocument(data []byte, mimeType, uri string) tools.DocumentContent {
+	return tools.DocumentContent{
+		Name:     embeddedResourceName(uri, mimeType),
+		URI:      uri,
+		Data:     base64.StdEncoding.EncodeToString(data),
+		MimeType: mimeType,
+	}
+}
+
+func encodeTextDocument(text, mimeType, uri string) tools.DocumentContent {
+	return tools.DocumentContent{
+		Name:     embeddedResourceName(uri, mimeType),
+		URI:      uri,
+		Text:     text,
+		MimeType: mimeType,
+	}
+}
+
+func embeddedResourceName(uri, mimeType string) string {
+	if uri != "" {
+		namePath := uri
+		if parsed, err := url.Parse(uri); err == nil && parsed.Path != "" {
+			namePath = parsed.Path
+		}
+		if base := path.Base(namePath); base != "." && base != "/" && base != "" {
+			return base
+		}
+	}
+
+	switch mimeType {
+	case "application/pdf":
+		return "resource.pdf"
+	case "image/jpeg":
+		return "resource.jpg"
+	case "image/png":
+		return "resource.png"
+	case "image/gif":
+		return "resource.gif"
+	case "image/webp":
+		return "resource.webp"
+	default:
+		return "resource"
 	}
 }
 

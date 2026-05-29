@@ -710,29 +710,11 @@ func (c *call) recordToolResponse(res *tools.ToolCallResult) {
 		CreatedAt:  time.Now().Format(time.RFC3339),
 	}
 
-	if len(res.Images) > 0 {
-		msg.MultiContent = buildMultiContent(content, res.Images)
+	if len(res.Images) > 0 || len(res.Documents) > 0 {
+		msg.MultiContent = chat.BuildToolResultMultiContent(content, res.Images, res.Documents)
 	}
 
 	c.addMessage(&msg)
-}
-
-// buildMultiContent attaches inline images to a tool response as a
-// MultiContent payload, following the data-URL convention expected by
-// chat clients.
-func buildMultiContent(text string, images []tools.MediaContent) []chat.MessagePart {
-	parts := make([]chat.MessagePart, 0, 1+len(images))
-	parts = append(parts, chat.MessagePart{Type: chat.MessagePartTypeText, Text: text})
-	for _, img := range images {
-		parts = append(parts, chat.MessagePart{
-			Type: chat.MessagePartTypeImageURL,
-			ImageURL: &chat.MessageImageURL{
-				URL:    "data:" + img.MimeType + ";base64," + img.Data,
-				Detail: chat.ImageURLDetailAuto,
-			},
-		})
-	}
-	return parts
 }
 
 // postHook fires the post-tool-use hook. SystemMessage emission is the
