@@ -396,8 +396,8 @@ func (d *sessionBrowserDialog) renderSession(sess session.Summary, selected bool
 
 	starWidth := 3
 	maxTitleLen := max(1, maxWidth-len(suffix)-starWidth)
-	if len(title) > maxTitleLen {
-		title = title[:maxTitleLen-1] + "…"
+	if r := []rune(title); len(r) > maxTitleLen {
+		title = string(r[:maxTitleLen-1]) + "…"
 	}
 
 	return styles.StarIndicator(sess.Starred) + titleStyle.Render(title) + timeStyle.Render(suffix)
