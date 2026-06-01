@@ -218,6 +218,10 @@ func bootstrapRepo(t *testing.T) string {
 	runGit(t, dir, "init")
 	runGit(t, dir, "config", "user.email", "test@example.com")
 	runGit(t, dir, "config", "user.name", "Test User")
+	// Keep the test hermetic: never sign commits with the developer's
+	// global signing setup (e.g. a 1Password SSH agent), which is
+	// unavailable/flaky in test environments and breaks `git commit`.
+	runGit(t, dir, "config", "commit.gpgsign", "false")
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.txt"), []byte("A"), 0o644))
 	runGit(t, dir, "add", ".")
 	runGit(t, dir, "commit", "-m", "init")
