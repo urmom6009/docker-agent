@@ -322,6 +322,36 @@ func TestCanonicalHostPort(t *testing.T) {
 	}
 }
 
+// wrappedRoundTripper wraps an http.RoundTripper without exposing it, mimicking
+// the posture of otelhttp.Transport (which does not implement Unwrap).
+type wrappedRoundTripper struct{ http.RoundTripper }
+
+// TestNewSSRFSafeTransport_WrappedDefaultTransport verifies that
+// NewSSRFSafeTransport does not panic when http.DefaultTransport has been
+// replaced by a non-*http.Transport wrapper (e.g. otelhttp.NewTransport).
+// The returned transport must still enforce the SSRF dial check.
+func TestNewSSRFSafeTransport_WrappedDefaultTransport(t *testing.T) {
+	// Intentionally not parallel: mutates the http.DefaultTransport global.
+	// Go runs non-parallel tests before paused parallel ones, and the
+	// t.Cleanup below restores the original before any parallel test reads
+	// it — adding t.Parallel() here would break that guarantee.
+	orig := http.DefaultTransport
+	t.Cleanup(func() { http.DefaultTransport = orig })
+	http.DefaultTransport = wrappedRoundTripper{orig}
+
+	transport := NewSSRFSafeTransport() // must not panic
+
+	client := &http.Client{Transport: transport}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://127.0.0.1/", http.NoBody)
+	require.NoError(t, err)
+	resp, reqErr := client.Do(req)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	require.Error(t, reqErr)
+	assert.Contains(t, reqErr.Error(), "non-public address")
+}
+
 // TestNewSSRFSafeTransport_AllowlistFrozenAtConstruction documents that
 // the allowlist is captured when the transport is built, not on every
 // dial. Changing the env after construction has no effect — acceptable

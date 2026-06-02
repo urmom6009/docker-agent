@@ -3,6 +3,7 @@ package httpclient
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -46,10 +47,16 @@ func SSRFDialControl(_, address string, _ syscall.RawConn) error {
 	return nil
 }
 
-// NewSSRFSafeTransport returns a clone of [http.DefaultTransport] whose
-// dialer enforces [SSRFDialControl] on every connection. All other settings
-// — proxy, idle pool, HTTP/2, timeouts — are inherited so the transport
-// keeps up with future stdlib changes.
+// NewSSRFSafeTransport returns an [http.Transport] whose dialer enforces
+// [SSRFDialControl] on every connection.
+//
+// When [http.DefaultTransport] is a plain *[http.Transport] (the default),
+// the returned transport is a Clone() of it, inheriting proxy, TLS, idle-pool
+// and HTTP/2 settings. When DefaultTransport has been replaced by a wrapper
+// (e.g. an application that swapped in otelhttp.NewTransport for global
+// observability) the clone is not possible; the function falls back to a
+// minimal transport with proxy support and emits a warning via [log/slog].
+// In either case the SSRF dial guard is active.
 //
 // Use this for outbound HTTP that may follow attacker-influenced URLs
 // (OpenAPI specs whose servers[] list is taken from the spec body,
@@ -63,7 +70,20 @@ func SSRFDialControl(_, address string, _ syscall.RawConn) error {
 // enforces destination policy itself) and breaks sandboxes — like
 // docker-agent's — whose mandatory egress proxy is on an RFC1918 IP.
 func NewSSRFSafeTransport() *http.Transport {
-	t := http.DefaultTransport.(*http.Transport).Clone()
+	var t *http.Transport
+	if base, ok := http.DefaultTransport.(*http.Transport); ok {
+		t = base.Clone()
+	} else {
+		// http.DefaultTransport has been replaced by a wrapper (e.g. otelhttp).
+		// We can't clone settings we can't see, so fall back to a minimal
+		// transport. Callers that need the full DefaultTransport configuration
+		// should call NewSSRFSafeTransport before any global replacement.
+		slog.Warn("httpclient: http.DefaultTransport is not a *http.Transport; "+
+			"NewSSRFSafeTransport is using a minimal fallback transport — "+
+			"proxy env vars are honoured but other DefaultTransport settings are not inherited",
+			"type", fmt.Sprintf("%T", http.DefaultTransport))
+		t = &http.Transport{Proxy: http.ProxyFromEnvironment}
+	}
 	proxies := proxyDialAllowlist()
 	t.DialContext = (&net.Dialer{
 		Timeout:   30 * time.Second,
