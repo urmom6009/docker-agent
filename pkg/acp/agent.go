@@ -216,6 +216,12 @@ func (a *Agent) Authenticate(ctx context.Context, _ acp.AuthenticateRequest) (ac
 	return acp.AuthenticateResponse{}, nil
 }
 
+// Logout implements [acp.Agent] (optional, not supported).
+func (a *Agent) Logout(ctx context.Context, _ acp.LogoutRequest) (acp.LogoutResponse, error) {
+	slog.DebugContext(ctx, "ACP Logout called (not supported)")
+	return acp.LogoutResponse{}, acp.NewMethodNotFound(acp.AgentMethodLogout)
+}
+
 // LoadSession implements [acp.AgentLoader] (optional, not supported).
 func (a *Agent) LoadSession(ctx context.Context, _ acp.LoadSessionRequest) (acp.LoadSessionResponse, error) {
 	slog.DebugContext(ctx, "ACP LoadSession called (not supported)")

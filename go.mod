@@ -27,12 +27,12 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/clipperhouse/displaywidth v0.11.0
 	github.com/clipperhouse/uax29/v2 v2.7.0
-	github.com/coder/acp-go-sdk v0.13.0
+	github.com/coder/acp-go-sdk v0.13.5
 	github.com/docker/aijson v0.1.0
 	github.com/docker/cli v29.5.2+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/docker/portcullis v0.0.0-20260602141607-f40f36dfd646
-	github.com/dop251/goja v0.0.0-20260311135729-065cd970411c
+	github.com/dop251/goja v0.0.0-20260603143327-1f200ca63355
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-git/go-git/v5 v5.19.1
@@ -160,7 +160,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgageot/rubocop-go v0.0.0-20260507084512-2695e6771458
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
 	github.com/docker/go-connections v0.7.0 // indirect
