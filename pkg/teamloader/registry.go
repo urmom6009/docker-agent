@@ -74,7 +74,7 @@ func NewDefaultToolsetRegistry() ToolsetRegistry {
 				if len(toolset.BlockedServers) > 0 {
 					opts = append(opts, mcpcatalog.WithBlockedServers(toolset.BlockedServers))
 				}
-				return mcpcatalog.New(runConfig.EnvProvider(), opts...), nil
+				return mcpcatalog.New(opts...), nil
 			},
 			"api": func(_ context.Context, toolset latest.Toolset, _ string, runConfig *config.RuntimeConfig, _ string) (tools.ToolSet, error) {
 				return api.CreateToolSet(toolset, runConfig)

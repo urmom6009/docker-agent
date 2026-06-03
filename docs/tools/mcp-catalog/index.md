@@ -55,30 +55,29 @@ Up to five tools are exposed to the model. The disable / reset-auth pair only ap
 
 | Tool                            | When visible            | Description                                                                                                                                          |
 | ------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search_remote_mcp_servers`     | Always                  | Case-insensitive fuzzy search over id, title, description, category and tags. Returns id, auth requirements (`oauth` / `api_key` / `none`) and URL. |
+| `search_remote_mcp_servers`     | Always                  | Case-insensitive fuzzy search over id, title, description, category and tags. Returns id, auth requirements (`oauth` / `none`) and URL. |
 | `enable_remote_mcp_server`      | Always                  | Activate a server by id. **Blocks** until the connection (and any required OAuth handshake) completes; on success the server's tools are immediately live and the model continues with the user's original request in the same turn. |
 | `list_remote_mcp_servers`       | Always                  | Show currently enabled servers and their connection state.                                                                                           |
 | `disable_remote_mcp_server`     | After first enable      | Stop a server and remove its tools from the active set.                                                                                              |
-| `reset_remote_mcp_server_auth`  | After first enable      | Drop persisted OAuth credentials so the next enable triggers a fresh authorization flow. No-op for `api_key` / `none` servers.                       |
+| `reset_remote_mcp_server_auth`  | After first enable      | Drop persisted OAuth credentials so the next enable triggers a fresh authorization flow. No-op for `none` servers.                       |
 
 ### Workflow
 
 1. The agent calls `search_remote_mcp_servers` with a keyword matching the user's intent (`"notion"`, `"stripe"`, `"docs"`, `"browser"`, …).
 2. It picks a matching server id and calls `enable_remote_mcp_server`. **`enable` blocks** until the MCP handshake (and any required OAuth flow) completes:
    - on success the server's tools are available **in the same turn** — the agent goes straight to the user's original request, no re-ask required;
-   - on failure (user dismissed the authorization dialog, missing env var, server refused) the tool returns an error result naming the specific reason so the agent can recover instead of pretending the server is connected.
+   - on failure (user dismissed the authorization dialog, server refused) the tool returns an error result naming the specific reason so the agent can recover instead of pretending the server is connected.
 3. It uses the newly activated tools as it would any other.
 4. When done, it calls `disable_remote_mcp_server` to remove the server from the active set.
 
 ## Authentication
 
-The catalog distinguishes three auth flavours:
+The catalog only includes servers docker-agent can authenticate itself, so there are two auth flavours:
 
 - **`oauth`** — `enable_remote_mcp_server` surfaces an authorization URL through the elicitation pipeline (the same one used by YAML-declared remote MCP toolsets) and blocks until the user either authorizes or cancels. Once the user authorizes, tokens are persisted in the OS keyring and re-used on subsequent runs. Use `reset_remote_mcp_server_auth` to wipe them. If the user dismisses the dialog, `enable` returns an error result naming the decline so the agent can ask whether to retry.
-- **`api_key`** — The server expects one or more env vars to be set in the agent's environment (e.g. `APIFY_API_KEY`, `BRAVE_API_KEY`). `enable_remote_mcp_server` returns an error result if any required variable is missing — set it, then call `enable` again.
 - **`none`** — No authentication. The server is reachable as soon as it is enabled.
 
-Search results only carry the auth flavour (`oauth` / `api_key` / `none`); the specific env-var names are surfaced by `enable_remote_mcp_server` when it detects an unset variable, so you may need to enable an `api_key` server once just to learn which variable to set.
+Servers that require a caller-provided API key are intentionally excluded from the catalog. To use one, declare it explicitly with [`type: mcp`]({{ '/configuration/tools/#mcp-tools' | relative_url }}) and supply the key via an environment variable.
 
 ## Example
 

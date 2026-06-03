@@ -24,13 +24,6 @@ import (
 	mcptools "github.com/docker/docker-agent/pkg/tools/mcp"
 )
 
-type stubEnv struct{ vars map[string]string }
-
-func (s stubEnv) Get(_ context.Context, name string) (string, bool) {
-	v, ok := s.vars[name]
-	return v, ok
-}
-
 // stubStartOK swaps the Toolset's synchronous-Start seam for a no-op so
 // handleEnable returns the success branch without dialling out. Use it on
 // tests that only need handleEnable to register the bookkeeping (the
@@ -61,9 +54,9 @@ func TestLoadCatalog(t *testing.T) {
 		assert.NotEmpty(t, s.ID, "server id must not be empty")
 		assert.Equal(t, "streamable-http", s.Transport, "server %s has unexpected transport", s.ID)
 		assert.NotEmpty(t, s.URL, "server %s has no URL", s.ID)
-		// auth.type must be one of the three documented values.
+		// auth.type must be one of the two documented values.
 		switch s.Auth.Type {
-		case "oauth", "api_key", "none":
+		case "oauth", "none":
 		default:
 			t.Fatalf("server %s has invalid auth.type %q", s.ID, s.Auth.Type)
 		}
@@ -71,7 +64,7 @@ func TestLoadCatalog(t *testing.T) {
 }
 
 func TestSearchTool(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	ctx := t.Context()
 
 	res, err := ts.handleSearch(ctx, SearchArgs{Query: "stripe"})
@@ -99,7 +92,7 @@ func TestSearchTool(t *testing.T) {
 }
 
 func TestEnableDisableLifecycle(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	// Synchronous-Start is short-circuited so the success branch of
 	// handleEnable is exercised without dialling out to the real OAuth
 	// server. The dedicated failure-path tests below cover declined /
@@ -206,61 +199,6 @@ func TestEnableDisableLifecycle(t *testing.T) {
 	assert.Equal(t, int32(2), changes.Load())
 }
 
-func TestEnableUnresolvedHeaderEnvSurfacesWarning(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
-
-	// Synthetic catalog entry: auth.type="none" so neither missingAPIKeyEnv
-	// nor the api_key path fires; the only signal is the post-expansion
-	// scan over Headers.
-	const id = "unresolved-headers"
-	server := Server{
-		ID:        id,
-		Title:     "Unresolved Headers Server",
-		URL:       "https://example.invalid/mcp",
-		Transport: "streamable-http",
-		Auth:      Auth{Type: "none"},
-		Headers: map[string]string{
-			"Authorization": "Bearer ${UNDECLARED_TOKEN}",
-		},
-	}
-	ts.catalog.Servers = append(ts.catalog.Servers, server)
-	ts.byID[id] = server
-
-	// Missing env vars BLOCK the enable now (rather than attaching a
-	// warning to a success result): the catalog promises a deterministic
-	// answer in the same turn, and we already know the server will reject
-	// the connection. The model is told to ask the user to set the
-	// variable and call enable again.
-	res, err := ts.handleEnable(t.Context(), EnableArgs{ID: id})
-	require.NoError(t, err)
-	assert.True(t, res.IsError,
-		"missing env vars must be returned as an error result so the model does not pretend the server is connected")
-	assert.Contains(t, res.Output, "UNDECLARED_TOKEN",
-		"the post-expansion scan must surface env vars referenced from headers but not declared under Auth.Secrets")
-	assert.Contains(t, res.Output, ToolNameEnable,
-		"the error must point the model at the recovery call to make once the env var is set")
-	// And the server must NOT have been registered — we returned before
-	// even constructing the inner toolset.
-	ts.mu.RLock()
-	_, exists := ts.enabled[id]
-	ts.mu.RUnlock()
-	assert.False(t, exists,
-		"a missing-env enable must not leave a half-registered entry behind")
-}
-
-func TestUnresolvedHeaderEnvsHelper(t *testing.T) {
-	assert.Empty(t, unresolvedHeaderEnvs(nil))
-	assert.Empty(t, unresolvedHeaderEnvs(map[string]string{"X": "plain-value"}))
-
-	got := unresolvedHeaderEnvs(map[string]string{
-		"A": "Bearer ${TOKEN_ONE}",
-		"B": "prefix-${TOKEN_TWO}-${TOKEN_ONE}-suffix",
-		"C": "resolved-already",
-	})
-	assert.Equal(t, []string{"TOKEN_ONE", "TOKEN_TWO"}, got,
-		"placeholders must be deduplicated and returned in sorted order")
-}
-
 // TestLoadCatalogIsCachedButReturnsCopies verifies the sync.OnceValues
 // optimization: subsequent Load() calls don't re-decode the JSON, but
 // each one returns an independently mutable Servers slice so test
@@ -281,7 +219,7 @@ func TestLoadCatalogIsCachedButReturnsCopies(t *testing.T) {
 // by id so model-side prompt caches and TUI rendering don't reshuffle on
 // every turn.
 func TestToolsUsesStableIterationOrder(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	// We only care about the order of the t.enabled map after a sequence
 	// of handleEnable calls. Stub out the synchronous Start so we don't
 	// dial out to real catalog endpoints.
@@ -324,12 +262,12 @@ func TestToolsUsesStableIterationOrder(t *testing.T) {
 // TestServerFilters covers the allow/block-list narrowing applied at
 // construction time via WithAllowedServers / WithBlockedServers.
 func TestServerFilters(t *testing.T) {
-	full := New(stubEnv{vars: map[string]string{}})
+	full := New()
 	require.GreaterOrEqual(t, len(full.catalog.Servers), 3, "need 3+ servers in fixture")
 	ids := []string{full.catalog.Servers[0].ID, full.catalog.Servers[1].ID, full.catalog.Servers[2].ID}
 
 	t.Run("allow list restricts to the named servers", func(t *testing.T) {
-		ts := New(stubEnv{vars: map[string]string{}}, WithAllowedServers(ids[:2]))
+		ts := New(WithAllowedServers(ids[:2]))
 		assert.Equal(t, len(ts.catalog.Servers), ts.catalog.Count)
 		assert.Len(t, ts.catalog.Servers, 2)
 		assert.Contains(t, ts.byID, ids[0])
@@ -338,36 +276,32 @@ func TestServerFilters(t *testing.T) {
 	})
 
 	t.Run("block list removes the named servers", func(t *testing.T) {
-		ts := New(stubEnv{vars: map[string]string{}}, WithBlockedServers(ids[:1]))
+		ts := New(WithBlockedServers(ids[:1]))
 		assert.Len(t, ts.catalog.Servers, len(full.catalog.Servers)-1)
 		assert.NotContains(t, ts.byID, ids[0])
 		assert.Contains(t, ts.byID, ids[1])
 	})
 
 	t.Run("block takes precedence over allow", func(t *testing.T) {
-		ts := New(stubEnv{vars: map[string]string{}},
-			WithAllowedServers(ids[:2]), WithBlockedServers([]string{ids[0]}))
+		ts := New(WithAllowedServers(ids[:2]), WithBlockedServers([]string{ids[0]}))
 		assert.Len(t, ts.catalog.Servers, 1)
 		assert.NotContains(t, ts.byID, ids[0])
 		assert.Contains(t, ts.byID, ids[1])
 	})
 
 	t.Run("unknown ids are ignored", func(t *testing.T) {
-		ts := New(stubEnv{vars: map[string]string{}},
-			WithAllowedServers([]string{ids[0], "definitely-not-a-server"}))
+		ts := New(WithAllowedServers([]string{ids[0], "definitely-not-a-server"}))
 		assert.Len(t, ts.catalog.Servers, 1)
 		assert.Contains(t, ts.byID, ids[0])
 	})
 
 	t.Run("blank entries are ignored", func(t *testing.T) {
-		ts := New(stubEnv{vars: map[string]string{}},
-			WithAllowedServers([]string{ids[0], "  ", ""}))
+		ts := New(WithAllowedServers([]string{ids[0], "  ", ""}))
 		assert.Len(t, ts.catalog.Servers, 1)
 	})
 
 	t.Run("empty lists offer the full catalog", func(t *testing.T) {
-		ts := New(stubEnv{vars: map[string]string{}},
-			WithAllowedServers(nil), WithBlockedServers([]string{}))
+		ts := New(WithAllowedServers(nil), WithBlockedServers([]string{}))
 		assert.Len(t, ts.catalog.Servers, len(full.catalog.Servers))
 	})
 }
@@ -375,12 +309,12 @@ func TestServerFilters(t *testing.T) {
 // TestSearchRespectsAllowList ensures filtered-out servers are not
 // reachable through the search meta-tool.
 func TestSearchRespectsAllowList(t *testing.T) {
-	full := New(stubEnv{vars: map[string]string{}})
+	full := New()
 	require.GreaterOrEqual(t, len(full.catalog.Servers), 2)
 	keep := full.catalog.Servers[0].ID
 	drop := full.catalog.Servers[1].ID
 
-	ts := New(stubEnv{vars: map[string]string{}}, WithAllowedServers([]string{keep}))
+	ts := New(WithAllowedServers([]string{keep}))
 
 	res, err := ts.handleSearch(t.Context(), SearchArgs{Query: drop})
 	require.NoError(t, err)
@@ -388,75 +322,11 @@ func TestSearchRespectsAllowList(t *testing.T) {
 }
 
 func TestEnableUnknownServer(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	res, err := ts.handleEnable(t.Context(), EnableArgs{ID: "definitely-not-a-server"})
 	require.NoError(t, err)
 	assert.True(t, res.IsError)
 	assert.Contains(t, res.Output, "unknown server id")
-}
-
-func TestEnableAPIKeyMissingEnv(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
-
-	var apiKeyID, expectedEnv string
-	for _, s := range ts.catalog.Servers {
-		if s.Auth.Type == "api_key" && len(s.Auth.Secrets) > 0 && s.Auth.Secrets[0].Env != "" {
-			apiKeyID = s.ID
-			expectedEnv = s.Auth.Secrets[0].Env
-			break
-		}
-	}
-	require.NotEmpty(t, apiKeyID, "test fixture: catalog should contain at least one api_key server with an env var")
-
-	res, err := ts.handleEnable(t.Context(), EnableArgs{ID: apiKeyID})
-	require.NoError(t, err)
-	assert.True(t, res.IsError,
-		"missing api_key env vars must block enable so the model does not pretend the server is connected")
-	assert.Contains(t, res.Output, expectedEnv,
-		"the error must name the specific env var(s) the user needs to set")
-	assert.Contains(t, res.Output, ToolNameEnable,
-		"the error must point the model at the recovery call once the env var is set")
-	// No half-registered entry: we returned before constructing the inner
-	// toolset, so a follow-up enable (after the user sets the variable)
-	// goes through the full success path with no stale state.
-	ts.mu.RLock()
-	_, exists := ts.enabled[apiKeyID]
-	ts.mu.RUnlock()
-	assert.False(t, exists)
-}
-
-func TestEnableAPIKeyEnvPresent(t *testing.T) {
-	// Find an api_key server with a declared env var first so we know what
-	// to populate.
-	ts := New(stubEnv{vars: map[string]string{}})
-	var apiKeyID string
-	vars := map[string]string{}
-	for _, s := range ts.catalog.Servers {
-		if s.Auth.Type == "api_key" {
-			apiKeyID = s.ID
-			for _, sec := range s.Auth.Secrets {
-				if sec.Env != "" {
-					vars[sec.Env] = "sentinel-value"
-				}
-			}
-			break
-		}
-	}
-	require.NotEmpty(t, apiKeyID)
-
-	// Re-instantiate with the populated env so missingAPIKeyEnv and the
-	// unresolved-header scan both come back empty. Stub out the synchronous
-	// Start so we don't dial the real catalog endpoint.
-	ts = New(stubEnv{vars: vars})
-	stubStartOK(ts)
-
-	res, err := ts.handleEnable(t.Context(), EnableArgs{ID: apiKeyID})
-	require.NoError(t, err)
-	require.False(t, res.IsError, "enable failed: %s", res.Output)
-	assert.Contains(t, res.Output, "enabled",
-		"the success branch must state plainly that the server is enabled")
-	assert.Contains(t, res.Output, apiKeyID+"_",
-		"the success branch must reference the tool-name prefix")
 }
 
 // TestEnableSyncStartSuccess asserts that handleEnable, on the happy path,
@@ -464,7 +334,7 @@ func TestEnableAPIKeyEnvPresent(t *testing.T) {
 // to continue with the user's ORIGINAL request in the SAME turn — not on
 // the next one. This is the property that makes a re-ask unnecessary.
 func TestEnableSyncStartSuccess(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	stubStartOK(ts)
 
 	id := firstOAuthServerID(t, ts)
@@ -493,7 +363,7 @@ func TestEnableSyncStartSuccess(t *testing.T) {
 // does not re-pop the dialog, and tells the model how to retry on user
 // request — all in the SAME turn.
 func TestEnableSyncStartOAuthDeclined(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 
 	var changes atomic.Int32
 	ts.SetToolsChangedHandler(func() { changes.Add(1) })
@@ -531,7 +401,7 @@ func TestEnableSyncStartOAuthDeclined(t *testing.T) {
 // Tools() call retries; the tool result falls back to the legacy
 // "tools appear next turn" wording so the model knows to verify.
 func TestEnableSyncStartAuthorizationRequiredDefers(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 
 	id := firstOAuthServerID(t, ts)
 	stubStartErr(ts, &mcptools.AuthorizationRequiredError{URL: ts.byID[id].URL})
@@ -560,7 +430,7 @@ func TestEnableSyncStartAuthorizationRequiredDefers(t *testing.T) {
 // must be rolled back so the next Tools() call doesn't replay the failed
 // handshake.
 func TestEnableSyncStartTransportError(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 
 	id := firstOAuthServerID(t, ts)
 	stubStartErr(ts, errors.New("dial tcp: connection refused"))
@@ -614,7 +484,7 @@ func (f *flakyStartToolSet) Stop(context.Context) error { return nil }
 // without invoking the seam, so the OAuth dialog never re-surfaced and
 // the only escape was disable+enable.
 func TestEnableRetriesStartOnExistingUnstartedEntry(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 
 	id := firstOAuthServerID(t, ts)
 	fake := &flakyStartToolSet{
@@ -680,7 +550,7 @@ func TestEnableRetriesStartOnExistingUnstartedEntry(t *testing.T) {
 // fresh wrapper (not on the cancelled one) and drives Start again — which
 // is what makes the "user asked to retry" path work.
 func TestEnableSyncStartCancelledRollsBack(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 
 	id := firstOAuthServerID(t, ts)
 	fake := &flakyStartToolSet{failures: 1, failWith: context.Canceled}
@@ -741,7 +611,7 @@ func TestEnableSyncStartCancelledRollsBack(t *testing.T) {
 // the user did not ask for. This test pins the post-fix behaviour:
 // Turn-2's Tools() must not touch the cancelled wrapper at all.
 func TestToolsAfterCancelledEnableDoesNotReFireOAuth(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 
 	id := firstOAuthServerID(t, ts)
 	// Stop-during-OAuth is modelled as a Start that returns
@@ -774,7 +644,7 @@ func TestToolsAfterCancelledEnableDoesNotReFireOAuth(t *testing.T) {
 }
 
 func TestListEnabled(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	stubStartOK(ts)
 	ctx := t.Context()
 
@@ -793,7 +663,7 @@ func TestListEnabled(t *testing.T) {
 }
 
 func TestStopReleasesEverything(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	stubStartOK(ts)
 	ctx := t.Context()
 
@@ -817,9 +687,7 @@ func toolNames(list []tools.Tool) []string {
 }
 
 // firstOAuthServerID picks an arbitrary OAuth catalog server for tests that
-// only need *some* server id to feed into handleEnable. OAuth servers are
-// preferred over api_key ones so the missing-env-var guard doesn't trip and
-// turn the call into an unintended ResultError.
+// only need *some* server id to feed into handleEnable.
 func firstOAuthServerID(t *testing.T, ts *Toolset) string {
 	t.Helper()
 	for _, s := range ts.catalog.Servers {
@@ -832,7 +700,7 @@ func firstOAuthServerID(t *testing.T, ts *Toolset) string {
 }
 
 func TestSetManagedOAuthPersistence(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	stubStartOK(ts)
 	ctx := t.Context()
 
@@ -857,7 +725,7 @@ func TestSetManagedOAuthPersistence(t *testing.T) {
 }
 
 func TestConcurrentEnableDisable(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	stubStartOK(ts)
 	ctx := t.Context()
 
@@ -935,7 +803,7 @@ func TestConcurrentEnableDisable(t *testing.T) {
 }
 
 func TestToolsContextCancellation(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	stubStartOK(ts)
 
 	id := firstOAuthServerID(t, ts)
@@ -960,7 +828,7 @@ func TestToolsExposesEnabledServerTools(t *testing.T) {
 	srv := newFakeMCPServer(t)
 	defer srv.Close()
 
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 
 	// Inject a synthetic catalog entry that points at the test server.
 	const id = "test-server"
@@ -1005,7 +873,7 @@ func TestToolsExposesEnabledServerTools(t *testing.T) {
 // TestResetAuthForwardsToTokenStore verifies that reset_remote_mcp_server_auth
 // places the right call with the right URL.
 func TestResetAuthForwardsToTokenStore(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 
 	var removedURLs []string
 	ts.removeOAuthToken = func(url string) error {
@@ -1033,7 +901,7 @@ func TestResetAuthForwardsToTokenStore(t *testing.T) {
 // TestResetAuthUnknownServer confirms unknown ids surface a friendly error
 // without touching the token store.
 func TestResetAuthUnknownServer(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	called := 0
 	ts.removeOAuthToken = func(string) error { called++; return nil }
 
@@ -1044,34 +912,38 @@ func TestResetAuthUnknownServer(t *testing.T) {
 	assert.Zero(t, called, "token store must not be touched for unknown ids")
 }
 
-// TestResetAuthNoOpForNonOAuth confirms that resetting auth for an
-// api_key/none server is a no-op that doesn't reach the token store.
+// TestResetAuthNoOpForNonOAuth confirms that resetting auth for a
+// non-OAuth ("none") server is a no-op that doesn't reach the token store.
 func TestResetAuthNoOpForNonOAuth(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	called := 0
 	ts.removeOAuthToken = func(string) error { called++; return nil }
 
-	var apiKeyID string
-	for _, s := range ts.catalog.Servers {
-		if s.Auth.Type == "api_key" {
-			apiKeyID = s.ID
-			break
-		}
+	// Inject a synthetic auth.type="none" entry to confirm reset is a
+	// no-op for non-OAuth auth.
+	const noneID = "synthetic-none"
+	server := Server{
+		ID:        noneID,
+		Title:     "Synthetic None",
+		URL:       "https://example.invalid/mcp",
+		Transport: "streamable-http",
+		Auth:      Auth{Type: "none"},
 	}
-	require.NotEmpty(t, apiKeyID)
+	ts.catalog.Servers = append(ts.catalog.Servers, server)
+	ts.byID[noneID] = server
 
-	res, err := ts.handleResetAuth(t.Context(), ResetAuthArgs{ID: apiKeyID})
+	res, err := ts.handleResetAuth(t.Context(), ResetAuthArgs{ID: noneID})
 	require.NoError(t, err)
 	require.False(t, res.IsError)
 	assert.Contains(t, res.Output, "no persisted credentials")
-	assert.Zero(t, called, "api_key servers must not touch the OAuth token store")
+	assert.Zero(t, called, "non-OAuth servers must not touch the OAuth token store")
 }
 
 // TestResetAuthDisablesEnabledServer makes sure resetting auth for a
 // currently-enabled server stops its toolset (so the next enable does a
 // fresh handshake) AND fires the tools-changed handler.
 func TestResetAuthDisablesEnabledServer(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	stubStartOK(ts)
 	ts.removeOAuthToken = func(string) error { return nil }
 
@@ -1107,7 +979,7 @@ func TestResetAuthDisablesEnabledServer(t *testing.T) {
 // TestResetAuthSurfacesStoreErrors confirms that errors from the token
 // store are surfaced to the caller as IsError results (not panics).
 func TestResetAuthSurfacesStoreErrors(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	ts.removeOAuthToken = func(string) error { return errors.New("keyring on fire") }
 
 	var oauthID string
@@ -1131,7 +1003,7 @@ func TestResetAuthSurfacesStoreErrors(t *testing.T) {
 // the keyring; the runtime's tool list has therefore changed regardless of
 // whether the keyring removal eventually succeeds. Notify must fire.
 func TestResetAuthNotifiesEvenWhenKeyringFails(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	stubStartOK(ts)
 	ts.removeOAuthToken = func(string) error { return errors.New("keyring on fire") }
 
@@ -1176,7 +1048,7 @@ func TestDisableAndResetAuthGatedOnEnabledServers(t *testing.T) {
 	srv := newAuthRequiredMCPServer(t)
 	defer srv.Close()
 
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	// Stub the synchronous Start to surface AuthorizationRequired so
 	// handleEnable takes the defensive "keep the server enabled, defer to
 	// next interactive Tools()" branch — that is what previously happened
@@ -1248,7 +1120,7 @@ func (d *declineOnStartToolSet) Stop(context.Context) error {
 // second time on the next Tools() iteration — which is what previously
 // caused the dialog to re-appear in the host on every agent loop turn.
 func TestToolsOAuthDeclineRemovesServer(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	const id = "decline-server"
 	server := Server{
 		ID:        id,
@@ -1353,7 +1225,7 @@ func (c *cancelOnStartToolSet) Stop(context.Context) error {
 // entry so the next Tools() iteration does not silently re-fire the
 // OAuth dialog on an unrelated user message.
 func TestToolsCancelledStartRemovesServer(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	const id = "cancel-server"
 	server := Server{
 		ID:        id,
@@ -1417,7 +1289,7 @@ func TestToolsCancelledStartRemovesServer(t *testing.T) {
 // case the entry has already been removed and notify() has already fired;
 // disableAfterDecline must not double-notify.
 func TestToolsOAuthDeclineNoNotifyWhenAlreadyDisabled(t *testing.T) {
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	const id = "decline-server-concurrent"
 	server := Server{
 		ID:        id,
@@ -1474,7 +1346,7 @@ func TestToolsAuthRequiredIsDeferred(t *testing.T) {
 	srv := newAuthRequiredMCPServer(t)
 	defer srv.Close()
 
-	ts := New(stubEnv{vars: map[string]string{}})
+	ts := New()
 	// Defensive fallback: when handleEnable's synchronous Start surfaces
 	// AuthorizationRequired (e.g. because the elicitation bridge isn't
 	// wired up yet), the catalog must keep the server in t.enabled so the

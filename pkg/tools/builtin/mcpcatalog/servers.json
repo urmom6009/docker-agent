@@ -3,37 +3,8 @@
   "source_url": "https://desktop.docker.com/mcp/catalog/v3/catalog.json",
   "schema_version": 3,
   "filter": "type=remote AND remote.transport_type=streamable-http",
-  "count": 51,
+  "count": 39,
   "servers": [
-    {
-      "id": "apify",
-      "title": "Apify Remote",
-      "description": "Apify is the world's largest marketplace of tools for web scraping, data extraction, and web automation. You can extract structured data from social media, e-commerce, search engines, maps, travel sites, or any other website.",
-      "url": "https://mcp.apify.com",
-      "transport": "streamable-http",
-      "category": "automation",
-      "tags": [
-        "automation",
-        "web-scraping",
-        "data-extraction",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=apify.com&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/apify.md",
-      "headers": {
-        "Authorization": "Bearer ${APIFY_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "apify.api_key",
-            "env": "APIFY_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
-      }
-    },
     {
       "id": "astro-docs",
       "title": "Astro Docs",
@@ -110,33 +81,6 @@
       }
     },
     {
-      "id": "brightdata",
-      "title": "Bright Data",
-      "description": "One MCP for the Web. Easily search, crawl, navigate, and extract websites without getting blocked. Ideal for discovering and retrieving structured insights from any public source - effortlessly and ethically.  The Web MCP is your gateway to giving AI assistants true web capabilities. No more outdated responses, no more \"I can't access real-time information\" - just seamless, reliable web access that actually works.  Built by Bright Data, the world's #1 web data platform, this MCP server ensures your AI never gets blocked, rate-limited, or served CAPTCHAs.",
-      "url": "https://mcp.brightdata.com/mcp",
-      "transport": "streamable-http",
-      "category": "web-scraping",
-      "tags": [
-        "web-scraping",
-        "data",
-        "search",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=brightdata.com&sz=128",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/brightdata.md",
-      "headers": {},
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "brightdata.api_token",
-            "env": "BRIGHTDATA_API_TOKEN",
-            "example": "<YOUR_API_TOKEN>"
-          }
-        ]
-      }
-    },
-    {
       "id": "carbon-voice",
       "title": "Carbon Voice",
       "description": "Communicate asynchronously with voice messages featuring AI transcription, summaries, and automated action item extraction.",
@@ -164,35 +108,6 @@
       }
     },
     {
-      "id": "close",
-      "title": "Close",
-      "description": "Streamline sales processes with integrated calling, email, SMS, and automated workflows for small and scaling businesses.",
-      "url": "https://mcp.close.com/mcp",
-      "transport": "streamable-http",
-      "category": "crm",
-      "tags": [
-        "crm",
-        "sales",
-        "customer-management",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=close.com&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/close.md",
-      "headers": {
-        "Authorization": "Bearer ${CLOSE_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "close.api_key",
-            "env": "CLOSE_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
-      }
-    },
-    {
       "id": "cloudflare",
       "title": "Cloudflare",
       "description": "Manage Cloudflare workers, DNS, security and platform resources via the Cloudflare API.",
@@ -210,35 +125,6 @@
       "headers": {},
       "auth": {
         "type": "oauth"
-      }
-    },
-    {
-      "id": "dappier-remote",
-      "title": "Dappier Remote",
-      "description": "Enable fast, free real-time web search and access premium data from trusted media brands—news, financial markets, sports, entertainment, weather, and more. Build powerful AI agents with Dappier.",
-      "url": "https://mcp.dappier.com/mcp",
-      "transport": "streamable-http",
-      "category": "ai",
-      "tags": [
-        "ai",
-        "rag",
-        "knowledge-base",
-        "remote"
-      ],
-      "icon": "https://avatars.githubusercontent.com/u/152645347?s=200&v=4",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/dappier-remote.md",
-      "headers": {
-        "Authorization": "Bearer ${DAPPIER_REMOTE_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "dappier-remote.api_key",
-            "env": "DAPPIER_REMOTE_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
       }
     },
     {
@@ -395,35 +281,6 @@
       }
     },
     {
-      "id": "hubspot",
-      "title": "HubSpot",
-      "description": "Unite marketing, sales, and customer service with AI-powered automation, lead management, and comprehensive analytics.",
-      "url": "https://app.hubspot.com/mcp/v1/http",
-      "transport": "streamable-http",
-      "category": "crm",
-      "tags": [
-        "crm",
-        "marketing",
-        "sales",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=hubspot.com&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/hubspot.md",
-      "headers": {
-        "Authorization": "Bearer ${HUBSPOT_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "hubspot.api_key",
-            "env": "HUBSPOT_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
-      }
-    },
-    {
       "id": "hugging-face",
       "title": "Hugging Face",
       "description": "Tools for interacting with Hugging Face models, datasets, research papers, and more.",
@@ -565,64 +422,6 @@
       }
     },
     {
-      "id": "mercado-libre",
-      "title": "Mercado Libre",
-      "description": "Provides access to Mercado Libre E-Commerce API.",
-      "url": "https://mcp.mercadolibre.com",
-      "transport": "streamable-http",
-      "category": "commerce",
-      "tags": [
-        "commerce",
-        "marketplace",
-        "latin-america",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=mercadolibre.com&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/mercado-libre.md",
-      "headers": {
-        "Authorization": "Bearer ${MERCADO_LIBRE_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "mercado-libre.api_key",
-            "env": "MERCADO_LIBRE_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
-      }
-    },
-    {
-      "id": "mercado-pago",
-      "title": "Mercado Pago",
-      "description": "Provides access to Mercado Pago Marketplace API.",
-      "url": "https://mcp.mercadopago.com",
-      "transport": "streamable-http",
-      "category": "payments",
-      "tags": [
-        "payments",
-        "finance",
-        "latin-america",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=mercadopago.com&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/mercado-pago.md",
-      "headers": {
-        "Authorization": "Bearer ${MERCADO_PAGO_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "mercado-pago.api_key",
-            "env": "MERCADO_PAGO_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
-      }
-    },
-    {
       "id": "microchip",
       "title": "Microchip",
       "description": "Look up Microchip semiconductor product specifications, datasheets and inventory data.",
@@ -709,35 +508,6 @@
             "provider": "morningstar-mcp-server",
             "env": "MORNINGSTAR_MCP_SERVER_PERSONAL_ACCESS_TOKEN",
             "secret": "morningstar-mcp-server.personal_access_token"
-          }
-        ]
-      }
-    },
-    {
-      "id": "needle",
-      "title": "Needle Remote",
-      "description": "Production-ready RAG service to search and retrieve data from your documents.",
-      "url": "https://mcp.needle.app/mcp",
-      "transport": "streamable-http",
-      "category": "ai",
-      "tags": [
-        "ai",
-        "rag",
-        "knowledge-base",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=needle.app&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/needle.md",
-      "headers": {
-        "Authorization": "Bearer ${NEEDLE_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "needle.api_key",
-            "env": "NEEDLE_API_KEY",
-            "example": "<YOUR_API_KEY>"
           }
         ]
       }
@@ -935,35 +705,6 @@
       }
     },
     {
-      "id": "polar-signals",
-      "title": "Polar Signals",
-      "description": "MCP server for Polar Signals Cloud continuous profiling platform, enabling AI assistants to analyze CPU performance, memory usage, and identify optimization opportunities in production systems.",
-      "url": "https://api.polarsignals.com/api/mcp/",
-      "transport": "streamable-http",
-      "category": "devops",
-      "tags": [
-        "devops",
-        "profiling",
-        "performance",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=polarsignals.com&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/polar-signals.md",
-      "headers": {
-        "Authorization": "Bearer ${POLAR_SIGNALS_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "polar-signals.api_key",
-            "env": "POLAR_SIGNALS_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
-      }
-    },
-    {
       "id": "prisma-postgres",
       "title": "Prisma Postgres",
       "description": "Access PostgreSQL databases through Prisma's type-safe ORM with automated migrations and intuitive query building.",
@@ -1036,34 +777,6 @@
       }
     },
     {
-      "id": "rube",
-      "title": "Rube",
-      "description": "Access to Rube's catalog of remote MCP servers.",
-      "url": "https://rube.app/mcp",
-      "transport": "streamable-http",
-      "category": "tools",
-      "tags": [
-        "tools",
-        "automation",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=composio.dev&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/rube.md",
-      "headers": {
-        "Authorization": "Bearer ${RUBE_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "rube.api_key",
-            "env": "RUBE_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
-      }
-    },
-    {
       "id": "semgrep",
       "title": "Semgrep",
       "description": "MCP server for using Semgrep to scan code for security vulnerabilities.",
@@ -1081,35 +794,6 @@
       "headers": {},
       "auth": {
         "type": "none"
-      }
-    },
-    {
-      "id": "short-io",
-      "title": "Short.io",
-      "description": "Access to Short.io's link shortener and analytics tools.",
-      "url": "https://ai-assistant.short.io/mcp",
-      "transport": "streamable-http",
-      "category": "tools",
-      "tags": [
-        "tools",
-        "url-shortener",
-        "analytics",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=short.io&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/short-io.md",
-      "headers": {
-        "Authorization": "Bearer ${SHORT_IO_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "short-io.api_key",
-            "env": "SHORT_IO_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
       }
     },
     {
@@ -1177,35 +861,6 @@
       "headers": {},
       "auth": {
         "type": "oauth"
-      }
-    },
-    {
-      "id": "telnyx",
-      "title": "Telnyx",
-      "description": "Enables interaction with powerful telephony, messaging, and AI assistant APIs.",
-      "url": "https://api.telnyx.com/v2/mcp",
-      "transport": "streamable-http",
-      "category": "communication",
-      "tags": [
-        "communication",
-        "telephony",
-        "sms",
-        "remote"
-      ],
-      "icon": "https://www.google.com/s2/favicons?domain=telnyx.com&sz=64",
-      "readme": "http://desktop.docker.com/mcp/catalog/v3/readme/telnyx.md",
-      "headers": {
-        "Authorization": "Bearer ${TELNYX_API_KEY}"
-      },
-      "auth": {
-        "type": "api_key",
-        "secrets": [
-          {
-            "name": "telnyx.api_key",
-            "env": "TELNYX_API_KEY",
-            "example": "<YOUR_API_KEY>"
-          }
-        ]
       }
     },
     {

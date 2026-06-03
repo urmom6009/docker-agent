@@ -25,46 +25,36 @@ type Catalog struct {
 
 // Server is a curated, on-demand-activatable remote MCP server description.
 //
-// Headers may contain ${ENV_VAR} placeholders that are resolved at request
-// time against the agent's env provider — exactly like a YAML-declared
-// `mcp` toolset with `remote.headers`. This lets API-key servers like
-// Apify pull APIFY_API_KEY from the user's shell at activation time.
+// The catalog only carries servers reachable over streamable-http with an
+// auth model docker-agent can drive itself: either no credentials at all
+// ("none") or an OAuth flow ("oauth") handled by the underlying mcp.Toolset.
 type Server struct {
-	ID          string            `json:"id"`
-	Title       string            `json:"title"`
-	Description string            `json:"description"`
-	URL         string            `json:"url"`
-	Transport   string            `json:"transport"`
-	Category    string            `json:"category,omitempty"`
-	Tags        []string          `json:"tags,omitempty"`
-	Icon        string            `json:"icon,omitempty"`
-	Readme      string            `json:"readme,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty"`
-	Auth        Auth              `json:"auth"`
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	URL         string   `json:"url"`
+	Transport   string   `json:"transport"`
+	Category    string   `json:"category,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	Icon        string   `json:"icon,omitempty"`
+	Readme      string   `json:"readme,omitempty"`
+	Auth        Auth     `json:"auth"`
 }
 
 // Auth describes how to authenticate against a remote MCP server.
 //
 // Type is one of:
-//   - "none"     — no credentials required
-//   - "oauth"    — OAuth flow handled by the underlying mcp.Toolset
-//   - "api_key"  — caller-provided secret(s) (env vars listed in Secrets)
+//   - "none"  — no credentials required
+//   - "oauth" — OAuth flow handled by the underlying mcp.Toolset
 type Auth struct {
 	Type      string          `json:"type"`
 	Providers []OAuthProvider `json:"providers,omitempty"`
-	Secrets   []SecretSpec    `json:"secrets,omitempty"`
 }
 
 type OAuthProvider struct {
 	Provider string `json:"provider"`
 	Env      string `json:"env"`
 	Secret   string `json:"secret"`
-}
-
-type SecretSpec struct {
-	Name    string `json:"name"`
-	Env     string `json:"env"`
-	Example string `json:"example,omitempty"`
 }
 
 // loadOnce caches the parsed catalog. The embedded JSON is immutable for

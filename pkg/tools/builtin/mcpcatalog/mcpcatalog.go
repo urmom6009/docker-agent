@@ -49,13 +49,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"regexp"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/docker/docker-agent/pkg/environment"
 	"github.com/docker/docker-agent/pkg/tools"
 	"github.com/docker/docker-agent/pkg/tools/mcp"
 )
@@ -73,7 +70,6 @@ const (
 type Toolset struct {
 	catalog *Catalog
 	byID    map[string]Server
-	env     environment.Provider
 
 	mu sync.RWMutex
 	// enabled holds the per-server StartableToolSet wrapper. Wrapping the
@@ -150,14 +146,14 @@ func WithBlockedServers(ids []string) Option {
 	return func(o *options) { o.blockedServers = ids }
 }
 
-// New returns a Toolset backed by the embedded catalog. envProvider is used
-// to resolve ${ENV_VAR} placeholders in catalog headers (e.g. the Apify
-// `Authorization: Bearer ${APIFY_API_KEY}` header) at enable time, mirroring
-// how a YAML-declared `mcp.remote` toolset works.
+// New returns a Toolset backed by the embedded catalog. Every catalog server
+// is reachable over streamable-http and authenticates with either no
+// credentials ("none") or an OAuth flow ("oauth") driven by the underlying
+// mcp.Toolset.
 //
 // Optional WithAllowedServers / WithBlockedServers options narrow the set of
 // servers the toolset offers by default.
-func New(envProvider environment.Provider, opts ...Option) *Toolset {
+func New(opts ...Option) *Toolset {
 	var cfg options
 	for _, opt := range opts {
 		opt(&cfg)
@@ -165,7 +161,6 @@ func New(envProvider environment.Provider, opts ...Option) *Toolset {
 
 	t := &Toolset{
 		catalog:          MustLoad(),
-		env:              envProvider,
 		enabled:          make(map[string]*tools.StartableToolSet),
 		removeOAuthToken: mcp.RemoveOAuthToken,
 		startToolset: func(ctx context.Context, ts *tools.StartableToolSet) error {
@@ -282,13 +277,9 @@ Workflow:
          setup. Enabling a server is a means to an end, not a stopping
          point.
        - ERROR — the result text tells you exactly why (user declined
-         the authorization dialog, missing env var, server refused).
-         Act on that specific reason; do NOT pretend the server is
-         connected and do NOT call any "<id>_..." tools (there are
-         none).
-     For api_key servers, make sure the listed env var(s) are set in
-     the user's shell BEFORE enabling, otherwise the enable will fail
-     with a missing-env warning.
+         the authorization dialog, server refused). Act on that
+         specific reason; do NOT pretend the server is connected and do
+         NOT call any "<id>_..." tools (there are none).
   3. Call ` + ToolNameDisable + ` to remove a server when no longer needed.
      This tool only appears once at least one server is enabled.
   4. If a previously enabled server starts rejecting requests
@@ -691,33 +682,6 @@ func (t *Toolset) handleEnable(ctx context.Context, args EnableArgs) (*tools.Too
 		return tools.ResultError(fmt.Sprintf("unknown server id %q (use %s first to discover available ids)", id, ToolNameSearch)), nil
 	}
 
-	// Pre-flight: block if an api_key server is missing its env var. The
-	// catalog promises enable returns a deterministic answer in the same
-	// turn, so we cannot register a toolset we already know will be
-	// rejected on the first request. The model is told to ask the user to
-	// set the variable and retry.
-	// Perform these slow external calls BEFORE acquiring the lock — server
-	// data is immutable (from t.byID), no mutex protection needed here.
-	missing := t.missingAPIKeyEnv(ctx, server)
-	headers := t.expandHeaders(ctx, server.Headers)
-
-	// Belt-and-braces: also surface any ${VAR} placeholders left in the
-	// expanded headers. This catches future catalog entries whose headers
-	// reference an env var that is not declared under Auth.Secrets — the
-	// missingAPIKeyEnv check above wouldn't see those.
-	for _, env := range unresolvedHeaderEnvs(headers) {
-		if !slices.Contains(missing, env) {
-			missing = append(missing, env)
-		}
-	}
-	if len(missing) > 0 {
-		return tools.ResultError(fmt.Sprintf(
-			"cannot enable %q: the following env var(s) are NOT set: %s. "+
-				"Ask the user to set them in their shell, then call %s for this id again. "+
-				"Do NOT pretend the server is connected — no tools were activated.",
-			id, strings.Join(missing, ", "), ToolNameEnable)), nil
-	}
-
 	// Two paths land here: a fresh enable (no entry yet) and a re-enable
 	// of an existing entry whose previous Start did not complete (deferred
 	// auth-required fallback, cancellation, or any other transient
@@ -736,14 +700,14 @@ func (t *Toolset) handleEnable(ctx context.Context, args EnableArgs) (*tools.Too
 
 	var notify func()
 	if !alreadyEnabled {
-		// Create the MCP toolset with the pre-computed headers.
-		// The nil third arg (*latest.RemoteOAuthConfig) is intentional:
-		// every server currently in the catalog works with default
-		// Dynamic Client Registration and the runtime's default callback.
-		// If a future entry needs custom scopes / a fixed client_id / a
-		// non-default callback, extend Auth in servers.go and plumb the
-		// resulting *RemoteOAuthConfig through here.
-		mcpToolset := mcp.NewRemoteToolset(id, server.URL, server.Transport, headers, nil)
+		// Create the MCP toolset. The nil headers and nil
+		// *latest.RemoteOAuthConfig are intentional: every catalog server
+		// authenticates with either no credentials or an OAuth flow that
+		// works with default Dynamic Client Registration and the runtime's
+		// default callback. If a future entry needs custom scopes / a fixed
+		// client_id / a non-default callback, extend Auth in servers.go and
+		// plumb the resulting *RemoteOAuthConfig through here.
+		mcpToolset := mcp.NewRemoteToolset(id, server.URL, server.Transport, nil, nil)
 
 		// Re-attach the captured handlers so OAuth flows behave
 		// identically to a YAML-declared mcp.remote toolset. Apply
@@ -872,79 +836,6 @@ func (t *Toolset) handleEnableStartError(ctx context.Context, id string, server 
 			"failed to connect to %q (%s): %v. No tools were activated — do NOT claim the server is connected. Report the failure to the user; they may need to fix their network or, if the server's credentials changed, call %s for %q before re-enabling.",
 			id, server.Title, err, ToolNameResetAuth, id))
 	}
-}
-
-// expandHeaders resolves ${VAR} placeholders in catalog headers against the
-// configured env provider. The catalog uses the bare ${VAR} form (e.g.
-// `Authorization: Bearer ${APIFY_API_KEY}`), so we route through the env
-// provider directly rather than the JavaScript expander — the latter
-// expects the ${env.VAR} form used in YAML configs. Headers that don't
-// contain any placeholder pass through unchanged.
-func (t *Toolset) expandHeaders(ctx context.Context, in map[string]string) map[string]string {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(in))
-	for k, v := range in {
-		out[k] = unresolvedHeaderEnv.ReplaceAllStringFunc(v, func(match string) string {
-			name := match[2 : len(match)-1] // strip ${ and }
-			if t.env == nil {
-				return match
-			}
-			if val, ok := t.env.Get(ctx, name); ok && val != "" {
-				return val
-			}
-			return match // leave the placeholder in place so unresolvedHeaderEnvs picks it up
-		})
-	}
-	return out
-}
-
-// missingAPIKeyEnv returns the names of api_key env vars that are not
-// available from the toolset's env provider. Empty result means "all good".
-// Returns nil for non api_key servers.
-func (t *Toolset) missingAPIKeyEnv(ctx context.Context, s Server) []string {
-	if s.Auth.Type != "api_key" || t.env == nil {
-		return nil
-	}
-	var missing []string
-	for _, sec := range s.Auth.Secrets {
-		if sec.Env == "" {
-			continue
-		}
-		if v, ok := t.env.Get(ctx, sec.Env); !ok || v == "" {
-			missing = append(missing, sec.Env)
-		}
-	}
-	return missing
-}
-
-// unresolvedHeaderEnv matches any ${VAR}-style placeholder still present
-// in a header value after expansion — i.e. an env var the expander could
-// not resolve. We scan post-expansion so headers that resolved correctly
-// are silently accepted.
-var unresolvedHeaderEnv = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
-
-// unresolvedHeaderEnvs returns the names of every ${VAR} placeholder
-// that survived header expansion. Defends against catalog entries whose
-// headers reference env vars not declared under Auth.Secrets.
-func unresolvedHeaderEnvs(headers map[string]string) []string {
-	if len(headers) == 0 {
-		return nil
-	}
-	seen := make(map[string]struct{})
-	var out []string
-	for _, v := range headers {
-		for _, m := range unresolvedHeaderEnv.FindAllStringSubmatch(v, -1) {
-			if _, ok := seen[m[1]]; ok {
-				continue
-			}
-			seen[m[1]] = struct{}{}
-			out = append(out, m[1])
-		}
-	}
-	sort.Strings(out)
-	return out
 }
 
 // DisableArgs is the input schema for disable_remote_mcp_server.

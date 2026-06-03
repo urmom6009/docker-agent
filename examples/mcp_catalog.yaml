@@ -4,22 +4,26 @@
 # How it works:
 #   - The mcp_catalog toolset adds up to 5 meta-tools:
 #       * search_remote_mcp_servers   — find servers by keyword
-#       * enable_remote_mcp_server    — activate one (no network yet)
+#       * enable_remote_mcp_server    — activate one (connects now,
+#         blocking on any required OAuth handshake)
 #       * list_remote_mcp_servers     — show what's currently active
 #       * disable_remote_mcp_server   — turn one off again
 #       * reset_remote_mcp_server_auth — wipe persisted OAuth credentials
 #         for a server so the next enable triggers a fresh authorization
 #         flow. Useful when a token was revoked, scopes changed, or you
 #         signed in to the wrong account. Only exposed once at least one
-#         server is enabled; no-op for api_key/none servers.
+#         server is enabled; no-op for servers with no persisted
+#         credentials.
 #   - Tools from servers that have not been enabled stay hidden, so the
 #     prompt is not flooded with hundreds of tool definitions.
-#   - When the model first calls a tool from an enabled server, the
-#     underlying connection is established and any required OAuth
-#     authorization URL is surfaced via the elicitation pipeline.
-#   - For api_key servers (e.g. Apify, Brave Search, Tavily, …), make
-#     sure the documented env var is exported before enabling the
-#     server. The catalog tells you exactly which one to set.
+#   - When the model enables a server, the underlying connection is
+#     established synchronously and any required OAuth authorization URL
+#     is surfaced via the elicitation pipeline, blocking until the user
+#     authorizes or cancels.
+#   - The catalog only includes servers docker-agent can authenticate
+#     itself: those needing no credentials ("none") or an OAuth flow
+#     ("oauth"). Servers requiring a caller-provided API key are
+#     intentionally excluded — declare those explicitly with `type: mcp`.
 
 agents:
   root:
