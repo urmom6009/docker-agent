@@ -662,13 +662,26 @@ func TestEnableRetriesStartOnExistingUnstartedEntry(t *testing.T) {
 		"re-enable of an existing entry must NOT re-fire tools-changed — it would falsely signal a tool-surface change")
 }
 
-// TestEnableRetriesStartAfterCancellation is the regression test for the
-// context.Canceled branch the reviewer flagged: when Start is cancelled,
-// the entry stays in t.enabled, and a subsequent enable must drive Start
-// again rather than dead-ending at the guard. This covers the soft
-// per-turn cancellation case where Toolset.Stop has not (and will not)
-// run between the cancelled enable and the retry.
-func TestEnableRetriesStartAfterCancellation(t *testing.T) {
+// TestEnableSyncStartCancelledRollsBack is the regression test for the
+// "stopped turn re-pops the OAuth dialog on the next message" bug. When
+// the user clicks Stop while the OAuth dialog is parked (e.g. the
+// browser-side OAuth flow failed externally and the elicitation goroutine
+// never gets a reply), the inner Start returns context.Canceled. handleEnable
+// must:
+//
+//  1. Surface a tool error with a recognisable wording so the model can
+//     explain to the user.
+//  2. Remove the entry from t.enabled so the next RunStream's Tools()
+//     does NOT silently re-Start the wrapper and re-pop the dialog on
+//     an unrelated user message — the catalog Toolset is owned by the
+//     RuntimeSession and survives many RunStreams, so Toolset.Stop will
+//     NOT run between this turn and the user's next message.
+//  3. Notify the runtime that the tool surface changed (register + drop).
+//
+// A subsequent enable_remote_mcp_server for the same id then lands on a
+// fresh wrapper (not on the cancelled one) and drives Start again — which
+// is what makes the "user asked to retry" path work.
+func TestEnableSyncStartCancelledRollsBack(t *testing.T) {
 	ts := New(stubEnv{vars: map[string]string{}})
 
 	id := firstOAuthServerID(t, ts)
@@ -677,32 +690,89 @@ func TestEnableRetriesStartAfterCancellation(t *testing.T) {
 		return fake.Start(ctx)
 	}
 
+	var changes atomic.Int32
+	ts.SetToolsChangedHandler(func() { changes.Add(1) })
+
 	// First enable: Start returns context.Canceled. The handler must
-	// surface a tool error AND leave the entry behind so a retry has
-	// somewhere to land.
+	// surface a tool error AND drop the entry so Tools() on the next
+	// RunStream does not silently re-fire the OAuth dialog.
 	res, err := ts.handleEnable(t.Context(), EnableArgs{ID: id})
 	require.NoError(t, err)
 	require.True(t, res.IsError, "cancelled Start must surface a tool error: %s", res.Output)
 	assert.Contains(t, res.Output, "cancelled",
 		"the error must name cancellation so the model can explain to the user")
 	assert.Contains(t, res.Output, ToolNameEnable,
-		"the error must instruct the model how to retry")
+		"the error must instruct the model how to retry on user request")
 
 	ts.mu.RLock()
 	_, stillEnabled := ts.enabled[id]
 	ts.mu.RUnlock()
-	require.True(t, stillEnabled,
-		"context.Canceled must leave the entry so the next enable can retry — the alternative would be relying on Toolset.Stop firing between turns, which is a fragile invariant")
+	require.False(t, stillEnabled,
+		"context.Canceled must roll back t.enabled — leaving the entry would let the next RunStream's Tools() silently re-Start it and re-pop the OAuth dialog on an unrelated user message")
 
-	// Second enable: must drive Start again, not short-circuit at the
-	// guard with a "still not connected" message. Otherwise the user is
-	// stuck and the only escape is disable+enable.
+	// Two notifications: one when the entry was registered, one when
+	// the cancellation rollback removed it. Mirrors the OAuthDeclined
+	// branch — both are visible to the runtime so the TUI's tool count
+	// stays correct.
+	assert.Equal(t, int32(2), changes.Load(),
+		"enable+cancel must fire tools-changed exactly twice — register, then rollback")
+
+	// Second enable: must land on a fresh wrapper (the previous one
+	// was rolled back) and drive Start again. The model's "if the user
+	// asks to retry" instruction depends on this path actually firing.
 	res, err = ts.handleEnable(t.Context(), EnableArgs{ID: id})
 	require.NoError(t, err)
 	require.False(t, res.IsError, "retry after cancel: %s", res.Output)
 	assert.Contains(t, res.Output, "enabled")
 	assert.Equal(t, int32(2), fake.startCalls.Load(),
 		"the retry must invoke Start a second time — the post-cancel recovery depends on it")
+}
+
+// TestToolsAfterCancelledEnableDoesNotReFireOAuth reproduces the user-
+// reported scenario at the catalog layer:
+//
+//   - Turn 1: model calls enable_remote_mcp_server; the OAuth dialog
+//     opens, the browser-side flow fails externally, the user clicks
+//     Stop. The inner Start returns context.Canceled.
+//   - Turn 2: a fresh, UNRELATED user message arrives; the runtime
+//     calls Tools() to enumerate the available tools for the new turn.
+//
+// Before the fix the Turn-1 cancellation left the entry in t.enabled,
+// so Turn-2's Tools() iteration silently re-Started the same wrapper,
+// hit 401, and re-popped the Authentication Request dialog on a turn
+// the user did not ask for. This test pins the post-fix behaviour:
+// Turn-2's Tools() must not touch the cancelled wrapper at all.
+func TestToolsAfterCancelledEnableDoesNotReFireOAuth(t *testing.T) {
+	ts := New(stubEnv{vars: map[string]string{}})
+
+	id := firstOAuthServerID(t, ts)
+	// Stop-during-OAuth is modelled as a Start that returns
+	// context.Canceled every time; if Tools() ever re-Starts the same
+	// wrapper, startCalls will go to 2 and the assertion below fails.
+	fake := &flakyStartToolSet{failures: 999, failWith: context.Canceled}
+	ts.startToolset = func(ctx context.Context, _ *tools.StartableToolSet) error {
+		return fake.Start(ctx)
+	}
+
+	res, err := ts.handleEnable(t.Context(), EnableArgs{ID: id})
+	require.NoError(t, err)
+	require.True(t, res.IsError, "stop-during-OAuth must surface as a tool error: %s", res.Output)
+
+	ts.mu.RLock()
+	_, stillEnabled := ts.enabled[id]
+	ts.mu.RUnlock()
+	require.False(t, stillEnabled,
+		"the cancelled entry must be rolled back so the next Tools() does not see it")
+
+	// Mimic the next RunStream's tool enumeration. The runtime calls
+	// Tools() at the start of every turn; if the rollback didn't take,
+	// this would re-Start the wrapper and the dialog would re-pop.
+	for range 3 {
+		_, err := ts.Tools(t.Context())
+		require.NoError(t, err)
+	}
+	assert.Equal(t, int32(1), fake.startCalls.Load(),
+		"Tools() on the next RunStream must NOT re-Start the cancelled wrapper — that is what re-pops the OAuth dialog on an unrelated user message")
 }
 
 func TestListEnabled(t *testing.T) {

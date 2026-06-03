@@ -818,12 +818,20 @@ func (t *Toolset) handleEnable(ctx context.Context, args EnableArgs) (*tools.Too
 //     handleEnable's top-of-function guard, which sees an unstarted
 //     entry and re-attempts Start — that is what makes the model-facing
 //     "call enable again" instruction below actually work.
-//   - context.Canceled → leave the entry. In a tool handler the only
-//     thing that cancels ctx is the RunStream shutting down (Ctrl+C,
-//     parent cancellation); Toolset.Stop tears the entry down with the
-//     rest of the session. The top-of-function guard would also re-Start
-//     the wrapper if a follow-up enable somehow ran on the same id
-//     before Stop, so neither path leaks.
+//   - context.Canceled → drop the entry. The caller's ctx here is the
+//     RunStream's ctx (observed via the cancellable-parent stash in
+//     clientConnector.Connect), which cancels when the host aborts the
+//     in-progress turn — typically because the user clicked Stop while
+//     the OAuth dialog was parked waiting for a callback that never
+//     arrived (browser flow failed externally, user gave up). The
+//     catalog Toolset is owned by the RuntimeSession and survives many
+//     RunStreams, so Toolset.Stop will NOT run between this turn and
+//     the user's next message. If we left the entry behind, Tools() at
+//     the start of the next turn would silently re-Start the wrapper,
+//     re-fire the same 401, and re-pop the dialog the user just abandoned
+//     — without any model decision to do so. Roll back so the next
+//     enable on the same id lands on a fresh wrapper; the model is told
+//     to re-issue enable only if the user asks again.
 //   - any other error (transport, server refused, …) → drop the entry
 //     and surface the underlying message so the model can decide what to
 //     tell the user. A subsequent enable lands on a fresh entry.
@@ -841,14 +849,20 @@ func (t *Toolset) handleEnableStartError(ctx context.Context, id string, server 
 			"enable requested for %q (%s); authorization is required and the host will surface the dialog. On your next turn, if tools whose names start with %q appear in your available tools, proceed with the user's original request using them. If NO such tools appear, the user dismissed the dialog — tell them the request needs them to authorize, and call %s for %q again if they want to retry.",
 			id, server.Title, id+"_", ToolNameEnable, id))
 	case errors.Is(err, context.Canceled):
-		// Don't roll back. ctx in a tool handler is the RunStream's
-		// context, which only cancels when the whole RunStream is going
-		// away (Ctrl+C, parent shutdown). Toolset.Stop will tear the
-		// entry down with the rest of the session. The top-of-function
-		// guard above also re-Starts unstarted wrappers, so a hypothetical
-		// follow-up enable on the same id wouldn't dead-end either.
+		// Roll back. The cancellation reaches us via the parent-ctx
+		// stash that handleUnmanagedOAuthFlow observes (oauth.go's
+		// userCancelCh case), which means the host aborted the current
+		// turn — almost always the user clicking Stop while the OAuth
+		// dialog was parked. The mcp-catalog Toolset is owned by the
+		// RuntimeSession, not the RunStream, so leaving the entry
+		// behind would let Tools() silently re-Start it on the very
+		// next user message and re-pop the dialog the user just
+		// abandoned (including on questions that have nothing to do
+		// with this server). Drop the entry; if the user re-asks, the
+		// model will re-issue enable and land on a fresh wrapper.
+		t.disableAfterDecline(ctx, id, wrapped)
 		return tools.ResultError(fmt.Sprintf(
-			"enable cancelled for %q before the connection completed. Call %s for %q again to retry once the user is ready.",
+			"enable cancelled for %q before the connection completed — the user stopped the turn while authorization was pending. No tools were activated. Tell the user the request needs them to authorize the connection. Only call %s for %q again if the user asks to retry.",
 			id, ToolNameEnable, id))
 	default:
 		t.disableAfterDecline(ctx, id, wrapped)
