@@ -22,7 +22,7 @@ export OPENAI_API_KEY="sk-..."
 ```yaml
 agents:
   root:
-    model: openai/gpt-5-mini
+    model: openai/gpt-5
 ```
 
 ### Named Model
@@ -31,7 +31,7 @@ agents:
 models:
   gpt:
     provider: openai
-    model: gpt-5-mini
+    model: gpt-5
     temperature: 0.7
     max_tokens: 4000
 ```

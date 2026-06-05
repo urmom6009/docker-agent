@@ -38,7 +38,7 @@ export GOOGLE_CLOUD_LOCATION="us-central1"
 ```yaml
 agents:
   root:
-    model: google/gemini-2.5-flash
+    model: google/gemini-3.5-flash
 ```
 
 ### Named Model
@@ -47,7 +47,7 @@ agents:
 models:
   gemini:
     provider: google
-    model: gemini-2.5-flash
+    model: gemini-3.5-flash
     temperature: 0.5
 ```
 
