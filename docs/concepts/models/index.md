@@ -74,7 +74,7 @@ for details.
 | ------------------- | ---------------- | ------------------------------------ | ----------------------------------- |
 | OpenAI              | `openai`         | gpt-5, gpt-5-mini, gpt-4o            | `OPENAI_API_KEY`                    |
 | Anthropic           | `anthropic`      | claude-sonnet-4-5, claude-opus-4-7   | `ANTHROPIC_API_KEY`                 |
-| Google              | `google`         | gemini-2.5-flash, gemini-3-pro       | `GOOGLE_API_KEY` / `GEMINI_API_KEY` |
+| Google              | `google`         | gemini-3.5-flash, gemini-3-pro       | `GOOGLE_API_KEY` / `GEMINI_API_KEY` |
 | AWS Bedrock         | `amazon-bedrock` | Claude, Nova, Llama models           | AWS credentials                     |
 | Docker Model Runner | `dmr`            | ai/qwen3, ai/llama3.2                | None (local)                        |
 | Mistral             | `mistral`        | Mistral models                       | `MISTRAL_API_KEY`                   |

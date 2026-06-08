@@ -300,7 +300,7 @@ anthropicClient, _ := anthropic.NewClient(ctx, &latest.ModelConfig{
 // Google Gemini
 geminiClient, _ := gemini.NewClient(ctx, &latest.ModelConfig{
     Provider: "google",
-    Model:    "gemini-2.5-flash",
+    Model:    "gemini-3.5-flash",
 }, env)
 ```
 

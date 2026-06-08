@@ -70,7 +70,7 @@ agents:
     fallback:
       models:
         - openai/gpt-5
-        - google/gemini-2.5-flash
+        - google/gemini-3.5-flash
       retries: 2 # retries per model for 5xx errors
       cooldown: 1m # stick with fallback after 429
 ```

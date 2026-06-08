@@ -255,7 +255,7 @@ agents:
     fallback:
       models:
         - openai/gpt-5
-        - google/gemini-2.5-flash
+        - google/gemini-3.5-flash
       retries: 2
       cooldown: 1m
 ```
