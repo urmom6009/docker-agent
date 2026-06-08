@@ -342,7 +342,7 @@ A key advantage of multi-agent systems is using different models for different r
 models:
   fast:
     provider: openai
-    model: gpt-5
+    model: gpt-5-mini
     temperature: 0.2 # precise
 
   creative:
