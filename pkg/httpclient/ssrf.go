@@ -12,17 +12,51 @@ import (
 	"time"
 )
 
+// mustCIDR parses a CIDR string and panics if it is invalid. Intended for
+// package-level var initialisation so bad literals fail at startup.
+func mustCIDR(s string) *net.IPNet {
+	_, network, err := net.ParseCIDR(s)
+	if err != nil {
+		panic("httpclient: invalid CIDR " + s + ": " + err.Error())
+	}
+	return network
+}
+
+// cgnatRange is RFC 6598 (100.64.0.0/10). Go's IsPrivate does not cover it.
+var cgnatRange = mustCIDR("100.64.0.0/10")
+
+// blockedIPv6Prefixes are IPv6 ranges that embed or forward arbitrary IPv4
+// addresses and must therefore be treated as non-public.
+var blockedIPv6Prefixes = []*net.IPNet{
+	mustCIDR("2002::/16"),        // RFC 3056  – 6to4 (bits 16-47 = IPv4)
+	mustCIDR("64:ff9b::/96"),     // RFC 6052  – NAT64 well-known
+	mustCIDR("64:ff9b:1::/48"),   // RFC 8215  – NAT64 local-use
+	mustCIDR("fec0::/10"),        // RFC 3879  – site-local (deprecated)
+}
+
 // IsPublicIP reports whether ip is a routable public address. It rejects
 // loopback (127/8, ::1), RFC1918 private ranges, link-local (incl. the
-// 169.254.169.254 cloud metadata endpoint), multicast and the unspecified
-// address (0.0.0.0, ::).
+// 169.254.169.254 cloud metadata endpoint), multicast, the unspecified
+// address (0.0.0.0, ::), CGNAT (100.64.0.0/10), IPv6 6to4, NAT64, and
+// site-local prefixes.
 func IsPublicIP(ip net.IP) bool {
-	return !ip.IsLoopback() &&
-		!ip.IsPrivate() &&
-		!ip.IsLinkLocalUnicast() &&
-		!ip.IsLinkLocalMulticast() &&
-		!ip.IsMulticast() &&
-		!ip.IsUnspecified()
+	if ip.IsLoopback() ||
+		ip.IsPrivate() ||
+		ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() ||
+		ip.IsMulticast() ||
+		ip.IsUnspecified() {
+		return false
+	}
+	if cgnatRange.Contains(ip) {
+		return false
+	}
+	for _, prefix := range blockedIPv6Prefixes {
+		if prefix.Contains(ip) {
+			return false
+		}
+	}
+	return true
 }
 
 // SSRFDialControl is invoked by net.Dialer after DNS resolution but before

@@ -32,6 +32,34 @@ func TestIsPublicIP(t *testing.T) {
 		{"224.0.0.1", false},       // multicast
 		{"0.0.0.0", false},
 		{"::", false},
+
+		// CGNAT RFC 6598 (100.64.0.0/10)
+		{"100.64.0.1", false},
+		{"100.127.255.254", false},
+		{"100.63.255.255", true},  // just below CGNAT
+		{"100.128.0.1", true},    // just above CGNAT
+
+		// 6to4 (RFC 3056, 2002::/16)
+		{"2002:a9fe:a9fe::", false}, // encodes 169.254.169.254
+		{"2002:0a00:0001::", false}, // encodes 10.0.0.1
+		{"2002::1", false},
+		{"2001::1", true},  // just outside
+		{"2003::1", true},  // just outside
+
+		// NAT64 well-known (RFC 6052, 64:ff9b::/96)
+		{"64:ff9b::a9fe:a9fe", false}, // encodes 169.254.169.254
+		{"64:ff9b::a00:1", false},     // encodes 10.0.0.1
+		{"64:ff9c::1", true},          // just outside
+
+		// NAT64 local-use (RFC 8215, 64:ff9b:1::/48)
+		{"64:ff9b:1::1", false},
+		{"64:ff9b:1:abcd::", false},
+		{"64:ff9b:2::1", true}, // just outside
+
+		// Site-local (RFC 3879, fec0::/10)
+		{"fec0::1", false},
+		{"feff::1", false},
+		{"febf::1", false}, // just below fec0::/10; fe80::/10 (link-local) extends to febf::, so still blocked
 	}
 	for _, tt := range tests {
 		t.Run(tt.ip, func(t *testing.T) {
@@ -60,6 +88,13 @@ func TestSSRFDialControl(t *testing.T) {
 		{"unspecified", "0.0.0.0:80", "non-public"},
 		{"hostname (not an IP)", "example.com:80", "not a valid IP"},
 		{"missing port", "8.8.8.8", "parsing dial address"},
+
+		// New SSRF ranges
+		{"CGNAT", "[100.64.0.1]:80", "non-public"},
+		{"6to4 encodes link-local", "[2002:a9fe:a9fe::]:443", "non-public"},
+		{"NAT64 well-known", "[64:ff9b::a9fe:a9fe]:443", "non-public"},
+		{"NAT64 local-use", "[64:ff9b:1::1]:443", "non-public"},
+		{"site-local IPv6", "[fec0::1]:443", "non-public"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
