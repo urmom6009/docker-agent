@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -34,10 +35,18 @@ func runCommand(ctx context.Context, logLabel, name string, args ...string) (str
 // to avoid TOCTOU races and PATH hijacking.
 func lookupBinary(name string, notFoundErr error) (string, error) {
 	path, err := exec.LookPath(name)
-	if err != nil && !errors.Is(err, exec.ErrNotFound) {
-		slog.Warn("failed to lookup `"+name+"` binary", "error", err)
+	if err != nil {
+		// exec.ErrDot means the binary was only found via an unsafe relative
+		// PATH entry (or "."). Treat it like "not found" so we never run an
+		// attacker-controlled binary from the working directory (CWE-426).
+		if !errors.Is(err, exec.ErrNotFound) && !errors.Is(err, exec.ErrDot) {
+			slog.Warn("failed to lookup `"+name+"` binary", "error", err)
+		}
+		return "", notFoundErr
 	}
-	if path == "" {
+	// Defensively require an absolute path so the resolved binary cannot be
+	// hijacked via PATH or the current working directory.
+	if !filepath.IsAbs(path) {
 		return "", notFoundErr
 	}
 	return path, nil

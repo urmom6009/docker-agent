@@ -79,19 +79,15 @@ func TestOnePasswordProvider_Get(t *testing.T) {
 	}
 }
 
-func TestNewOnePasswordProvider_NoBinaryPassesThrough(t *testing.T) {
+func TestNewOnePasswordProvider_AlwaysWraps(t *testing.T) {
 	t.Parallel()
 
-	// On a system without `op`, the wrapped provider is returned untouched and
-	// "op://" values are passed through unchanged.
-	if _, err := lookupBinary("op", OnePasswordNotAvailableError{}); err == nil {
-		t.Skip("op binary is installed; skipping pass-through test")
-	}
-
-	base := NewMapEnvProvider(map[string]string{"API_KEY": "op://vault/item/field"})
+	// The constructor must always wrap so that "op://" references are never
+	// silently passed through as if they were real secrets, regardless of
+	// whether the `op` binary is installed on the host.
+	base := NewMapEnvProvider(map[string]string{"API_KEY": "plain"})
 	provider := NewOnePasswordProvider(base)
 
-	value, found := provider.Get(t.Context(), "API_KEY")
-	assert.True(t, found)
-	assert.Equal(t, "op://vault/item/field", value)
+	_, ok := provider.(*OnePasswordProvider)
+	assert.True(t, ok)
 }

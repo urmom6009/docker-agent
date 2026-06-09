@@ -1,6 +1,6 @@
 ---
 title: "Managing Secrets"
-description: "How to securely provide API keys and credentials to docker-agent using environment variables, env files, Docker Compose secrets, macOS Keychain, and pass."
+description: "How to securely provide API keys and credentials to docker-agent using environment variables, env files, Docker Compose secrets, macOS Keychain, pass, and 1Password references."
 permalink: /guides/secrets/
 ---
 
@@ -22,6 +22,8 @@ docker-agent needs API keys to talk to model providers (OpenAI, Anthropic, etc.)
 | 6 | [macOS Keychain](#macos-keychain) | `security add-generic-password` |
 
 The first provider that has a value wins. You can mix and match — for example, use environment variables for one key and Keychain for another.
+
+Whatever provider returns the value, if that value looks like a [1Password secret reference](#1password-references) (it starts with `op://`), docker-agent resolves it through the `op` CLI before handing it to a model provider or tool.
 
 When docker-agent runs inside a Docker sandbox (detected via `SANDBOX_VM_ID`), a sandbox token provider is prepended to the chain so that `DOCKER_TOKEN` is read from a continuously-refreshed file instead of a stale environment variable.
 
@@ -216,6 +218,24 @@ security delete-generic-password -s ANTHROPIC_API_KEY
 
 Once stored, docker-agent finds the secret automatically — no flags or config needed.
 
+## 1Password References
+
+Any secret value resolved through the chain above can be a **1Password secret reference** instead of the literal secret. If the value starts with `op://`, docker-agent resolves it by invoking the [1Password CLI](https://developer.1password.com/docs/cli/) (`op read <reference>`) and uses the result.
+
+This works with every provider — most commonly an environment variable or env file:
+
+```bash
+export OPENAI_API_KEY="op://Personal/OpenAI/api-key"
+docker agent run agent.yaml
+```
+
+References follow the `op://<vault>/<item>/<field>` format. Make sure the `op` CLI is installed and you are signed in (`op signin`) so that non-interactive reads succeed.
+
+<div class="callout callout-warning" markdown="1">
+<div class="callout-title">Behaviour when resolution fails</div>
+<p>If the value starts with <code>op://</code> but the <code>op</code> CLI is not installed, or the reference cannot be read (not signed in, wrong path, locked vault), docker-agent logs a warning and treats the variable as <strong>unset</strong> — it never forwards the raw <code>op://</code> reference to a model provider or tool.</p>
+</div>
+
 ## Choosing a Method
 
 | Method | Best for | Setup effort |
@@ -225,6 +245,7 @@ Once stored, docker-agent finds the secret automatically — no flags or config 
 | Docker Compose secrets | Containerized deployments, CI/CD | Medium |
 | `pass` | Linux/macOS, GPG-based workflows | Medium |
 | macOS Keychain | macOS local development | Low |
+| 1Password references (`op://`) | Teams already using 1Password | Low |
 
 You can combine methods. For example, store long-lived provider keys in macOS Keychain and pass project-specific MCP tokens via env files.
 

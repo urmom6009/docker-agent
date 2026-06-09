@@ -28,20 +28,24 @@ func (OnePasswordNotAvailableError) Error() string {
 }
 
 // NewOnePasswordProvider wraps provider so that "op://" references are resolved
-// with the `op` CLI. If the `op` binary is not installed, provider is returned
-// unchanged so that values are passed through untouched.
+// with the `op` CLI. The `op` binary is looked up lazily, only when a reference
+// is actually encountered, so an "op://" value is never silently passed through
+// as if it were a real secret.
 func NewOnePasswordProvider(provider Provider) Provider {
-	path, err := lookupBinary("op", OnePasswordNotAvailableError{})
-	if err != nil {
-		return provider
-	}
-
 	return &OnePasswordProvider{
 		provider: provider,
-		resolve: func(ctx context.Context, reference string) (string, bool) {
-			return runCommand(ctx, "1password", path, "read", reference)
-		},
+		resolve:  resolveOnePasswordReference,
 	}
+}
+
+func resolveOnePasswordReference(ctx context.Context, reference string) (string, bool) {
+	path, err := lookupBinary("op", OnePasswordNotAvailableError{})
+	if err != nil {
+		slog.WarnContext(ctx, "Cannot resolve 1Password secret reference: op (1Password CLI) is not installed")
+		return "", false
+	}
+
+	return runCommand(ctx, "1password", path, "read", reference)
 }
 
 func (p *OnePasswordProvider) Get(ctx context.Context, name string) (string, bool) {
