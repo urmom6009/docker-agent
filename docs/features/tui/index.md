@@ -38,6 +38,9 @@ $ docker agent run agent.yaml --sidebar=false
 
 # Disable specific slash commands
 $ docker agent run agent.yaml --disable-commands="/cost,/eval,/model"
+
+# Open in read-only mode to review a past session without sending new messages
+$ docker agent run agent.yaml --session -1 --session-read-only
 ```
 
 ## Slash Commands

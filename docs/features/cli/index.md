@@ -32,6 +32,7 @@ $ docker agent run [config] [message...] [flags]
 | `--model <ref>`                         | Override model(s). Use `provider/model` for all agents, or `agent=provider/model` for specific agents. Comma-separate multiple overrides. |
 | `--session <id>`                        | Resume a previous session. Supports relative refs (`-1` = last, `-2` = second to last)                                                    |
 | `-s, --session-db <path>`               | Path to the SQLite session database (default: `~/.cagent/session.db`)                                                                     |
+| `--session-read-only`                   | Open the TUI in read-only mode: conversation history is displayed but no new messages can be sent to the LLM. Cannot be used with `--exec`. |
 | `--prompt-file <path>`                  | Include file contents as additional system context (repeatable)                                                                           |
 | `--attach <path>`                       | Attach an image file to the initial message                                                                                               |
 | `--dry-run`                             | Initialize the agent without executing anything (useful for validating a config)                                                          |
@@ -75,6 +76,7 @@ $ docker agent run agent.yaml -a developer --yolo
 $ docker agent run agent.yaml --model anthropic/claude-sonnet-4-5
 $ docker agent run agent.yaml --model "dev=openai/gpt-4o,reviewer=anthropic/claude-sonnet-4-5"
 $ docker agent run agent.yaml --session -1  # resume last session
+$ docker agent run agent.yaml --session -1 --session-read-only  # review last session without sending messages
 $ docker agent run agent.yaml --prompt-file ./context.md  # include file as context
 
 # Add hooks from the command line
