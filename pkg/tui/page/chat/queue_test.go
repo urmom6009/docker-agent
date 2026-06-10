@@ -2,7 +2,10 @@ package chat
 
 import (
 	"context"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
@@ -12,6 +15,7 @@ import (
 	"github.com/docker/docker-agent/pkg/runtime"
 	"github.com/docker/docker-agent/pkg/session"
 	"github.com/docker/docker-agent/pkg/sessiontitle"
+	"github.com/docker/docker-agent/pkg/skills"
 	"github.com/docker/docker-agent/pkg/tools"
 	skillstool "github.com/docker/docker-agent/pkg/tools/builtin/skills"
 	mcptools "github.com/docker/docker-agent/pkg/tools/mcp"
@@ -99,6 +103,74 @@ func (queueTestRuntime) TogglePause(context.Context) (bool, error)             {
 func (queueTestRuntime) Close() error                                          { return nil }
 
 var _ runtime.Runtime = queueTestRuntime{}
+
+// skillDispatchRuntime records how a skill slash command is ultimately
+// executed so tests can assert it reaches the right resolution path:
+// fork skills via RunSkillFork, inline skills via the regular RunStream path.
+type skillDispatchRuntime struct {
+	queueTestRuntime
+
+	skillset *skillstool.ToolSet
+
+	mu            sync.Mutex
+	forkCalls     []skillstool.RunSkillArgs
+	runStreamRuns int
+	lastRun       string
+}
+
+func (r *skillDispatchRuntime) CurrentAgentSkillsToolset() *skillstool.ToolSet {
+	return r.skillset
+}
+
+func (r *skillDispatchRuntime) RunSkillFork(_ context.Context, sess *session.Session, args skillstool.RunSkillArgs, sink runtime.EventSink) (*tools.ToolCallResult, error) {
+	r.mu.Lock()
+	r.forkCalls = append(r.forkCalls, args)
+	r.mu.Unlock()
+
+	sink.Emit(runtime.StreamStopped(sess.ID, "", ""))
+	return tools.ResultSuccess("done"), nil
+}
+
+func (r *skillDispatchRuntime) RunStream(_ context.Context, sess *session.Session) <-chan runtime.Event {
+	r.mu.Lock()
+	r.runStreamRuns++
+	if items := sess.GetAllMessages(); len(items) > 0 {
+		r.lastRun = items[len(items)-1].Message.Content
+	}
+	r.mu.Unlock()
+
+	ch := make(chan runtime.Event, 1)
+	ch <- runtime.StreamStopped(sess.ID, "", "")
+	close(ch)
+	return ch
+}
+
+func (r *skillDispatchRuntime) forkCallCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.forkCalls)
+}
+
+func (r *skillDispatchRuntime) lastForkArgs() skillstool.RunSkillArgs {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.forkCalls) == 0 {
+		return skillstool.RunSkillArgs{}
+	}
+	return r.forkCalls[len(r.forkCalls)-1]
+}
+
+func (r *skillDispatchRuntime) runStreamCallCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.runStreamRuns
+}
+
+func (r *skillDispatchRuntime) lastRunMessage() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.lastRun
+}
 
 func TestQueueFlow_BusyAgent_ImmediateSlashCommandBypassesQueue(t *testing.T) {
 	t.Parallel()
@@ -354,6 +426,100 @@ func TestReadOnly_AllowsSlashCommands(t *testing.T) {
 
 	require.NotNil(t, cmd)
 	assert.Equal(t, immediateCommandMsg{arg: "please"}, cmd())
+}
+
+// skillCommandParser mirrors the real skill palette item built in
+// BuildCommandCategories: an Immediate slash command whose Execute re-emits
+// the same slash text as a BypassQueue SendMsg.
+func skillCommandParser(name string) *commands.Parser {
+	return commands.NewParser(commands.Category{
+		Name: "Skills",
+		Commands: []commands.Item{
+			{
+				SlashCommand: "/" + name,
+				Immediate:    true,
+				Execute: func(arg string) tea.Cmd {
+					input := "/" + name
+					if arg = strings.TrimSpace(arg); arg != "" {
+						input += " " + arg
+					}
+					return core.CmdHandler(messages.SendMsg{Content: input, BypassQueue: true})
+				},
+			},
+		},
+	})
+}
+
+// dispatchTypedSkill reproduces typing a skill slash command in the editor.
+// Hop 1: handleSendMsg parses it and Execute re-emits a BypassQueue SendMsg.
+// Hop 2: that message is fed back through handleSendMsg, which must route it
+// to processMessage instead of re-parsing it into another SendMsg (the loop).
+func dispatchTypedSkill(t *testing.T, p *chatPage, content string) {
+	t.Helper()
+
+	_, cmd := p.handleSendMsg(messages.SendMsg{Content: content})
+	require.NotNil(t, cmd)
+
+	redispatch, ok := cmd().(messages.SendMsg)
+	require.True(t, ok, "typed skill should resolve to a re-dispatched SendMsg")
+	require.True(t, redispatch.BypassQueue, "re-dispatch must bypass the queue")
+
+	_, cmd = p.handleSendMsg(redispatch)
+	require.NotNil(t, cmd)
+	if _, loops := cmd().(messages.SendMsg); loops {
+		t.Fatal("skill SendMsg was re-emitted: dispatch is looping")
+	}
+}
+
+// TestHandleSendMsg_ForkSkillRunsViaFork proves a fork-mode skill slash
+// command reaches RunSkillFork with the parsed name/task and never loops.
+func TestHandleSendMsg_ForkSkillRunsViaFork(t *testing.T) {
+	t.Parallel()
+
+	skillSet := skillstool.New([]skills.Skill{{
+		Name:          "services",
+		Description:   "List services",
+		Context:       "fork",
+		InlineContent: "# Services\nList repository services.",
+	}}, t.TempDir())
+	rt := &skillDispatchRuntime{skillset: skillSet}
+	sess := session.New()
+	p := New(app.New(t.Context(), rt, sess), service.NewSessionState(sess)).(*chatPage)
+	p.commandParser = skillCommandParser("services")
+
+	dispatchTypedSkill(t, p, "/services please")
+
+	require.Eventually(t, func() bool { return rt.forkCallCount() == 1 }, time.Second, 10*time.Millisecond)
+	assert.Equal(t, "services", rt.lastForkArgs().Name)
+	assert.Equal(t, "please", rt.lastForkArgs().Task)
+	assert.Zero(t, rt.runStreamCallCount(), "fork skills must not use the inline RunStream path")
+	assert.Zero(t, sess.MessageCount(), "fork skill dispatch must not append an inline user message")
+}
+
+// TestHandleSendMsg_InlineSkillRunsViaResolveInput proves an inline skill
+// slash command is expanded and sent through the regular RunStream path
+// (not the fork path) and never loops.
+func TestHandleSendMsg_InlineSkillRunsViaResolveInput(t *testing.T) {
+	t.Parallel()
+
+	skillSet := skillstool.New([]skills.Skill{{
+		Name:          "services",
+		Description:   "List services",
+		InlineContent: "# Services\nList repository services.",
+	}}, t.TempDir())
+	rt := &skillDispatchRuntime{skillset: skillSet}
+	sess := session.New()
+	p := New(app.New(t.Context(), rt, sess), service.NewSessionState(sess)).(*chatPage)
+	p.commandParser = skillCommandParser("services")
+
+	dispatchTypedSkill(t, p, "/services please")
+
+	require.Eventually(t, func() bool { return sess.MessageCount() == 1 }, time.Second, 10*time.Millisecond)
+	assert.Zero(t, rt.forkCallCount(), "inline skills must not use fork dispatch")
+	require.Equal(t, 1, rt.runStreamCallCount())
+	assert.Contains(t, rt.lastRunMessage(), `<skill name="services">`)
+	assert.Contains(t, rt.lastRunMessage(), "List repository services.")
+	assert.Contains(t, rt.lastRunMessage(), "User's request: please")
 }
 
 // TestReadOnly_RejectsBypassQueueCommands ensures resolved skill/agent
