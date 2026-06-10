@@ -10,14 +10,14 @@ _Connect docker-agent to cloud services via remote MCP servers with built-in OAu
 
 ## Overview
 
-Docker Agent supports connecting to remote MCP servers over **SSE** (Server-Sent Events) and **Streamable HTTP** transports. Many popular services offer MCP endpoints with OAuth — docker-agent handles the authentication flow automatically.
+Docker Agent supports connecting to remote MCP servers over **Streamable HTTP** and **SSE** (Server-Sent Events) transports. Streamable HTTP is the current recommended transport for most hosted MCP servers. Many popular services offer MCP endpoints with OAuth — docker-agent handles the authentication flow automatically.
 
 ```yaml
 toolsets:
   - type: mcp
     remote:
-      url: "https://mcp.linear.app/sse"
-      transport_type: "sse"
+      url: "https://mcp.linear.app/mcp"
+      transport_type: "streamable"
 ```
 
 <div class="callout callout-tip" markdown="1">
@@ -40,8 +40,8 @@ toolsets:
 toolsets:
   - type: mcp
     remote:
-      url: "https://mcp.example.com/sse"
-      transport_type: "sse" # or "streamable"
+      url: "https://mcp.example.com/mcp"
+      transport_type: "streamable" # or "sse" for legacy servers
       headers:
         Authorization: "Bearer token" # optional: static auth
     # Optional: use only for trusted internal/private MCP or OAuth endpoints.
@@ -157,8 +157,8 @@ A per-toolset `callbackRedirectURL` (in the YAML) overrides the runtime-wide `--
 | Service    | URL                                | Transport | Description                           |
 | ---------- | ---------------------------------- | --------- | ------------------------------------- |
 | Asana      | `https://mcp.asana.com/sse`        | sse       | Task and project management           |
-| Atlassian  | `https://mcp.atlassian.com/v1/sse` | sse       | Jira, Confluence integration          |
-| Linear     | `https://mcp.linear.app/sse`       | sse       | Issue tracking and project management |
+| Atlassian  | `https://mcp.atlassian.com/v1/mcp/authv2` | streamable | Jira, Confluence integration          |
+| Linear     | `https://mcp.linear.app/mcp`       | streamable | Issue tracking and project management |
 | Monday.com | `https://mcp.monday.com/sse`       | sse       | Work management platform              |
 | Intercom   | `https://mcp.intercom.com/sse`     | sse       | Customer communication platform       |
 
@@ -186,7 +186,7 @@ A per-toolset `callbackRedirectURL` (in the YAML) overrides the runtime-wide `--
 | InVideo    | `https://mcp.invideo.io/sse`                      | sse        | Video creation platform           |
 | Webflow    | `https://mcp.webflow.com/sse`                     | sse        | Website builder and CMS           |
 | Wix        | `https://mcp.wix.com/sse`                         | sse        | Website builder platform          |
-| Notion     | `https://mcp.notion.com/sse`                      | sse        | Documentation and knowledge base  |
+| Notion     | `https://mcp.notion.com/mcp`                      | streamable | Documentation and knowledge base  |
 
 ## Communication &amp; Voice
 
@@ -244,8 +244,8 @@ agents:
     toolsets:
       - type: mcp
         remote:
-          url: "https://mcp.linear.app/sse"
-          transport_type: "sse"
+          url: "https://mcp.linear.app/mcp"
+          transport_type: "streamable"
         instruction: Use Linear for issue tracking.
       - type: mcp
         remote:

@@ -6,5 +6,5 @@ agents:
     toolsets:
       - type: mcp
         remote:
-          url: https://mcp.notion.com/sse
-          transport_type: sse
+          url: https://mcp.notion.com/mcp
+          transport_type: streamable

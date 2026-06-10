@@ -102,7 +102,7 @@ toolsets:
 | `instruction` | string | Custom instructions injected into the agent's context |
 | `version` | string | Package reference for [auto-installing](#auto-installing-tools) the command binary |
 
-### Remote MCP (SSE / Streamable HTTP)
+### Remote MCP (Streamable HTTP / SSE)
 
 Connect to MCP servers over the network:
 
@@ -111,7 +111,7 @@ toolsets:
   - type: mcp
     remote:
       url: "https://mcp-server.example.com"
-      transport_type: "sse"
+      transport_type: "streamable"
       headers:
         Authorization: "Bearer your-token"
     # Optional: allow OAuth helper requests to reach private/internal IPs.
@@ -122,7 +122,7 @@ toolsets:
 | Property                | Type    | Description                                                                                                           |
 | ----------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
 | `remote.url`            | string  | Base URL of the MCP server                                                                                            |
-| `remote.transport_type` | string  | `sse` or `streamable`                                                                                                 |
+| `remote.transport_type` | string  | `streamable` or `sse`                                                                                                 |
 | `remote.headers`        | object  | HTTP headers (typically for auth)                                                                                     |
 | `allow_private_ips`     | boolean | Permit remote MCP OAuth helper requests to dial non-public IP addresses. Use only for trusted internal servers.        |
 
@@ -200,7 +200,7 @@ Installed binaries are placed in `~/.cagent/tools/bin/` and cached so they are o
 
 ## Toolset Lifecycle
 
-Long-running toolsets — local MCP servers (stdio), remote MCP servers (SSE / streamable HTTP), and LSP servers — are managed by a single supervisor that can auto-reconnect them when they crash, time out, or drop their session. The `lifecycle` block on the toolset lets you tune that supervisor per toolset. It applies to every `type: mcp` and `type: lsp` toolset.
+Long-running toolsets — local MCP servers (stdio), remote MCP servers (Streamable HTTP / SSE), and LSP servers — are managed by a single supervisor that can auto-reconnect them when they crash, time out, or drop their session. The `lifecycle` block on the toolset lets you tune that supervisor per toolset. It applies to every `type: mcp` and `type: lsp` toolset.
 
 The simplest knob is `profile`, which picks a preset:
 
@@ -483,7 +483,7 @@ agents:
       - type: mcp
         remote:
           url: "https://internal-api.example.com/mcp"
-          transport_type: "sse"
+          transport_type: "streamable"
           headers:
             Authorization: "Bearer ${INTERNAL_TOKEN}"
 ```

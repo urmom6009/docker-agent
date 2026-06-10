@@ -6,7 +6,7 @@ models:
 mcps:
   my_server:
     remote:
-      url: https://mcp.example.com/sse
+      url: https://mcp.example.com/mcp
       headers:
         Authorization: "Bearer token123"
     allow_private_ips: true

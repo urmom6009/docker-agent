@@ -10,8 +10,8 @@ agents:
     toolsets:
       - type: mcp
         remote:
-          url: "https://mcp.example.com/sse"
-          transport_type: sse
+          url: "https://mcp.example.com/mcp"
+          transport_type: streamable
           oauth:
             clientId: "your-client-id"
             clientSecret: "your-client-secret"

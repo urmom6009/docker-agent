@@ -16,7 +16,7 @@ The `mcp` toolset connects your agent to any MCP server — a process or remote 
 | --- | --- | --- |
 | **Docker MCP** | Container via the [MCP Gateway](https://github.com/docker/mcp-gateway) | Curated, sandboxed servers from the [Docker MCP Catalog](https://hub.docker.com/u/mcp) |
 | **Local stdio** | Subprocess over stdin/stdout | Custom or community MCP servers run from a binary or `npx`/`pip` package |
-| **Remote** | SSE or Streamable HTTP | Cloud services with hosted MCP endpoints (Linear, GitHub, Vercel, …) |
+| **Remote** | Streamable HTTP or SSE | Cloud services with hosted MCP endpoints (Linear, Notion, Atlassian, …) |
 
 <div class="callout callout-info" markdown="1">
 <div class="callout-title">What is MCP?
@@ -77,7 +77,7 @@ toolsets:
   <p>If the <code>command</code> is not in your <code>PATH</code>, docker-agent looks it up in the <a href="https://github.com/aquaproj/aqua-registry">aqua registry</a> and installs it for you. Use <code>version: "false"</code> to opt out, or set <code>DOCKER_AGENT_AUTO_INSTALL=false</code> globally. See <a href="{{ '/configuration/tools/#auto-installing-tools' | relative_url }}">Auto-Installing Tools</a>.</p>
 </div>
 
-## Remote MCP (SSE / Streamable HTTP)
+## Remote MCP (Streamable HTTP / SSE)
 
 Connect to MCP servers over the network. OAuth flows (including [Dynamic Client Registration](https://datatracker.ietf.org/doc/html/rfc7591)) are handled automatically — docker-agent opens your browser when authentication is required and caches tokens for subsequent sessions.
 
@@ -85,8 +85,8 @@ Connect to MCP servers over the network. OAuth flows (including [Dynamic Client 
 toolsets:
   - type: mcp
     remote:
-      url: "https://mcp.linear.app/sse"
-      transport_type: "sse"               # or "streamable"
+      url: "https://mcp.linear.app/mcp"
+      transport_type: "streamable"               # or "sse" for legacy servers
       headers:
         Authorization: "Bearer ${LINEAR_TOKEN}"
     # Optional: allow OAuth helper requests to reach private/internal IPs.
@@ -97,7 +97,7 @@ toolsets:
 | Property                | Type    | Description |
 | ----------------------- | ------- | ----------- |
 | `remote.url`            | string  | Base URL of the MCP server. |
-| `remote.transport_type` | string  | `sse` or `streamable`. |
+| `remote.transport_type` | string  | `streamable` or `sse`. |
 | `remote.headers`        | object  | HTTP headers (typically for static auth tokens). |
 | `remote.oauth`          | object  | Explicit OAuth client credentials for servers that don't support DCR. See [Remote MCP Servers]({{ '/features/remote-mcp/' | relative_url }}#oauth-for-servers-without-dynamic-client-registration). |
 | `allow_private_ips`     | boolean | Permit remote MCP OAuth helper requests to dial non-public IP addresses. Use only for trusted internal servers. |
@@ -268,8 +268,8 @@ agents:
       # Remote MCP with OAuth (handled automatically)
       - type: mcp
         remote:
-          url: "https://mcp.linear.app/sse"
-          transport_type: "sse"
+          url: "https://mcp.linear.app/mcp"
+          transport_type: "streamable"
         instruction: Use Linear for issue tracking.
 ```
 

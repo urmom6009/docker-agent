@@ -1693,7 +1693,7 @@
         },
         "remote": {
           "$ref": "#/definitions/Remote",
-          "description": "Remote MCP server configuration (SSE/streamable-http transport)"
+          "description": "Remote MCP server configuration (streamable-http/SSE transport)"
         },
         "config": {
           "description": "MCP server configuration (for docker refs)"

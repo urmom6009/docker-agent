@@ -55,7 +55,7 @@ docker-agent supports the [Model Context Protocol (MCP)](https://modelcontextpro
 
 - **Docker MCP** (recommended) — Run MCP servers in Docker containers via the [MCP Gateway](https://github.com/docker/mcp-gateway). Browse the [Docker MCP Catalog](https://hub.docker.com/search?q=&type=mcp).
 - **Local MCP (stdio)** — Run MCP servers as local processes communicating over stdin/stdout.
-- **Remote MCP (SSE / HTTP)** — Connect to MCP servers running on a network. See [Remote MCP Servers]({{ '/features/remote-mcp/' | relative_url }}).
+- **Remote MCP (Streamable HTTP / SSE)** — Connect to MCP servers running on a network. See [Remote MCP Servers]({{ '/features/remote-mcp/' | relative_url }}).
 
 ```yaml
 toolsets:

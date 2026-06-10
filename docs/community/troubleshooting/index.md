@@ -155,7 +155,7 @@ docker-agent validates config at startup and reports errors with line numbers. C
 ### Toolset validation
 
 - The `path` field is valid for `memory` and `tasks` toolsets, and for the agent-level `cache` block
-- MCP toolsets need either `command` (stdio), `remote` (SSE/HTTP), or `ref` (Docker)
+- MCP toolsets need either `command` (stdio), `remote` (Streamable HTTP/SSE), or `ref` (Docker)
 - Provider names must be one of: `openai`, `anthropic`, `google`, `amazon-bedrock`, `dmr`, etc.
 
 <div class="callout callout-info" markdown="1">
@@ -184,8 +184,8 @@ $ docker agent serve api config.yaml --listen :9090
 For remote MCP servers, verify the endpoint is reachable:
 
 ```bash
-# Test SSE endpoint
-$ curl -v https://mcp-server.example.com/sse
+# Test streamable HTTP endpoint
+$ curl -v https://mcp-server.example.com/mcp
 ```
 
 ### Session isolation
