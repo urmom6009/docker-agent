@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker-agent/pkg/config"
 	latestcfg "github.com/docker/docker-agent/pkg/config/latest"
 	"github.com/docker/docker-agent/pkg/environment"
+	"github.com/docker/docker-agent/pkg/modelsdev"
 	"github.com/docker/docker-agent/pkg/paths"
 	"github.com/docker/docker-agent/pkg/sandbox"
 	"github.com/docker/docker-agent/pkg/sandbox/kit"
@@ -175,6 +176,7 @@ func runInSandbox(ctx context.Context, cmd *cobra.Command, args []string, runCon
 	userHosts := userSandboxAllowlist(ctx)
 
 	printModelsGateway(cmd.OutOrStdout(), runConfig.ModelsGateway)
+	printModelsDevAllowance(cmd.OutOrStdout())
 	printToolInstallAllowance(cmd.OutOrStdout(), kitResult)
 	printAgentNetworkAllowlist(cmd.OutOrStdout(), agentHosts)
 	printUserSandboxAllowlist(cmd.OutOrStdout(), userHosts)
@@ -272,15 +274,18 @@ func dockerAgentArgs(cmd *cobra.Command, args []string, configDir string) []stri
 }
 
 // allowSandboxHosts adds per-sandbox allow-network rules for every
-// host the in-sandbox runtime is known to need: the configured
-// models gateway (when set), the package hosts the auto-installer
-// reaches for (when the kit build identified at least one
-// auto-installable toolset), and any extra hosts the agent author
-// declared in runtime.network_allowlist. The default sandbox proxy
-// denies all of them; without this, the inner agent's first request
-// returns a misleading "403 Blocked by network policy".
+// host the in-sandbox runtime is known to need: the models.dev
+// catalog API (always), the configured models gateway (when set), the
+// package hosts the auto-installer reaches for (when the kit build
+// identified at least one auto-installable toolset), and any extra
+// hosts the agent author declared in runtime.network_allowlist. The
+// default sandbox proxy denies all of them; without this, the inner
+// agent's first request returns a misleading "403 Blocked by network
+// policy".
 //
 // Holes are punched only when the corresponding feature is in play:
+//   - models.dev is always opened — every run resolves model
+//     metadata (limits, pricing, capabilities) against the catalog;
 //   - the gateway host is added only when gatewayURL is non-empty;
 //   - the per-agent install hosts come from the kit build, which
 //     looks each toolset up against the aqua registry and contributes
@@ -300,6 +305,7 @@ func dockerAgentArgs(cmd *cobra.Command, args []string, configDir string) []stri
 // inner and we surface that diagnostic verbatim.
 func allowSandboxHosts(ctx context.Context, backend *sandbox.Backend, name, gatewayURL string, toolInstallHosts, agentHosts, userHosts []string) {
 	var hosts []string
+	hosts = append(hosts, modelsdev.APIHost)
 	hosts = append(hosts, toolInstallHosts...)
 	hosts = append(hosts, agentHosts...)
 	hosts = append(hosts, userHosts...)
@@ -478,6 +484,13 @@ func printModelsGateway(w io.Writer, gateway string) {
 		return
 	}
 	fmt.Fprintf(w, "Models gateway: %s (allowlisting %s in the sandbox proxy)\n", display, host)
+}
+
+// printModelsDevAllowance prints that the models.dev catalog host is
+// always allowlisted in the sandbox proxy, since every run resolves
+// model metadata against it.
+func printModelsDevAllowance(w io.Writer) {
+	fmt.Fprintf(w, "Models catalog: allowlisting %s in the sandbox proxy\n", modelsdev.APIHost)
 }
 
 // printToolInstallAllowance prints a multi-line description of the

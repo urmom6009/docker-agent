@@ -194,6 +194,14 @@ func TestPrintModelsGateway(t *testing.T) {
 	}
 }
 
+func TestPrintModelsDevAllowance(t *testing.T) {
+	t.Parallel()
+
+	var buf strings.Builder
+	printModelsDevAllowance(&buf)
+	assert.Equal(t, "Models catalog: allowlisting models.dev in the sandbox proxy\n", buf.String())
+}
+
 func TestPrintToolInstallAllowance(t *testing.T) {
 	t.Parallel()
 
