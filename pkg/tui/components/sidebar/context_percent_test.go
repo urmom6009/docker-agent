@@ -13,83 +13,39 @@ import (
 func TestContextPercent_SingleSession(t *testing.T) {
 	t.Parallel()
 
-	sess := session.New()
-	sessionState := service.NewSessionState(sess)
-	m := New(sessionState).(*model)
-
-	m.SetTokenUsage(&runtime.TokenUsageEvent{
-		SessionID:    "session-1",
-		AgentContext: runtime.AgentContext{AgentName: "root"},
-		Usage: &runtime.Usage{
-			InputTokens:   5000,
-			OutputTokens:  5000,
-			ContextLength: 10000,
-			ContextLimit:  100000,
-		},
-	})
+	m := newTestSidebar()
+	m.startStream("session-1", "root")
+	m.recordUsage("session-1", "root", 10000, 100000)
 
 	assert.Equal(t, "10%", m.contextPercent())
 }
 
-func TestContextPercent_MultipleSessionsWithCurrentAgent(t *testing.T) {
+// TestContextPercent_TracksActiveSession verifies the percentage follows the
+// active session: the sub-agent's context while it runs, the parent's once it
+// returns.
+func TestContextPercent_TracksActiveSession(t *testing.T) {
 	t.Parallel()
 
-	sess := session.New()
-	sessionState := service.NewSessionState(sess)
-	m := New(sessionState).(*model)
+	m := newTestSidebar()
 
-	// Root agent session
-	m.SetTokenUsage(&runtime.TokenUsageEvent{
-		SessionID:    "session-root",
-		AgentContext: runtime.AgentContext{AgentName: "root"},
-		Usage: &runtime.Usage{
-			InputTokens:   20000,
-			OutputTokens:  10000,
-			ContextLength: 30000,
-			ContextLimit:  100000,
-		},
-	})
+	m.startStream("session-root", "root")
+	m.recordUsage("session-root", "root", 30000, 100000)
 
-	// Child agent session (from transfer_task)
-	m.SetTokenUsage(&runtime.TokenUsageEvent{
-		SessionID:    "session-child",
-		AgentContext: runtime.AgentContext{AgentName: "developer"},
-		Usage: &runtime.Usage{
-			InputTokens:   8000,
-			OutputTokens:  2000,
-			ContextLength: 10000,
-			ContextLimit:  200000,
-		},
-	})
+	m.startStream("session-child", "developer")
+	m.recordUsage("session-child", "developer", 10000, 200000)
+	assert.Equal(t, "5%", m.contextPercent(), "sub-agent context while it runs")
 
-	// Current agent is the child — should show child's percentage
-	m.currentAgent = "developer"
-	assert.Equal(t, "5%", m.contextPercent())
-
-	// Switch back to root agent — should show root's percentage
-	m.currentAgent = "root"
-	assert.Equal(t, "30%", m.contextPercent())
+	m.stopStream()
+	assert.Equal(t, "30%", m.contextPercent(), "parent context after the sub-agent returns")
 }
 
 func TestContextPercent_NoContextLimit(t *testing.T) {
 	t.Parallel()
 
-	sess := session.New()
-	sessionState := service.NewSessionState(sess)
-	m := New(sessionState).(*model)
+	m := newTestSidebar()
+	m.startStream("session-1", "root")
+	m.recordUsage("session-1", "root", 10000, 0) // No context limit
 
-	m.SetTokenUsage(&runtime.TokenUsageEvent{
-		SessionID:    "session-1",
-		AgentContext: runtime.AgentContext{AgentName: "root"},
-		Usage: &runtime.Usage{
-			InputTokens:   5000,
-			OutputTokens:  5000,
-			ContextLength: 10000,
-			ContextLimit:  0, // No context limit
-		},
-	})
-
-	m.currentAgent = "root"
 	assert.Empty(t, m.contextPercent())
 }
 
@@ -110,65 +66,72 @@ func TestContextPercent_FallbackToSingleSession(t *testing.T) {
 	sessionState := service.NewSessionState(sess)
 	m := New(sessionState).(*model)
 
-	// Session with no agent mapping (e.g., restored from persistence)
+	// Session with no active stream (e.g., restored from persistence)
 	m.sessionUsage["session-1"] = &runtime.Usage{
 		InputTokens:   5000,
 		OutputTokens:  5000,
 		ContextLength: 10000,
 		ContextLimit:  100000,
 	}
-	// No sessionAgent entry, no currentAgent set
 
 	assert.Equal(t, "10%", m.contextPercent())
 }
 
-// TestContextPercent_StaleSessionIDAfterSubAgent verifies that contextPercent()
-// returns the correct value throughout a transfer_task round-trip.
-//
-// After a sub-agent's stream stops, the parent's AgentInfo event restores
-// currentAgent to the parent while currentSessionID still references the child
-// session. The sidebar must detect this stale ID and fall back to an
-// agent-name lookup so the displayed context % matches the parent.
-func TestContextPercent_StaleSessionIDAfterSubAgent(t *testing.T) {
+// TestContextPercent_StableDuringSubAgent verifies the percentage does not
+// flicker while a sub-agent is active: it consistently reflects the
+// sub-session, independent of which agent last emitted an event.
+func TestContextPercent_StableDuringSubAgent(t *testing.T) {
+	t.Parallel()
+
+	m := newTestSidebar()
+
+	m.startStream("session-root", "root")
+	m.recordUsage("session-root", "root", 30000, 100000)
+
+	m.startStream("session-child", "developer")
+	m.recordUsage("session-child", "developer", 50000, 100000)
+
+	m.currentAgent = "root"
+	for range 100 {
+		assert.Equal(t, "50%", m.contextPercent(), "contextPercent() flickered while a sub-agent was running")
+	}
+}
+
+// TestContextPercent_RoundTripDelegations replays two transfer_task round-trips
+// and asserts the percentage tracks the active session at every step.
+func TestContextPercent_RoundTripDelegations(t *testing.T) {
 	t.Parallel()
 
 	m := newTestSidebar()
 
 	// Parent starts.
-	m.setAgent("root")
 	m.startStream("parent-session", "root")
 	m.recordUsage("parent-session", "root", 30000, 100000)
 	assert.Equal(t, "30%", m.contextPercent(), "parent at 30%%")
 
-	// --- transfer_task to "developer" ---
-	m.setAgent("developer")
+	// --- transfer_task to "developer" (nested stream) ---
 	m.startStream("child-session-1", "developer")
 	m.recordUsage("child-session-1", "developer", 10000, 200000)
 	assert.Equal(t, "5%", m.contextPercent(), "developer sub-agent at 5%%")
 
 	m.stopStream()
-	m.setAgent("root") // parent restored
-
-	// Key assertion: stale currentSessionID must not cause a wrong lookup.
-	assert.Equal(t, "30%", m.contextPercent(),
-		"after sub-agent returns, context %% must reflect the parent (30%%), not the child (5%%)")
+	assert.Equal(t, "30%", m.contextPercent(), "after sub-agent returns, back to the parent (30%%)")
 
 	// --- transfer_task to "researcher" (second round-trip) ---
-	m.setAgent("researcher")
 	m.startStream("child-session-2", "researcher")
 	m.recordUsage("child-session-2", "researcher", 80000, 100000)
 	assert.Equal(t, "80%", m.contextPercent(), "researcher sub-agent at 80%%")
 
 	m.stopStream()
-	m.setAgent("root") // parent restored again
+	assert.Equal(t, "30%", m.contextPercent(), "after second sub-agent returns, back to the parent (30%%)")
 
-	assert.Equal(t, "30%", m.contextPercent(),
-		"after second sub-agent returns, context %% must still reflect the parent (30%%)")
-
-	// Parent resumes with a new stream iteration.
-	m.startStream("parent-session", "root")
+	// Parent resumes with more usage on the main session.
 	m.recordUsage("parent-session", "root", 40000, 100000)
 	assert.Equal(t, "40%", m.contextPercent(), "parent resumes at 40%%")
+
+	// Parent's outermost stream stops; the main session remains the fallback.
+	m.stopStream()
+	assert.Equal(t, "40%", m.contextPercent(), "idle: still the main session")
 }
 
 // testSidebar wraps *model with helpers that mirror the sidebar field mutations
@@ -185,17 +148,20 @@ func newTestSidebar() *testSidebar {
 	}
 }
 
-func (s *testSidebar) setAgent(name string) {
-	s.currentAgent = name
-}
-
 func (s *testSidebar) startStream(sessionID, agentName string) {
+	s.currentAgent = agentName
 	s.workingAgent = agentName
-	s.currentSessionID = sessionID
+	if len(s.sessionStack) == 0 {
+		s.rootSessionID = sessionID
+	}
+	s.sessionStack = append(s.sessionStack, sessionID)
 }
 
 func (s *testSidebar) stopStream() {
 	s.workingAgent = ""
+	if n := len(s.sessionStack); n > 0 {
+		s.sessionStack = s.sessionStack[:n-1]
+	}
 }
 
 func (s *testSidebar) recordUsage(sessionID, agentName string, contextLen, contextLimit int64) {
@@ -207,6 +173,17 @@ func (s *testSidebar) recordUsage(sessionID, agentName string, contextLen, conte
 			OutputTokens:  contextLen / 2,
 			ContextLength: contextLen,
 			ContextLimit:  contextLimit,
+		},
+	})
+}
+
+func (s *testSidebar) recordUsageTokens(sessionID, agentName string, input, output int64) {
+	s.SetTokenUsage(&runtime.TokenUsageEvent{
+		SessionID:    sessionID,
+		AgentContext: runtime.AgentContext{AgentName: agentName},
+		Usage: &runtime.Usage{
+			InputTokens:  input,
+			OutputTokens: output,
 		},
 	})
 }

@@ -58,6 +58,10 @@ type Model interface {
 	SetQueuedMessages(messages ...string)
 	GetSize() (width, height int)
 	LoadFromSession(sess *session.Session)
+	// ResetStreamTracking clears the active-stream stack so a new top-level run
+	// starts from a clean slate, even if a previous run's stream events were
+	// left unbalanced (e.g. cancelled without a StreamCancelledMsg).
+	ResetStreamTracking()
 	// HandleClick checks if click is on the star or title and returns true if handled
 	HandleClick(x, y int) bool
 	// HandleClickType returns the type of click (star, title, agent, or none).
@@ -113,7 +117,6 @@ type model struct {
 	yPos               int                       // absolute y position on screen
 	layoutCfg          LayoutConfig              // layout configuration for spacing
 	sessionUsage       map[string]*runtime.Usage // sessionID -> latest usage snapshot
-	sessionAgent       map[string]string         // sessionID -> agent name
 	todoComp           *todotool.SidebarComponent
 	mcpInit            bool
 	ragIndexing        map[string]*ragIndexingState // strategy name -> indexing state
@@ -132,8 +135,9 @@ type model struct {
 	availableSkills    int
 	toolsLoading       bool // true when more tools may still be loading
 	sessionState       *service.SessionState
-	workingAgent       string // Name of the agent currently working (empty if none)
-	currentSessionID   string // Session ID of the currently active stream
+	workingAgent       string   // Name of the agent currently working (empty if none)
+	sessionStack       []string // Active stream session IDs; the top is the active (deepest) session
+	rootSessionID      string   // Main (top-level) session, shown when no stream is active
 	scrollview         *scrollview.Model
 	workingDirectory   string
 	gitBranchName      string   // current git branch, empty if not in a repo
@@ -171,7 +175,6 @@ func New(sessionState *service.SessionState) Model {
 		layoutCfg:    DefaultLayoutConfig(),
 		height:       24,
 		sessionUsage: make(map[string]*runtime.Usage),
-		sessionAgent: make(map[string]string),
 		todoComp:     todotool.NewSidebarComponent(),
 		spinner:      spinner.New(spinner.ModeSpinnerOnly, styles.SpinnerDotsHighlightStyle),
 		sessionTitle: "New session",
@@ -235,7 +238,6 @@ func (m *model) SetTokenUsage(event *runtime.TokenUsageEvent) {
 	// Store/replace by session ID (each event has cumulative totals for that session)
 	usage := *event.Usage
 	m.sessionUsage[event.SessionID] = &usage
-	m.sessionAgent[event.SessionID] = event.AgentName
 
 	// Mark session as having content once we receive token usage
 	m.sessionHasContent = true
@@ -457,6 +459,11 @@ func (m *model) LoadFromSession(sess *session.Session) {
 		}
 	}
 
+	// The restored session is the main session until a stream starts. A freshly
+	// loaded session has no in-flight streams, so clear any stale stack entries.
+	m.rootSessionID = sess.ID
+	m.sessionStack = nil
+
 	// Load session title
 	if sess.Title != "" {
 		m.sessionTitle = sess.Title
@@ -477,6 +484,20 @@ func (m *model) LoadFromSession(sess *session.Session) {
 	m.invalidateCache()
 }
 
+// ResetStreamTracking clears the active-stream stack. It is called when a new
+// top-level run begins so leaked entries from a previous run that ended without
+// a balanced StreamStoppedEvent (e.g. a context cancel without a
+// StreamCancelledMsg) cannot pile up and pin the panel to a stale sub-session.
+// rootSessionID is preserved so the idle display stays valid until the next
+// stream starts.
+func (m *model) ResetStreamTracking() {
+	if len(m.sessionStack) == 0 {
+		return
+	}
+	m.sessionStack = nil
+	m.invalidateCache()
+}
+
 // formatTokenCount formats a token count with K/M suffixes for readability
 func formatTokenCount(count int64) string {
 	if count >= 1000000 {
@@ -491,34 +512,28 @@ func formatCost(cost float64) string {
 	return fmt.Sprintf("%.2f", cost)
 }
 
-// currentSessionUsage returns the usage snapshot for the current agent's session.
-// It uses a 3-tier lookup: session ID → agent name → single-session fallback.
-func (m *model) currentSessionUsage() (*runtime.Usage, bool) {
-	// Direct lookup by current session ID, skipping when the session belongs
-	// to a different agent (stale after a sub-agent's stream stops while
-	// currentAgent has already been restored to the parent).
-	if m.currentSessionID != "" {
-		owner := m.sessionAgent[m.currentSessionID]
-		stale := owner != "" && m.currentAgent != "" && owner != m.currentAgent
-		if !stale {
-			if usage, ok := m.sessionUsage[m.currentSessionID]; ok {
-				return usage, true
-			}
+// activeSessionID returns the session whose usage the sidebar should display:
+// the deepest currently-running stream, or the main session when idle. It is
+// derived from the stream stack rather than the (rapidly toggling) current
+// agent, so the displayed totals stay stable while a sub-agent runs instead of
+// flickering between the parent and sub-session.
+func (m *model) activeSessionID() string {
+	if n := len(m.sessionStack); n > 0 {
+		return m.sessionStack[n-1]
+	}
+	return m.rootSessionID
+}
+
+// activeSessionUsage returns the usage snapshot for the active session.
+func (m *model) activeSessionUsage() (*runtime.Usage, bool) {
+	if id := m.activeSessionID(); id != "" {
+		if usage, ok := m.sessionUsage[id]; ok {
+			return usage, true
 		}
 	}
 
-	// Fallback: search by current agent name.
-	if m.currentAgent != "" {
-		for sessionID, agentName := range m.sessionAgent {
-			if agentName == m.currentAgent {
-				if usage, ok := m.sessionUsage[sessionID]; ok {
-					return usage, true
-				}
-			}
-		}
-	}
-
-	// Fallback: if there's exactly one session, use it.
+	// Fallback: if there's exactly one session, use it (e.g. restored from
+	// persistence before any stream has started).
 	if len(m.sessionUsage) == 1 {
 		for _, usage := range m.sessionUsage {
 			return usage, true
@@ -527,17 +542,17 @@ func (m *model) currentSessionUsage() (*runtime.Usage, bool) {
 	return nil, false
 }
 
-// currentSessionTokens returns the token count for the current agent's session.
-func (m *model) currentSessionTokens() (tokens int64, found bool) {
-	if usage, ok := m.currentSessionUsage(); ok {
+// activeSessionTokens returns the token count for the active session.
+func (m *model) activeSessionTokens() (tokens int64, found bool) {
+	if usage, ok := m.activeSessionUsage(); ok {
 		return usage.InputTokens + usage.OutputTokens, true
 	}
 	return 0, false
 }
 
-// contextPercent returns a context usage percentage string for the current agent's session.
+// contextPercent returns a context usage percentage string for the active session.
 func (m *model) contextPercent() string {
-	if usage, ok := m.currentSessionUsage(); ok && usage.ContextLimit > 0 {
+	if usage, ok := m.activeSessionUsage(); ok && usage.ContextLimit > 0 {
 		percent := (float64(usage.ContextLength) / float64(usage.ContextLimit)) * 100
 		return fmt.Sprintf("%.0f%%", percent)
 	}
@@ -700,7 +715,13 @@ func (m *model) Update(msg tea.Msg) (layout.Model, tea.Cmd) {
 		// New stream starting - reset cancelled flag and enable spinner
 		m.streamCancelled = false
 		m.workingAgent = msg.AgentName
-		m.currentSessionID = msg.SessionID
+		// Track the active session via a stack: the outermost stream owns the
+		// main session; nested sub-agent streams are pushed on top so their
+		// usage is shown while they run, then popped when they stop.
+		if len(m.sessionStack) == 0 {
+			m.rootSessionID = msg.SessionID
+		}
+		m.sessionStack = append(m.sessionStack, msg.SessionID)
 		// If title hasn't been generated yet, show the title generation spinner
 		if !m.titleGenerated {
 			m.titleRegenerating = true
@@ -710,6 +731,9 @@ func (m *model) Update(msg tea.Msg) (layout.Model, tea.Cmd) {
 		return m, cmd
 	case *runtime.StreamStoppedEvent:
 		m.workingAgent = ""
+		if n := len(m.sessionStack); n > 0 {
+			m.sessionStack = m.sessionStack[:n-1]
+		}
 		m.invalidateCache()
 		m.stopSpinner() // Will only stop if no other state needs it
 		return m, nil
@@ -738,6 +762,7 @@ func (m *model) Update(msg tea.Msg) (layout.Model, tea.Cmd) {
 		// Clear all spinner-driving state when stream is cancelled via ESC
 		m.streamCancelled = true
 		m.workingAgent = ""
+		m.sessionStack = nil
 		m.toolsLoading = false
 		m.mcpInit = false
 		m.titleRegenerating = false
@@ -1077,7 +1102,7 @@ func (m *model) computeUsageStats() usageStats {
 		s.totalCost += usage.Cost
 		s.sessionCount++
 	}
-	s.tokens, _ = m.currentSessionTokens()
+	s.tokens, _ = m.activeSessionTokens()
 	s.contextPct = m.contextPercent()
 	return s
 }
