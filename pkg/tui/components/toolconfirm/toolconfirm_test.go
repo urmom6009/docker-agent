@@ -1,0 +1,98 @@
+package toolconfirm
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/docker/docker-agent/pkg/runtime"
+	"github.com/docker/docker-agent/pkg/tools"
+)
+
+func shellCall(cmd string) tools.ToolCall {
+	return tools.ToolCall{
+		Function: tools.FunctionCall{
+			Name:      "shell",
+			Arguments: `{"cmd":` + jsonString(cmd) + `}`,
+		},
+	}
+}
+
+func jsonString(s string) string {
+	return `"` + s + `"`
+}
+
+func TestBuildPermissionPattern(t *testing.T) {
+	tests := []struct {
+		name string
+		call tools.ToolCall
+		want string
+	}{
+		{
+			name: "shell extracts the command",
+			call: shellCall("ls -la /tmp"),
+			want: "shell:cmd=ls*",
+		},
+		{
+			name: "shell with single word",
+			call: shellCall("ls"),
+			want: "shell:cmd=ls*",
+		},
+		{
+			name: "shell with leading whitespace and newlines",
+			call: shellCall(`\tgit\nstatus`), // decodes to "\tgit\nstatus"
+			want: "shell:cmd=git*",
+		},
+		{
+			name: "shell with empty command falls back to tool name",
+			call: shellCall(""),
+			want: "shell",
+		},
+		{
+			name: "shell with invalid arguments falls back to tool name",
+			call: tools.ToolCall{Function: tools.FunctionCall{Name: "shell", Arguments: "not json"}},
+			want: "shell",
+		},
+		{
+			name: "other tools use the tool name",
+			call: tools.ToolCall{Function: tools.FunctionCall{Name: "write_file", Arguments: `{"path":"/x"}`}},
+			want: "write_file",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, BuildPermissionPattern(tt.call))
+		})
+	}
+}
+
+func TestAlwaysAllowLabel(t *testing.T) {
+	assert.Equal(t, "always allow ls*", AlwaysAllowLabel("shell:cmd=ls*"))
+	assert.Equal(t, "always allow write_file", AlwaysAllowLabel("write_file"))
+}
+
+func TestOptionsHelpUsesThePattern(t *testing.T) {
+	opts := OptionsHelp("shell:cmd=rm*")
+	require.Len(t, opts, 8)
+	assert.Equal(t, []string{"Y", "yes", "N", "no", "T", "always allow rm*", "A", "all tools"}, opts)
+}
+
+func TestDecisionResume(t *testing.T) {
+	assert.Equal(t, runtime.ResumeApprove(), Approve.Resume("", ""))
+	assert.Equal(t, runtime.ResumeApproveTool("shell:cmd=ls*"), ApproveTool.Resume("shell:cmd=ls*", ""))
+	assert.Equal(t, runtime.ResumeApproveSession(), ApproveSession.Resume("", ""))
+	assert.Equal(t, runtime.ResumeReject("too risky"), Reject.Resume("", "too risky"))
+}
+
+func TestRejectionReasonsAreStable(t *testing.T) {
+	reasons := RejectionReasons()
+	require.Len(t, reasons, 4)
+	ids := make([]string, 0, len(reasons))
+	for _, r := range reasons {
+		require.NotEmpty(t, r.Label)
+		require.NotEmpty(t, r.Value)
+		ids = append(ids, r.ID)
+	}
+	assert.Equal(t, []string{"bad_args", "wrong_tool", "unsafe", "clarify"}, ids)
+}
