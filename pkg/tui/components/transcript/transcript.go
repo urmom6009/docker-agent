@@ -264,3 +264,12 @@ func (t *Transcript) StopAnimations() {
 		animation.StopView(v)
 	}
 }
+
+// Messages returns the transcript's messages, oldest first. The slice is
+// the transcript's own backing store: callers must treat it as read-only
+// (mutating entries would desync them from their rendered views). It gives
+// embedders observability — host tests asserting on conversation structure,
+// or persistence of the chat — without growing the mutation surface.
+func (t *Transcript) Messages() []*types.Message {
+	return t.msgs
+}

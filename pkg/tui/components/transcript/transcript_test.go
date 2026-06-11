@@ -233,3 +233,17 @@ func TestTransferTaskGetsSeparator(t *testing.T) {
 	// Unlike other consecutive tool calls, a handoff stands apart.
 	assert.Contains(t, tr.Render(80), "\n\n")
 }
+
+func TestMessages(t *testing.T) {
+	tr := newTestTranscript()
+
+	assert.Empty(t, tr.Messages())
+
+	_ = tr.Append(types.User("hello"))
+	_ = tr.AppendToLastMessage(testAgent, "hi")
+
+	msgs := tr.Messages()
+	require.Len(t, msgs, 2)
+	assert.Equal(t, types.MessageTypeUser, msgs[0].Type)
+	assert.Equal(t, "hi", msgs[1].Content)
+}
