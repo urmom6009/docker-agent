@@ -165,6 +165,14 @@ toolsets:
     args: ["mcp"]
 ```
 
+### Checksum Verification
+
+Downloaded binaries are **checksum-verified** before installation. Verification fails closed: if a checksum is advertised in the aqua registry manifest but does not match the downloaded archive (or the manifest is missing entirely), the install is aborted and an error is returned. Checksum types that are unsupported or too weak are skipped with a warning rather than causing a hard failure.
+
+### version_overrides Resolution
+
+The auto-installer correctly resolves **`version_overrides`** entries in the aqua registry. Many common tools (for example, `fzf`) keep their package configuration — including download URLs and checksums — under `version_overrides` rather than at the top level of their registry entry. These tools previously failed to install silently; they are now handled correctly.
+
 ### Disabling Auto-Install
 
 **Per toolset** — set `version` to `"false"` or `"off"`:
