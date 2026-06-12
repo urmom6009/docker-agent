@@ -262,7 +262,7 @@ toolsets:
 | Property | Type | Description |
 | --- | --- | --- |
 | `profile` | string | One of `resilient` (default), `strict`, `best-effort`. Picks defaults for every other field. |
-| `restart` | string | When the supervisor should reconnect after a disconnect: `never`, `on_failure` (default), or `always`. |
+| `restart` | string | When the supervisor should reconnect after a disconnect: `never`, `on_failure` (default), or `always`. For **remote** MCP toolsets (Streamable HTTP / SSE), `on_failure` is automatically promoted to `always` so idle-timeout closes reconnect gracefully — `never` is still honored. |
 | `max_restarts` | int | Maximum consecutive restart attempts before the toolset is marked `Failed`. `0` uses the profile default (5); `-1` means unlimited. |
 | `backoff.initial` | duration | First wait between attempts (Go duration: `500ms`, `1s`, …). Default: `1s`. |
 | `backoff.max` | duration | Cap on the wait between attempts. Default: `32s`. |

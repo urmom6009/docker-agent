@@ -52,6 +52,12 @@ For full configuration details, see the [Tool Config]({{ '/configuration/tools/'
 
 Set `allow_private_ips: true` on a remote MCP toolset only when the MCP server or its OAuth registration/token endpoints intentionally resolve to private, loopback, or link-local addresses. The default blocks those OAuth helper requests to reduce SSRF risk.
 
+<div class="callout callout-info" markdown="1">
+<div class="callout-title">Automatic reconnection after idle timeouts
+</div>
+  <p>Remote MCP connections (Streamable HTTP / SSE) automatically reconnect after the server closes an idle connection — no configuration needed. Services like Notion and Linear close idle connections periodically; docker-agent detects the clean close and reconnects with exponential backoff. To tune reconnect behaviour or disable reconnection entirely, use the <a href="{{ '/configuration/tools/#toolset-lifecycle' | relative_url }}"><code>lifecycle</code> block</a>.</p>
+</div>
+
 ### OAuth for servers without Dynamic Client Registration
 
 Most remote MCP servers that require OAuth support [Dynamic Client Registration (RFC 7591)]({{ 'https://datatracker.ietf.org/doc/html/rfc7591' }}) — no configuration is needed, docker-agent handles the flow for you.

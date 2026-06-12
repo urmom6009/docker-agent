@@ -217,7 +217,7 @@ See [Per-Toolset Model Routing]({{ '/configuration/tools/#per-toolset-model-rout
 
 ### Lifecycle (auto-restart, profiles)
 
-Local stdio and remote MCP servers are supervised: crashed servers reconnect automatically with exponential backoff. Tune the policy with the `lifecycle` block:
+Local stdio and remote MCP servers are supervised: crashed servers reconnect automatically with exponential backoff. **Remote** MCP servers (Streamable HTTP / SSE) also reconnect after idle/clean connection closes — services like Notion and Linear periodically close idle connections, and docker-agent reconnects transparently. Tune the policy with the `lifecycle` block:
 
 ```yaml
 toolsets:
