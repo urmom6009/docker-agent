@@ -3,7 +3,10 @@
 // this package instead of hard-coding effort strings.
 package effort
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // Level represents a thinking effort level.
 type Level string
@@ -75,63 +78,89 @@ func ValidNames() string {
 }
 
 // ---------------------------------------------------------------------------
-// Thinking-level cycling (TUI shift+tab)
+// Capability-driven level selection (TUI shift+tab cycling)
 // ---------------------------------------------------------------------------
 
-// thinkingCycles maps a normalised provider bucket to the ordered list of
-// thinking-effort levels the TUI cycles through with shift+tab. Each cycle
-// starts with None (thinking off) and otherwise spans the full range of
-// effort levels the provider's API accepts (see the per-provider mapping
-// helpers below). Not every model supports the highest tiers (xhigh, max);
-// cycling onto an unsupported tier is recoverable by cycling again.
-var thinkingCycles = map[string][]Level{
-	"openai":    {None, Minimal, Low, Medium, High, XHigh},
-	"anthropic": {None, Low, Medium, High, XHigh, Max},
-	"google":    {None, Minimal, Low, Medium, High},
-}
+// orderedLevels is the canonical low-to-high ordering of selectable
+// thinking-effort levels. None (thinking off) always sorts first.
+var orderedLevels = []Level{None, Minimal, Low, Medium, High, XHigh, Max}
 
-// defaultThinkingCycle is used for providers without a dedicated cycle.
-var defaultThinkingCycle = []Level{None, Low, Medium, High}
+// explicitOnlyLevels are the top-tier levels that only a few models accept;
+// they are offered only when a [LevelMap] explicitly declares support, so
+// models without capability data never cycle onto a tier their API rejects.
+var explicitOnlyLevels = map[Level]bool{XHigh: true, Max: true}
 
-// ThinkingCycle returns the ordered list of selectable thinking-effort
-// levels for the given provider type. The provider type is matched
-// case-insensitively and tolerant of aliases (e.g. "amazon-bedrock" maps
-// onto the underlying Anthropic family).
-func ThinkingCycle(providerType string) []Level {
-	if c, ok := thinkingCycles[providerBucket(providerType)]; ok {
-		return c
+// LevelMap describes per-model thinking-level support. A level mapped to
+// true is supported, a level mapped to false is explicitly unsupported, and
+// an absent level is unspecified: supported by default, except for the
+// explicit-only top tiers.
+type LevelMap map[Level]bool
+
+// SupportedLevels returns the ordered subset of thinking-effort levels a
+// model supports, derived from its reasoning capability and level map.
+// Models that cannot reason only support None. A nil map is valid and
+// yields every level except the explicit-only top tiers.
+func SupportedLevels(reasoning bool, m LevelMap) []Level {
+	if !reasoning {
+		return []Level{None}
 	}
-	return defaultThinkingCycle
+	supported := make([]Level, 0, len(orderedLevels))
+	for _, l := range orderedLevels {
+		v, present := m[l]
+		if present && !v {
+			continue
+		}
+		if !present && explicitOnlyLevels[l] {
+			continue
+		}
+		supported = append(supported, l)
+	}
+	return supported
 }
 
-// NextThinkingLevel returns the level following current in the provider's
-// thinking cycle, wrapping back to the first level. When current is not in
-// the cycle the first level is returned.
-func NextThinkingLevel(providerType string, current Level) Level {
-	cycle := ThinkingCycle(providerType)
-	for i, l := range cycle {
-		if l == current {
-			return cycle[(i+1)%len(cycle)]
+// Clamp maps requested onto the nearest level in supported. When requested
+// is already supported it is returned unchanged. Otherwise the canonical
+// ordering is scanned upward (toward higher effort) first and then downward,
+// so a too-precise request degrades to the closest tier the model accepts.
+// Falls back to the first supported level, or None when supported is empty.
+func Clamp(supported []Level, requested Level) Level {
+	if slices.Contains(supported, requested) {
+		return requested
+	}
+	first := None
+	if len(supported) > 0 {
+		first = supported[0]
+	}
+	idx := slices.Index(orderedLevels, requested)
+	if idx == -1 {
+		return first
+	}
+	for i := idx + 1; i < len(orderedLevels); i++ {
+		if slices.Contains(supported, orderedLevels[i]) {
+			return orderedLevels[i]
 		}
 	}
-	return cycle[0]
+	for i := idx - 1; i >= 0; i-- {
+		if slices.Contains(supported, orderedLevels[i]) {
+			return orderedLevels[i]
+		}
+	}
+	return first
 }
 
-// providerBucket normalises a provider type to one of the buckets used by
-// thinkingCycles. Returns the lowercased provider type unchanged when no
-// alias matches (callers fall back to the default cycle).
-func providerBucket(providerType string) string {
-	p := strings.ToLower(strings.TrimSpace(providerType))
-	switch {
-	case strings.Contains(p, "anthropic"), strings.Contains(p, "claude"), strings.Contains(p, "bedrock"):
-		return "anthropic"
-	case strings.Contains(p, "google"), strings.Contains(p, "gemini"), strings.Contains(p, "vertex"):
-		return "google"
-	case strings.Contains(p, "openai"), strings.Contains(p, "azure"):
-		return "openai"
-	default:
-		return p
+// NextSupportedLevel returns the level following current within supported,
+// wrapping back to the first level. When current is not in supported (or
+// supported is empty) the first supported level (or None) is returned.
+func NextSupportedLevel(supported []Level, current Level) Level {
+	if len(supported) == 0 {
+		return None
 	}
+	for i, l := range supported {
+		if l == current {
+			return supported[(i+1)%len(supported)]
+		}
+	}
+	return supported[0]
 }
 
 // ---------------------------------------------------------------------------

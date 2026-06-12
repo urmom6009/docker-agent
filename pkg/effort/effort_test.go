@@ -185,80 +185,130 @@ func TestIsValidAdaptive(t *testing.T) {
 	}
 }
 
-func TestThinkingCycle(t *testing.T) {
+func TestSupportedLevels(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		provider string
-		want     []Level
+		name      string
+		reasoning bool
+		levelMap  LevelMap
+		want      []Level
 	}{
-		{"openai", []Level{None, Minimal, Low, Medium, High, XHigh}},
-		{"openai_responses", []Level{None, Minimal, Low, Medium, High, XHigh}},
-		{"azure", []Level{None, Minimal, Low, Medium, High, XHigh}},
-		{"anthropic", []Level{None, Low, Medium, High, XHigh, Max}},
-		{"amazon-bedrock", []Level{None, Low, Medium, High, XHigh, Max}},
-		{"google", []Level{None, Minimal, Low, Medium, High}},
-		{"gemini", []Level{None, Minimal, Low, Medium, High}},
-		{"vertexai", []Level{None, Minimal, Low, Medium, High}},
-		{"dmr", []Level{None, Low, Medium, High}},
-		{"unknown", []Level{None, Low, Medium, High}},
-		{"  OpenAI  ", []Level{None, Minimal, Low, Medium, High, XHigh}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.provider, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tt.want, ThinkingCycle(tt.provider))
-		})
-	}
-}
-
-func TestNextThinkingLevel(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		provider string
-		current  Level
-		want     Level
-	}{
-		{"openai none to minimal", "openai", None, Minimal},
-		{"openai high to xhigh", "openai", High, XHigh},
-		{"openai xhigh wraps to none", "openai", XHigh, None},
-		{"openai unknown level resets to first", "openai", Max, None},
-		{"anthropic none to low", "anthropic", None, Low},
-		{"anthropic high to xhigh", "anthropic", High, XHigh},
-		{"anthropic xhigh to max", "anthropic", XHigh, Max},
-		{"anthropic max wraps to none", "anthropic", Max, None},
-		{"anthropic minimal not in cycle resets to none", "anthropic", Minimal, None},
-		{"default medium to high", "dmr", Medium, High},
-		{"default high wraps to none", "dmr", High, None},
+		{
+			name:      "non-reasoning model only supports none",
+			reasoning: false,
+			levelMap:  LevelMap{XHigh: true},
+			want:      []Level{None},
+		},
+		{
+			name:      "nil map yields defaults without top tiers",
+			reasoning: true,
+			levelMap:  nil,
+			want:      []Level{None, Minimal, Low, Medium, High},
+		},
+		{
+			name:      "false entry excludes level",
+			reasoning: true,
+			levelMap:  LevelMap{Minimal: false},
+			want:      []Level{None, Low, Medium, High},
+		},
+		{
+			name:      "xhigh requires explicit support",
+			reasoning: true,
+			levelMap:  LevelMap{XHigh: true},
+			want:      []Level{None, Minimal, Low, Medium, High, XHigh},
+		},
+		{
+			name:      "max requires explicit support",
+			reasoning: true,
+			levelMap:  LevelMap{Max: true},
+			want:      []Level{None, Minimal, Low, Medium, High, Max},
+		},
+		{
+			name:      "explicit false top tier stays excluded",
+			reasoning: true,
+			levelMap:  LevelMap{XHigh: false, Max: false},
+			want:      []Level{None, Minimal, Low, Medium, High},
+		},
+		{
+			name:      "anthropic-style map without minimal",
+			reasoning: true,
+			levelMap:  LevelMap{Minimal: false, XHigh: true, Max: true},
+			want:      []Level{None, Low, Medium, High, XHigh, Max},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.want, NextThinkingLevel(tt.provider, tt.current))
+			assert.Equal(t, tt.want, SupportedLevels(tt.reasoning, tt.levelMap))
 		})
 	}
 }
 
-// TestNextThinkingLevel_FullCycle walks every provider cycle end-to-end and
-// asserts that repeatedly advancing returns to the starting level.
-func TestNextThinkingLevel_FullCycle(t *testing.T) {
+func TestClamp(t *testing.T) {
 	t.Parallel()
 
-	for _, provider := range []string{"openai", "anthropic", "google", "dmr"} {
-		t.Run(provider, func(t *testing.T) {
+	tests := []struct {
+		name      string
+		supported []Level
+		requested Level
+		want      Level
+	}{
+		{"supported level returned unchanged", []Level{None, Low, Medium, High}, Medium, Medium},
+		{"clamps upward first", []Level{None, Low, High}, Medium, High},
+		{"clamps downward when nothing above", []Level{None, Low, Medium, High}, Max, High},
+		{"minimal clamps up to low", []Level{None, Low, Medium}, Minimal, Low},
+		{"unknown level falls back to first", []Level{None, Low}, Level("bogus"), None},
+		{"empty supported falls back to none", nil, High, None},
+		{"none clamps up when unsupported", []Level{Low, Medium}, None, Low},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			cycle := ThinkingCycle(provider)
-			cur := cycle[0]
-			for range cycle {
-				cur = NextThinkingLevel(provider, cur)
-			}
-			assert.Equal(t, cycle[0], cur, "advancing len(cycle) times returns to start")
+			assert.Equal(t, tt.want, Clamp(tt.supported, tt.requested))
 		})
 	}
+}
+
+func TestNextSupportedLevel(t *testing.T) {
+	t.Parallel()
+
+	supported := []Level{None, Low, Medium, High}
+
+	tests := []struct {
+		name    string
+		levels  []Level
+		current Level
+		want    Level
+	}{
+		{"advances to next", supported, Low, Medium},
+		{"wraps to first", supported, High, None},
+		{"unknown current resets to first", supported, XHigh, None},
+		{"empty supported returns none", nil, High, None},
+		{"single level cycles onto itself", []Level{None}, None, None},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, NextSupportedLevel(tt.levels, tt.current))
+		})
+	}
+}
+
+// TestNextSupportedLevel_FullCycle advances through a capability-derived
+// level list end-to-end and asserts it returns to the starting level.
+func TestNextSupportedLevel_FullCycle(t *testing.T) {
+	t.Parallel()
+
+	supported := SupportedLevels(true, LevelMap{Minimal: false, XHigh: true, Max: true})
+	cur := supported[0]
+	for range supported {
+		cur = NextSupportedLevel(supported, cur)
+	}
+	assert.Equal(t, supported[0], cur, "advancing len(supported) times returns to start")
 }
 
 func TestString(t *testing.T) {

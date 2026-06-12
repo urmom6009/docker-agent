@@ -200,6 +200,58 @@ func TestCycleAgentThinkingLevel_AdvancesAndOverrides(t *testing.T) {
 	assert.Equal(t, effort.Low, level)
 }
 
+// TestCycleAgentThinkingLevel_PerModelTopTier verifies that cycling only
+// offers the top effort tiers to the Claude models whose API accepts them.
+func TestCycleAgentThinkingLevel_PerModelTopTier(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		modelID   string
+		wantCycle []effort.Level
+	}{
+		{
+			name:      "sonnet never reaches xhigh or max",
+			modelID:   "claude-sonnet-4-5",
+			wantCycle: []effort.Level{effort.Low, effort.Medium, effort.High, effort.None},
+		},
+		{
+			name:      "opus 4.6 tops out at max",
+			modelID:   "claude-opus-4-6",
+			wantCycle: []effort.Level{effort.Low, effort.Medium, effort.High, effort.Max, effort.None},
+		},
+		{
+			name:      "opus 4.7 tops out at xhigh",
+			modelID:   "claude-opus-4-7",
+			wantCycle: []effort.Level{effort.Low, effort.Medium, effort.High, effort.XHigh, effort.None},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := newConfigProvider(latest.ModelConfig{Provider: "anthropic", Model: tt.modelID})
+			root := agent.New("root", "test", agent.WithModel(model))
+			r := &LocalRuntime{
+				team: team.New(team.WithAgents(root)),
+				modelSwitcherCfg: &ModelSwitcherConfig{
+					EnvProvider: environment.NewMapEnvProvider(map[string]string{"ANTHROPIC_API_KEY": "sk-test"}),
+				},
+			}
+
+			// Walk one full cycle starting from None and record every level.
+			var got []effort.Level
+			for range tt.wantCycle {
+				level, err := r.CycleAgentThinkingLevel(t.Context(), "root")
+				require.NoError(t, err)
+				got = append(got, level)
+			}
+			assert.Equal(t, tt.wantCycle, got)
+		})
+	}
+}
+
 func TestIsInlineAlloySpec(t *testing.T) {
 	t.Parallel()
 

@@ -180,7 +180,8 @@ func (r *LocalRuntime) SupportsModelSwitching() bool {
 
 // CycleAgentThinkingLevel implements [Runtime.CycleAgentThinkingLevel] for
 // LocalRuntime. It reads the agent's current effective model, advances the
-// thinking-effort level by one step in that provider's cycle, re-creates the
+// thinking-effort level by one step through the levels that specific model
+// supports (see [modelinfo.SupportedThinkingLevels]), re-creates the
 // provider(s) with the new level, and installs them as a runtime override.
 func (r *LocalRuntime) CycleAgentThinkingLevel(ctx context.Context, agentName string) (effort.Level, error) {
 	if r.modelSwitcherCfg == nil {
@@ -202,7 +203,11 @@ func (r *LocalRuntime) CycleAgentThinkingLevel(ctx context.Context, agentName st
 		return "", fmt.Errorf("model %q does not support thinking levels: %w", baseCfg.DisplayOrModel(), ErrUnsupported)
 	}
 
-	next := effort.NextThinkingLevel(baseCfg.Provider, currentThinkingLevel(&baseCfg))
+	supported := modelinfo.SupportedThinkingLevels(baseCfg.Provider, baseCfg.Model)
+	// Clamp first so a configured level the model does not support re-enters
+	// the cycle at the nearest supported tier instead of resetting it.
+	current := effort.Clamp(supported, currentThinkingLevel(&baseCfg))
+	next := effort.NextSupportedLevel(supported, current)
 
 	// Re-create each effective provider (alloy models can have several) with
 	// the new thinking level so the override preserves the existing pool.
