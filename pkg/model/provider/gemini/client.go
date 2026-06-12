@@ -73,7 +73,8 @@ func NewClient(ctx context.Context, cfg *latest.ModelConfig, env environment.Pro
 			slog.DebugContext(ctx, "Vertex AI requested but HTTP transport wrapper is set, falling back to GeminiAPI backend")
 		}
 
-		if useVertexAI && (cfg.ProviderOpts["project"] != nil || cfg.ProviderOpts["location"] != nil) {
+		switch {
+		case useVertexAI && (cfg.ProviderOpts["project"] != nil || cfg.ProviderOpts["location"] != nil):
 			var err error
 
 			project, err = environment.Expand(ctx, providerOption(cfg, "project"), env)
@@ -94,12 +95,12 @@ func NewClient(ctx context.Context, cfg *latest.ModelConfig, env environment.Pro
 
 			backend = genai.BackendVertexAI
 			httpClient = nil // Use ADC-managed client
-		} else if useVertexAI {
+		case useVertexAI:
 			project, _ = env.Get(ctx, "GOOGLE_CLOUD_PROJECT")
 			location, _ = env.Get(ctx, "GOOGLE_CLOUD_LOCATION")
 			backend = genai.BackendVertexAI
 			httpClient = nil // Use ADC-managed client
-		} else {
+		default:
 			if value, exist := env.Get(ctx, "GEMINI_API_KEY"); exist {
 				apiKey = value
 			}
