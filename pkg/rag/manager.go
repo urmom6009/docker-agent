@@ -9,8 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync/atomic"
 	"time"
 
+	"github.com/docker/docker-agent/pkg/modelerrors"
 	"github.com/docker/docker-agent/pkg/rag/database"
 	"github.com/docker/docker-agent/pkg/rag/fusion"
 	"github.com/docker/docker-agent/pkg/rag/rerank"
@@ -60,6 +62,7 @@ type Manager struct {
 	strategyConfigs map[string]strategy.Config   // Store configs for per-strategy operations
 	fusion          fusion.Fusion                // Fusion strategy for combining multi-strategy results
 	reranker        rerank.Reranker              // Optional reranker for result re-scoring
+	rerankDisabled  atomic.Bool                  // Set after a non-retryable reranking error to stop doomed requests
 	events          <-chan types.Event           // Shared event channel from strategies and other RAG operations
 }
 
@@ -243,30 +246,7 @@ func (m *Manager) Query(ctx context.Context, query string) ([]database.SearchRes
 				"num_results", len(results))
 
 			// Apply reranking if configured
-			if m.reranker != nil {
-				beforeCount := len(results)
-				slog.DebugContext(ctx, "[RAG Manager] Applying reranking to single-strategy results",
-					"rag_name", m.name,
-					"strategy", strategyName,
-					"result_count_before", beforeCount)
-
-				rerankedResults, rerankErr := m.reranker.Rerank(ctx, query, results)
-				if rerankErr != nil {
-					slog.WarnContext(ctx, "[RAG Manager] Reranking failed, using original results",
-						"rag_name", m.name,
-						"strategy", strategyName,
-						"error", rerankErr)
-					// Continue with original results rather than failing completely
-				} else {
-					results = rerankedResults
-					slog.DebugContext(ctx, "[RAG Manager] Reranked single-strategy results",
-						"rag_name", m.name,
-						"strategy", strategyName,
-						"result_count_before", beforeCount,
-						"result_count_after", len(results),
-						"filtered", beforeCount-len(results))
-				}
-			}
+			results = m.rerank(ctx, query, results)
 
 			if limit := m.config.Results.Limit; limit > 0 && len(results) > limit {
 				slog.DebugContext(ctx, "[RAG Manager] Truncating to global result limit",
@@ -373,27 +353,7 @@ func (m *Manager) Query(ctx context.Context, query string) ([]database.SearchRes
 		"result_limit", m.config.Results.Limit)
 
 	// Apply reranking if configured (before limit and deduplication)
-	if m.reranker != nil {
-		beforeCount := len(fusedResults)
-		slog.DebugContext(ctx, "[RAG Manager] Applying reranking to fused results",
-			"rag_name", m.name,
-			"result_count_before", beforeCount)
-
-		rerankedResults, rerankErr := m.reranker.Rerank(ctx, query, fusedResults)
-		if rerankErr != nil {
-			slog.WarnContext(ctx, "[RAG Manager] Reranking failed, using original fused results",
-				"rag_name", m.name,
-				"error", rerankErr)
-			// Continue with original fused results rather than failing completely
-		} else {
-			fusedResults = rerankedResults
-			slog.DebugContext(ctx, "[RAG Manager] Reranked fused results",
-				"rag_name", m.name,
-				"result_count_before", beforeCount,
-				"result_count_after", len(fusedResults),
-				"filtered", beforeCount-len(fusedResults))
-		}
-	}
+	fusedResults = m.rerank(ctx, query, fusedResults)
 
 	// Apply result limit if configured
 	if limit := m.config.Results.Limit; limit > 0 && len(fusedResults) > limit {
@@ -428,6 +388,45 @@ func (m *Manager) Query(ctx context.Context, query string) ([]database.SearchRes
 // Helper to get strategy names for logging
 func getStrategyNames(stratMap map[string]strategy.Strategy) []string {
 	return slices.Collect(maps.Keys(stratMap))
+}
+
+// rerank applies the configured reranker to results, falling back to the
+// original results on failure. After a non-retryable model error (e.g. an
+// invalid reranking model name), the reranker is disabled for the lifetime
+// of the manager so every subsequent query doesn't issue another request
+// that is guaranteed to fail (see issue #3082).
+func (m *Manager) rerank(ctx context.Context, query string, results []database.SearchResult) []database.SearchResult {
+	if m.reranker == nil || m.rerankDisabled.Load() || len(results) == 0 {
+		return results
+	}
+
+	beforeCount := len(results)
+	rerankedResults, err := m.reranker.Rerank(ctx, query, results)
+	if err == nil {
+		slog.DebugContext(ctx, "[RAG Manager] Reranked results",
+			"rag_name", m.name,
+			"result_count_before", beforeCount,
+			"result_count_after", len(rerankedResults),
+			"filtered", beforeCount-len(rerankedResults))
+		return rerankedResults
+	}
+
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return results
+	}
+
+	if retryable, _, _ := modelerrors.ClassifyModelError(err); !retryable {
+		m.rerankDisabled.Store(true)
+		slog.ErrorContext(ctx, "[RAG Manager] Disabling reranking after non-retryable error; check the reranking model configuration",
+			"rag_name", m.name,
+			"error", err)
+		return results
+	}
+
+	slog.WarnContext(ctx, "[RAG Manager] Reranking failed, using original results",
+		"rag_name", m.name,
+		"error", err)
+	return results
 }
 
 // CheckAndReindexChangedFiles checks for file changes and re-indexes if needed
