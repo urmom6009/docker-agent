@@ -536,7 +536,8 @@ func (c *Client) CreateResponseStream(
 	transport := getTransport(&c.ModelConfig)
 	trackUsage := c.ModelConfig.TrackUsage == nil || *c.ModelConfig.TrackUsage
 
-	if transport == "websocket" && c.ModelOptions.Gateway() == "" && c.ModelOptions.TransportWrapper() == nil {
+	switch {
+	case transport == "websocket" && c.ModelOptions.Gateway() == "" && c.ModelOptions.TransportWrapper() == nil:
 		stream, err := c.createWebSocketStream(ctx, params)
 		if err != nil {
 			slog.WarnContext(ctx, "WebSocket stream failed, falling back to SSE", "error", err)
@@ -545,11 +546,11 @@ func (c *Client) CreateResponseStream(
 			slog.DebugContext(ctx, "OpenAI responses WebSocket stream created successfully", "model", c.ModelConfig.Model)
 			return newResponseStreamAdapter(stream, trackUsage), nil
 		}
-	} else if transport == "websocket" && c.ModelOptions.Gateway() != "" {
+	case transport == "websocket" && c.ModelOptions.Gateway() != "":
 		slog.DebugContext(ctx, "WebSocket transport requested but Gateway is configured, using SSE",
 			"model", c.ModelConfig.Model,
 			"gateway", c.ModelOptions.Gateway())
-	} else if transport == "websocket" {
+	case transport == "websocket":
 		slog.DebugContext(ctx, "WebSocket transport requested but HTTP transport wrapper is set, using SSE",
 			"model", c.ModelConfig.Model)
 	}

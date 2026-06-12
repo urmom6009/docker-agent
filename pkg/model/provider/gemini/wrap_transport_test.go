@@ -123,31 +123,52 @@ func TestNewClient_TransportWrapperInvokedGatewayPath(t *testing.T) {
 	assert.Positive(t, counter.calls.Load(), "transport wrapper RoundTrip should have been called at least once in gateway path")
 }
 
-func TestNewClient_TransportWrapperVertexAIWarns(t *testing.T) {
-	// When a Vertex AI backend is used (project+location configured), the genai
-	// SDK manages its own HTTP client. The transport wrapper cannot be applied.
-	// Verify that NewClient succeeds (no error) and the wrapper function itself
-	// is not called — the caller receives a slog warning instead.
-	var wrapperInvoked bool
+// TestNewClient_TransportWrapperVertexAIFallsBackToGeminiAPI verifies that when
+// project/location are configured (Vertex AI) but a transport wrapper is also
+// set, the client automatically falls back to BackendGeminiAPI so the wrapper
+// can be applied. This mirrors the WebSocket→SSE fallback in the OpenAI provider.
+func TestNewClient_TransportWrapperVertexAIFallsBackToGeminiAPI(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writeGeminiSSEResponse(w)
+	}))
+	defer server.Close()
+
+	var counter geminiCountingTransport
 
 	cfg := &latest.ModelConfig{
 		Provider: "google",
 		Model:    "gemini-2.0-flash",
+		BaseURL:  server.URL,
 		ProviderOpts: map[string]any{
 			"project":  "test-project",
 			"location": "us-central1",
 		},
 	}
-	env := environment.NewMapEnvProvider(map[string]string{})
+	// GOOGLE_API_KEY is required for the GeminiAPI fallback path.
+	env := environment.NewMapEnvProvider(map[string]string{
+		"GOOGLE_API_KEY": "test-key",
+	})
 
-	_, err := NewClient(t.Context(), cfg, env,
+	client, err := NewClient(t.Context(), cfg, env,
 		options.WithHTTPTransportWrapper(func(base http.RoundTripper) http.RoundTripper {
-			wrapperInvoked = true
-			return &geminiCountingTransport{base: base}
+			counter.base = base
+			return &counter
 		}),
 	)
-	// NewClient may fail because Vertex AI requires real ADC credentials;
-	// we only care that the wrapper function itself was NOT invoked.
-	_ = err
-	assert.False(t, wrapperInvoked, "wrapper function should not be invoked for Vertex AI backend")
+	require.NoError(t, err)
+
+	stream, err := client.CreateChatCompletionStream(t.Context(), []chat.Message{
+		{Role: chat.MessageRoleUser, Content: "hello"},
+	}, nil)
+	require.NoError(t, err)
+	defer stream.Close()
+
+	// Drain the stream so RoundTrip has been fully exercised.
+	for {
+		if _, err := stream.Recv(); err != nil {
+			break
+		}
+	}
+
+	assert.Positive(t, counter.calls.Load(), "transport wrapper RoundTrip should have been called at least once (GeminiAPI fallback)")
 }
