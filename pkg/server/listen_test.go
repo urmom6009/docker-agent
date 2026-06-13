@@ -1,8 +1,13 @@
 package server
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -100,4 +105,80 @@ func TestListen_TCP_IPv6(t *testing.T) {
 	require.True(t, ok)
 	assert.True(t, tcpAddr.IP.IsLoopback())
 	assert.Nil(t, tcpAddr.IP.To4(), "expected an IPv6-only address")
+}
+
+// shortTempDir returns a temp dir with a short path so unix socket paths
+// created under it stay within the platform limit (macOS caps sun_path at
+// ~104 bytes, which t.TempDir()'s long, test-name-derived paths can exceed).
+func shortTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "ls") //nolint:forbidigo,usetesting // need a short path for the unix sun_path limit (~104 bytes); t.TempDir() embeds the long test name and overflows it
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
+}
+
+// TestListen_Unix verifies that --listen accepts a unix:// socket path,
+// creates the parent directory and a usable socket, and serves HTTP over it.
+// The board uses a deterministic per-session socket path to avoid TCP port
+// allocation and collisions, so this is the path it relies on.
+func TestListen_Unix(t *testing.T) {
+	t.Parallel()
+
+	// Nest under a not-yet-existing dir to exercise MkdirAll.
+	sockPath := filepath.Join(shortTempDir(t), "run", "a.sock")
+
+	ln, err := Listen(t.Context(), "unix://"+sockPath)
+	require.NoError(t, err)
+	defer ln.Close()
+
+	assert.Equal(t, "unix", ln.Addr().Network())
+	_, statErr := os.Stat(sockPath)
+	require.NoError(t, statErr, "socket file should exist")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("pong"))
+	})
+	srv := &http.Server{Handler: mux}
+	defer srv.Close()
+	go func() { _ = srv.Serve(ln) }()
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, "unix", sockPath)
+			},
+		},
+	}
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://unix/ping", http.NoBody)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, "pong", string(body))
+}
+
+// TestListen_Unix_ReplacesStaleSocket verifies that a leftover socket file
+// from a previous run is removed so the bind succeeds (rather than failing
+// with "address already in use").
+func TestListen_Unix_ReplacesStaleSocket(t *testing.T) {
+	t.Parallel()
+
+	sockPath := filepath.Join(shortTempDir(t), "a.sock")
+
+	ln1, err := Listen(t.Context(), "unix://"+sockPath)
+	require.NoError(t, err)
+	require.NoError(t, ln1.Close())
+
+	// The socket file lingers after close; a fresh Listen must reclaim it.
+	ln2, err := Listen(t.Context(), "unix://"+sockPath)
+	require.NoError(t, err)
+	defer ln2.Close()
+	assert.Equal(t, "unix", ln2.Addr().Network())
 }
