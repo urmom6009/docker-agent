@@ -52,6 +52,87 @@ func TestCreateWithName(t *testing.T) {
 	assert.FileExists(t, filepath.Join(wt.Dir, "a.txt"))
 }
 
+func TestCreateWithBaseBranchesFromRef(t *testing.T) {
+	dir := bootstrapRepo(t)
+	paths.SetDataDir(t.TempDir())
+	t.Cleanup(func() { paths.SetDataDir("") })
+
+	// Add a second commit on a side branch; the default HEAD (main) stays at
+	// the first commit.
+	runGit(t, dir, "branch", "feature")
+	runGit(t, dir, "checkout", "feature")
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "b.txt"), []byte("B"), 0o644))
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-m", "feature work")
+	featureHead := gitOut(t, dir, "rev-parse", "feature")
+	runGit(t, dir, "checkout", "-")
+
+	wt, err := Create(t.Context(), dir, "from-feature", WithBase("feature"))
+	require.NoError(t, err)
+
+	// The worktree branched from feature, so it carries feature's commit and
+	// its file.
+	assert.Equal(t, featureHead, gitOut(t, wt.Dir, "rev-parse", "HEAD"))
+	assert.FileExists(t, filepath.Join(wt.Dir, "b.txt"))
+	assert.Equal(t, featureHead, wt.BaseCommit)
+}
+
+func TestCreateWithEmptyBaseUsesHead(t *testing.T) {
+	dir := bootstrapRepo(t)
+	paths.SetDataDir(t.TempDir())
+	t.Cleanup(func() { paths.SetDataDir("") })
+
+	head := gitOut(t, dir, "rev-parse", "HEAD")
+
+	// An empty base is ignored: the worktree branches from the current HEAD.
+	wt, err := Create(t.Context(), dir, "default-base", WithBase(""))
+	require.NoError(t, err)
+	assert.Equal(t, head, gitOut(t, wt.Dir, "rev-parse", "HEAD"))
+}
+
+func TestCreateWithInvalidBase(t *testing.T) {
+	dir := bootstrapRepo(t)
+	paths.SetDataDir(t.TempDir())
+	t.Cleanup(func() { paths.SetDataDir("") })
+
+	_, err := Create(t.Context(), dir, "bad-base", WithBase("does-not-exist"))
+	assert.ErrorIs(t, err, ErrInvalidBase)
+}
+
+func TestCreateWithRemoteBaseFetches(t *testing.T) {
+	// A bare "remote" repo with one extra commit beyond what the clone has.
+	remote := bootstrapRepo(t)
+	require.NoError(t, os.WriteFile(filepath.Join(remote, "remote-only.txt"), []byte("R"), 0o644))
+	runGit(t, remote, "add", ".")
+	runGit(t, remote, "commit", "-m", "remote work")
+	remoteBranch := gitOut(t, remote, "rev-parse", "--abbrev-ref", "HEAD")
+
+	// A clone that is behind: it lacks the remote's latest commit until
+	// WithBase triggers a fetch.
+	clone, err := filepath.EvalSymlinks(t.TempDir())
+	require.NoError(t, err)
+	runGit(t, clone, "clone", remote, ".")
+	runGit(t, clone, "config", "user.email", "test@example.com")
+	runGit(t, clone, "config", "user.name", "Test User")
+	runGit(t, clone, "config", "commit.gpgsign", "false")
+	// Move the remote forward again so the clone's remote-tracking ref is
+	// stale; only an explicit fetch (done by WithBase) brings it up to date.
+	require.NoError(t, os.WriteFile(filepath.Join(remote, "newer.txt"), []byte("N"), 0o644))
+	runGit(t, remote, "add", ".")
+	runGit(t, remote, "commit", "-m", "newer work")
+	newerHead := gitOut(t, remote, "rev-parse", "HEAD")
+
+	paths.SetDataDir(t.TempDir())
+	t.Cleanup(func() { paths.SetDataDir("") })
+
+	wt, err := Create(t.Context(), clone, "from-remote", WithBase("origin/"+remoteBranch))
+	require.NoError(t, err)
+
+	// The fetch pulled the latest remote commit, so the worktree starts there.
+	assert.Equal(t, newerHead, gitOut(t, wt.Dir, "rev-parse", "HEAD"))
+	assert.FileExists(t, filepath.Join(wt.Dir, "newer.txt"))
+}
+
 func TestCreateFromSubfolder(t *testing.T) {
 	root := bootstrapRepo(t)
 	sub := filepath.Join(root, "nested")

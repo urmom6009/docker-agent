@@ -69,6 +69,7 @@ type runExecFlags struct {
 	worktree          bool
 	worktreeName      string
 	worktreePR        string
+	worktreeBase      string
 	sessionReadOnly   bool
 
 	// Exec only
@@ -171,6 +172,7 @@ func addRunOrExecFlags(cmd *cobra.Command, flags *runExecFlags) {
 	cmd.PersistentFlags().StringVarP(&flags.worktreeName, "worktree", "w", "", "Run the agent in a fresh git worktree of the working directory (isolates changes from your checkout). Optionally name it: --worktree=my-name")
 	cmd.PersistentFlags().Lookup("worktree").NoOptDefVal = worktreeAutoName
 	cmd.PersistentFlags().StringVar(&flags.worktreePR, "worktree-pr", "", "Run the agent in a git worktree checked out on an existing GitHub pull request (number or URL). Continues the PR's branch; requires the GitHub CLI (gh).")
+	cmd.PersistentFlags().StringVar(&flags.worktreeBase, "worktree-base", "", "Branch the --worktree from this ref instead of the current HEAD (e.g. main, origin/main). A remote-tracking ref is fetched first so the worktree starts from the latest remote state.")
 	cmd.PersistentFlags().BoolVar(&flags.sessionReadOnly, "session-read-only", false, "Open the session in read-only mode (view conversation history but prevent new messages)")
 	cmd.MarkFlagsMutuallyExclusive("fake", "record")
 	cmd.MarkFlagsMutuallyExclusive("remote", "sandbox")
@@ -185,6 +187,12 @@ func addRunOrExecFlags(cmd *cobra.Command, flags *runExecFlags) {
 	cmd.MarkFlagsMutuallyExclusive("remote", "worktree-pr")
 	cmd.MarkFlagsMutuallyExclusive("sandbox", "worktree-pr")
 	cmd.MarkFlagsMutuallyExclusive("worktree", "worktree-pr")
+	// --worktree-base picks the start-point of the branch --worktree creates,
+	// so it is meaningless for a PR worktree (which continues the PR's branch)
+	// or a remote/sandbox run (which has no local worktree).
+	cmd.MarkFlagsMutuallyExclusive("worktree-base", "worktree-pr")
+	cmd.MarkFlagsMutuallyExclusive("remote", "worktree-base")
+	cmd.MarkFlagsMutuallyExclusive("sandbox", "worktree-base")
 
 	// --exec only
 	cmd.PersistentFlags().BoolVar(&flags.exec, "exec", false, "Execute without a TUI")
@@ -266,6 +274,12 @@ func (f *runExecFlags) runRunCommand(cmd *cobra.Command, args []string) (command
 	// users name the worktree (--worktree=my-name); without a value cobra
 	// stores the sentinel that triggers a random name.
 	f.worktree = cmd.Flags().Changed("worktree")
+
+	// --worktree-base only selects the start-point of the branch --worktree
+	// creates; on its own it would silently do nothing, so reject it.
+	if f.worktreeBase != "" && !f.worktree {
+		return errors.New("--worktree-base requires --worktree")
+	}
 
 	out := cli.NewPrinter(cmd.OutOrStdout())
 
@@ -536,13 +550,15 @@ func (f *runExecFlags) setupWorktree(ctx context.Context, wd string) (*worktree.
 		if name == worktreeAutoName {
 			name = ""
 		}
-		wt, err := worktree.Create(ctx, wd, name)
+		wt, err := worktree.Create(ctx, wd, name, worktree.WithBase(f.worktreeBase))
 		if err != nil {
 			switch {
 			case errors.Is(err, worktree.ErrNotGitRepository):
 				return nil, fmt.Errorf("--worktree requires %s to be inside a git repository", wd)
 			case errors.Is(err, worktree.ErrInvalidName):
 				return nil, fmt.Errorf("invalid --worktree name: %w", err)
+			case errors.Is(err, worktree.ErrInvalidBase):
+				return nil, fmt.Errorf("invalid --worktree-base: %w", err)
 			default:
 				return nil, err
 			}

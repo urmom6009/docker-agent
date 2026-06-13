@@ -26,6 +26,10 @@ var ErrNotGitRepository = errors.New("not a git repository")
 // directory and branch component.
 var ErrInvalidName = errors.New("invalid worktree name")
 
+// ErrInvalidBase means the --worktree-base ref could not be resolved or
+// fetched.
+var ErrInvalidBase = errors.New("invalid worktree base")
+
 // ErrInvalidPRRef means a --worktree-pr value is not a PR number or URL.
 var ErrInvalidPRRef = errors.New("invalid pull request reference")
 
@@ -68,6 +72,22 @@ func (s Status) IsDirty() bool {
 	return s.Modified || s.Untracked || s.NewCommits
 }
 
+// CreateOption customizes how [Create] builds a worktree.
+type CreateOption func(*createConfig)
+
+type createConfig struct {
+	base string
+}
+
+// WithBase branches the worktree from ref instead of the repository's current
+// HEAD. ref is any revision git understands (a branch, tag, commit, or
+// remote-tracking ref like "origin/main"). A remote-tracking ref is fetched
+// first so the worktree starts from the latest remote state. An empty ref is
+// ignored, keeping the default HEAD behaviour.
+func WithBase(ref string) CreateOption {
+	return func(c *createConfig) { c.base = strings.TrimSpace(ref) }
+}
+
 // Create creates a new git worktree for the repository containing dir and
 // returns it. The worktree lives under the data directory and checks out a
 // freshly created branch so the agent's changes stay isolated from the user's
@@ -77,9 +97,19 @@ func (s Status) IsDirty() bool {
 // generated. The branch is named "worktree-<name>" and the worktree is stored
 // under <dataDir>/worktrees/<name>.
 //
+// By default the branch starts at the repository's current HEAD. Pass
+// [WithBase] to branch from another ref instead; when the base is a
+// remote-tracking ref (e.g. "origin/main") it is fetched first so the worktree
+// starts from the latest remote state.
+//
 // Returns [ErrNotGitRepository] when dir is not inside a git worktree, and
 // [ErrInvalidName] when an explicit name is not a safe path/branch component.
-func Create(ctx context.Context, dir, name string) (*Worktree, error) {
+func Create(ctx context.Context, dir, name string, opts ...CreateOption) (*Worktree, error) {
+	var cfg createConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	root, err := repoRoot(ctx, dir)
 	if err != nil {
 		return nil, err
@@ -98,7 +128,21 @@ func Create(ctx context.Context, dir, name string) (*Worktree, error) {
 		return nil, fmt.Errorf("%w: worktree %q already exists at %s", ErrInvalidName, name, dest)
 	}
 
-	if err := git(ctx, root, "worktree", "add", "-b", branch, dest); err != nil {
+	// The branch start-point: a user-chosen base ref, or the current HEAD.
+	// `git worktree add -b <branch> <dest> [<start-point>]` omits the
+	// start-point when none was requested, preserving the default behaviour.
+	addArgs := []string{"worktree", "add", "-b", branch, dest}
+	if cfg.base != "" {
+		if err := fetchBase(ctx, root, cfg.base); err != nil {
+			return nil, err
+		}
+		addArgs = append(addArgs, cfg.base)
+	}
+
+	if err := git(ctx, root, addArgs...); err != nil {
+		if cfg.base != "" {
+			return nil, fmt.Errorf("%w: %s: %w", ErrInvalidBase, cfg.base, err)
+		}
 		return nil, fmt.Errorf("creating git worktree: %w", err)
 	}
 
@@ -276,6 +320,38 @@ func repoRoot(ctx context.Context, dir string) (string, error) {
 		return "", err
 	}
 	return filepath.Clean(out), nil
+}
+
+// fetchBase updates the local copy of a remote-tracking base ref (e.g.
+// "origin/main") so the worktree branches from the latest remote state. Refs
+// that don't name a remote (a local branch, tag, or commit) are left alone.
+// A fetch failure is reported as [ErrInvalidBase].
+func fetchBase(ctx context.Context, root, base string) error {
+	remote, branch, ok := strings.Cut(base, "/")
+	if !ok {
+		return nil
+	}
+	if !isRemote(ctx, root, remote) {
+		return nil
+	}
+	if err := git(ctx, root, "fetch", remote, branch); err != nil {
+		return fmt.Errorf("%w: fetching %s: %w", ErrInvalidBase, base, err)
+	}
+	return nil
+}
+
+// isRemote reports whether name is a configured git remote.
+func isRemote(ctx context.Context, root, name string) bool {
+	out, err := gitOutput(ctx, root, "remote")
+	if err != nil {
+		return false
+	}
+	for remote := range strings.SplitSeq(out, "\n") {
+		if strings.TrimSpace(remote) == name {
+			return true
+		}
+	}
+	return false
 }
 
 func git(ctx context.Context, dir string, args ...string) error {
