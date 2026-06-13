@@ -289,6 +289,46 @@ func createAgentWithBuiltinTools(llm provider.Provider) *agent.Agent {
 }
 ```
 
+## HTTP Middleware / Transport Wrappers
+
+Use `options.WithHTTPTransportWrapper` to inject HTTP middleware into the transport chain of all provider clients built by docker-agent. This is useful for request tracing, injecting custom headers, collecting metrics, or any other cross-cutting concern at the HTTP layer.
+
+```go
+import (
+    "net/http"
+
+    "github.com/docker/docker-agent/pkg/model/provider/options"
+)
+
+// Example: add a custom header to every outbound LLM request
+wrapper := options.WithHTTPTransportWrapper(
+    func(base http.RoundTripper) http.RoundTripper {
+        return roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+            req = req.Clone(req.Context())
+            req.Header.Set("X-Request-Source", "my-app")
+            return base.RoundTrip(req)
+        })
+    },
+)
+
+client, err := openai.NewClient(ctx, modelCfg, env, wrapper)
+```
+
+The wrapper receives the already-instrumented transport (OpenTelemetry, SSE decompression, Desktop proxy support) as its `base` argument, so wrapping it preserves all built-in behaviour.
+
+**Supported providers:** Anthropic, OpenAI, Gemini (GeminiAPI backend). Works in both direct and gateway/proxy mode.
+
+<div class="callout callout-warning" markdown="1">
+<div class="callout-title">Bedrock and Vertex AI not supported
+</div>
+  <p>Bedrock and Vertex AI use SDK-managed transports that docker-agent cannot intercept. Passing <code>WithHTTPTransportWrapper</code> when targeting these providers has no effect; a warning is logged at startup.</p>
+
+</div>
+
+In **gateway mode** the wrapper is called on every LLM request because gateway clients are rebuilt each call for short-lived auth tokens. In **direct mode** it is called once at client construction.
+
+Returning `nil` from your wrapper function is treated as a bug: docker-agent logs a warning and preserves the original transport instead.
+
 ## Using Different Providers
 
 ```go
