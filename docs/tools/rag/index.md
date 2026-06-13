@@ -183,10 +183,10 @@ $ docker agent run config.yaml --debug --log-file debug.log
 
 Look for log tags: `[RAG Manager]`, `[Chunked-Embeddings Strategy]`, `[BM25 Strategy]`, `[RRF Fusion]`, `[Reranker]`.
 
-**Permanent model errors abort early.** If the embedding model, semantic-LLM model, or reranking model returns a permanent error (HTTP 400, 401, or 404 — invalid config, bad auth, or unknown model), docker-agent treats the model configuration as invalid and stops immediately rather than retrying doomed requests:
+**Permanent model errors abort early.** If the embedding model, semantic-LLM model, or reranking model returns a permanent error (HTTP 400, 401, 404, or 429 — invalid config, bad auth, unknown model, or rate limit), docker-agent treats the model configuration as invalid and stops immediately rather than retrying doomed requests:
 
-- **Indexing** — the entire indexing run is aborted after the first permanent failure. The error is surfaced in the logs so you know immediately if a model name or API key is wrong, rather than silently producing incomplete results.
-- **Reranking** — a permanent error permanently disables the reranker for the lifetime of the manager. Subsequent queries fall back to un-reranked results. Transient errors (5xx, timeouts) and rate limits (429) still fall back and retry on the next query.
+- **Indexing** — the entire indexing run is aborted after the first permanent failure (including 429). The error is surfaced in the logs so you know immediately if a model name or API key is wrong, rather than silently producing incomplete results.
+- **Reranking** — a permanent error (including 429) permanently disables the reranker for the lifetime of the manager. Subsequent queries fall back to un-reranked results. Only transient errors (5xx, timeouts) fall back and retry on the next query.
 
 <div class="callout callout-tip" markdown="1">
 <div class="callout-title">Examples

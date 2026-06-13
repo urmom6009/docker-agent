@@ -300,14 +300,20 @@ import (
     "github.com/docker/docker-agent/pkg/model/provider/options"
 )
 
+type headerTransport struct {
+    base http.RoundTripper
+}
+
+func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+    req = req.Clone(req.Context())
+    req.Header.Set("X-Request-Source", "my-app")
+    return t.base.RoundTrip(req)
+}
+
 // Example: add a custom header to every outbound LLM request
 wrapper := options.WithHTTPTransportWrapper(
-    func(base http.RoundTripper) http.RoundTripper {
-        return roundTripperFunc(func(req *http.Request) (*http.Response, error) {
-            req = req.Clone(req.Context())
-            req.Header.Set("X-Request-Source", "my-app")
-            return base.RoundTrip(req)
-        })
+    func(base http.RoundTripper) (http.RoundTripper, error) {
+        return &headerTransport{base: base}, nil
     },
 )
 
