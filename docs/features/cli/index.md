@@ -51,7 +51,8 @@ $ docker agent run [config] [message...] [flags]
 | `--sbx`                                 | Prefer the `sbx` CLI backend when available (default `true`; set `--sbx=false` to force `docker sandbox`)                                 |
 | `--no-kit`                              | Disable the [auto-kit]({{ '/configuration/sandbox/' | relative_url }}#auto-kit): do not stage skills or prompt files into the sandbox    |
 | `--agent-picker [refs]`                 | Show a full-screen interactive picker before launching, letting you browse and select an agent. Accepts an optional comma-separated list of agent references to show (defaults to `default,coder`). Arrow keys navigate; `?` toggles the YAML preview panel; Enter confirms. Not available in `--exec` or non-TTY modes. |
-| `-w, --worktree [name]`                 | Run the agent in a fresh git worktree of the working directory, isolating its changes from your checkout. Optionally name it (`--worktree=my-feature`); otherwise a name is generated. Requires the working directory to be inside a git repository. Cannot be combined with `--remote` or `--sandbox`. When the session ends, a clean worktree is removed automatically; one with work prompts to keep or remove (never in `--exec`). |
+| `-w, --worktree [name]`                 | Run the agent in a fresh git worktree of the working directory, isolating its changes from your checkout. Optionally name it (`--worktree=my-feature`); otherwise a name is generated. Requires the working directory to be inside a git repository. Every tool (the shell included) runs inside the worktree. Combine with `--working-dir` to branch from another repository, and with `--session` to resume into the same worktree later. Cannot be combined with `--remote` or `--sandbox`. When the session ends, a clean worktree is removed automatically; one with work prompts to keep or remove (never in `--exec`). |
+| `--worktree-base <ref>`                  | Branch the `--worktree` from `<ref>` (a branch, tag, commit, or remote-tracking ref like `origin/main`) instead of the current `HEAD`. A remote-tracking ref is fetched first so the worktree starts from the latest remote state. Requires `--worktree`; cannot be combined with `--worktree-pr`, `--remote`, or `--sandbox`. |
 | `--worktree-pr <number\|url>`            | Run the agent in a git worktree checked out on an existing GitHub pull request (PR number, `#123`, or PR URL). Continues the PR's branch so commits push back to it. Requires the [GitHub CLI](https://cli.github.com/) (`gh`). Cannot be combined with `--worktree`, `--remote`, or `--sandbox`. |
 | `--working-dir <path>`                  | Set the working directory for the session (applies to tools and relative paths)                                                           |
 | `--env-from-file <path>`                | Load environment variables from file (repeatable)                                                                                         |
@@ -101,7 +102,7 @@ $ docker agent run --agent-picker=agentcatalog/coder,agentcatalog/researcher
 <div class="callout callout-tip" markdown="1">
 <div class="callout-title">Isolate a run in a git worktree
 </div>
-  <p>When the working directory is inside a git repository, <code>--worktree</code> creates a fresh <a href="https://git-scm.com/docs/git-worktree">git worktree</a> and points the session at it, so the agent's edits land on a separate branch and never touch your checkout. The worktree is stored under <code>&lt;data-dir&gt;/worktrees/&lt;name&gt;</code> on a branch named <code>worktree-&lt;name&gt;</code>.</p>
+  <p>When the working directory is inside a git repository, <code>--worktree</code> creates a fresh <a href="https://git-scm.com/docs/git-worktree">git worktree</a> and points the session at it, so the agent's edits land on a separate branch and never touch your checkout. Every tool — the shell included — runs inside the worktree. The worktree is stored under <code>&lt;data-dir&gt;/worktrees/&lt;name&gt;</code> on a branch named <code>worktree-&lt;name&gt;</code>.</p>
 </div>
 
 ```bash
@@ -111,6 +112,16 @@ $ docker agent run agent.yaml -w "Refactor the auth package"
 
 # Give the worktree (and its branch) an explicit name
 $ docker agent run agent.yaml --worktree=auth-refactor
+
+# Branch the worktree from another ref instead of the current HEAD.
+# A remote-tracking ref is fetched first, so the worktree starts from the
+# latest remote state.
+$ docker agent run agent.yaml --worktree=auth-refactor --worktree-base origin/main
+
+# Resume a worktree run later: the session remembers its worktree, so you
+# don't pass --worktree again (which would fail — the worktree already exists).
+$ docker agent run agent.yaml --worktree=auth-refactor   # first run, creates it
+$ docker agent run agent.yaml --session -1               # resumes into the same worktree
 
 # Check out an existing GitHub pull request to continue it (requires gh)
 $ docker agent run agent.yaml --worktree-pr 123
@@ -126,6 +137,8 @@ When the interactive session ends, the worktree is cleaned up based on its state
 - **Non-interactive runs** (`--exec`): the worktree is never cleaned up — it's left in place for inspection.
 
 A worktree is only ever removed if `--worktree` created it for this run; a pre-existing worktree is never touched.
+
+A kept worktree can be resumed: pass `--session` (a relative ref like `-1`, or the session id) and the run reattaches to the same worktree directory and branch automatically. Don't re-pass `--worktree` on resume — that would try to create a new worktree and fail because it already exists.
 
 ### `docker agent run --exec`
 
