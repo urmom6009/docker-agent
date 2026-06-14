@@ -332,7 +332,7 @@ models:
 
 While running in the TUI, press **Shift+Tab** to cycle the thinking effort level for the current model without editing your YAML config:
 
-- The level steps through the model's supported range (provider-specific), wrapping around — for example `none → minimal → low → medium → high → xhigh → none` on OpenAI.
+- The level steps through the model's supported range (model-specific), wrapping around — for example `none → minimal → low → medium → high → none` on OpenAI gpt-5/o-series, `none → minimal → low → medium → high → xhigh → none` on gpt-5.2+, `none → low → medium → high → none` on Anthropic Sonnet, `none → low → medium → high → max → none` on Anthropic Opus 4.6, and `none → low → medium → high → xhigh → none` on Anthropic Opus 4.7+.
 - The current level is shown in the sidebar next to the model name (e.g. `openai/gpt-5 • high`).
 - This applies as a session override — it is **not** saved to the config file. The next session starts from the level defined in your YAML.
 - For models that don't support reasoning, and for remote runtimes, Shift+Tab is a no-op and an informational message is displayed.
