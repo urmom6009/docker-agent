@@ -24,7 +24,7 @@ docker-agent exposes this through a single `thinking_budget` field on any named 
 
 | Provider            | Format     | Values                                                                                  | Default            |
 | ------------------- | ---------- | --------------------------------------------------------------------------------------- | ------------------ |
-| OpenAI              | string     | `minimal`, `low`, `medium`, `high`, `xhigh`, `none`                                     | `medium` (API default) |
+| OpenAI              | string     | `minimal`, `low`, `medium`, `high`, `none`; `xhigh` on gpt-5.2+ only                    | `medium` (API default) |
 | Anthropic           | int or str | 1024–32768 tokens, or `minimal`–`max`, `adaptive`, `adaptive/<effort>`, `none`          | off                |
 | Gemini 2.5          | int        | `0` (off), `-1` (dynamic), or token count (max 24576 / 32768)                           | `-1` (dynamic)     |
 | Gemini 3            | string     | `minimal`, `low`, `medium`, `high`                                                      | API default (model-dependent) |
@@ -37,7 +37,7 @@ String values are case-insensitive. The full set of accepted strings is `none`, 
 
 ## OpenAI
 
-OpenAI reasoning models (o-series, gpt-5, gpt-5-mini) use a string effort level that maps to their `reasoning_effort` API parameter.
+OpenAI reasoning models (o-series, gpt-5, gpt-5-mini) use a string effort level that maps to their `reasoning_effort` API parameter. The `xhigh` level is only accepted by gpt-5.2 and later minor versions; o-series and earlier gpt-5 releases top out at `high`.
 
 ```yaml
 models:
@@ -58,7 +58,7 @@ models:
 | `high`    | More thorough; recommended for complex tasks.            |
 | `xhigh`   | Near-maximum effort; slower but most accurate.           |
 
-These five effort levels (`minimal`–`xhigh`) are the **only** values accepted for OpenAI. Token counts, `max`, `adaptive`, and `adaptive/<effort>` are rejected with a configuration error at request time. Older models (o1, o3-mini) only accept `low`/`medium`/`high` — sending an unsupported level returns an API error.
+These effort levels (`minimal`–`xhigh`) are the **only** values accepted for OpenAI. Token counts, `max`, `adaptive`, and `adaptive/<effort>` are rejected with a configuration error at request time. The `xhigh` level is only supported by gpt-5.2 and later minor versions (e.g. gpt-5.2, gpt-5.4-mini); o-series and earlier gpt-5 releases top out at `high`. Older models (o1, o3-mini) only accept `low`/`medium`/`high` — sending an unsupported level returns an API error.
 
 <div class="callout callout-warning" markdown="1">
 <div class="callout-title">Tokens and max_tokens
@@ -332,7 +332,7 @@ models:
 
 While running in the TUI, press **Shift+Tab** to cycle the thinking effort level for the current model without editing your YAML config:
 
-- The level steps through the model's supported range (model-specific), wrapping around — for example `none → minimal → low → medium → high → none` on OpenAI gpt-5/o-series, `none → minimal → low → medium → high → xhigh → none` on gpt-5.2+, `none → low → medium → high → none` on Anthropic Sonnet, `none → low → medium → high → max → none` on Anthropic Opus 4.6, and `none → low → medium → high → xhigh → none` on Anthropic Opus 4.7+.
+- The level steps through the model's supported range (model-specific), wrapping around — for example `none → minimal → low → medium → high → none` on OpenAI gpt-5/o-series, `none → minimal → low → medium → high → xhigh → none` on gpt-5.2+, `none → low → medium → high → none` on Anthropic Sonnet (levels are sent as adaptive effort strings and are only effective on Opus 4.6+; Sonnet 4.5 and earlier require an integer token budget set in YAML), `none → low → medium → high → max → none` on Anthropic Opus 4.6, and `none → low → medium → high → xhigh → none` on Anthropic Opus 4.7+.
 - The current level is shown in the sidebar next to the model name (e.g. `openai/gpt-5 • high`).
 - This applies as a session override — it is **not** saved to the config file. The next session starts from the level defined in your YAML.
 - For models that don't support reasoning, and for remote runtimes, Shift+Tab is a no-op and an informational message is displayed.
