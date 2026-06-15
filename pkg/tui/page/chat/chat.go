@@ -929,7 +929,7 @@ func (p *chatPage) CompactSession(additionalPrompt string) tea.Cmd {
 
 	var ctx context.Context
 	ctx, p.msgCancel = context.WithCancel(context.Background())
-	p.app.CompactSession(ctx, additionalPrompt)
+	p.app.CompactSession(ctx, p.msgCancel, additionalPrompt)
 
 	return tea.Batch(
 		cancelCmd,

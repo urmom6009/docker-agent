@@ -23,6 +23,7 @@ import (
 	"github.com/docker/docker-agent/pkg/hooks"
 	"github.com/docker/docker-agent/pkg/hooks/builtins"
 	"github.com/docker/docker-agent/pkg/input"
+	"github.com/docker/docker-agent/pkg/leantui"
 	"github.com/docker/docker-agent/pkg/paths"
 	"github.com/docker/docker-agent/pkg/permissions"
 	"github.com/docker/docker-agent/pkg/profiling"
@@ -436,10 +437,16 @@ func (f *runExecFlags) runOrExec(ctx context.Context, out *cli.Printer, args []s
 		opts = append(opts, hookOpt)
 	}
 
-	if err := runTUI(ctx, rt, sess, b.Spawner(rt), cleanup, f.tuiOpts(), opts...); err != nil {
+	runErr := func() error {
+		if f.lean {
+			return f.runLeanTUI(ctx, rt, sess, cleanup, args, opts...)
+		}
+		return runTUI(ctx, rt, sess, b.Spawner(rt), cleanup, f.tuiOpts(), opts...)
+	}()
+	if runErr != nil {
 		// On a TUI error we deliberately leave the worktree in place rather
 		// than risk discarding work after an abnormal exit.
-		return err
+		return runErr
 	}
 
 	// The interactive session is over. Offer to clean up the worktree we
@@ -793,6 +800,41 @@ func (f *runExecFlags) tuiOpts() []tui.Option {
 		opts = append(opts, tui.WithHideSidebar())
 	}
 	return opts
+}
+
+// runLeanTUI builds the App and drives the standalone lean TUI, used when
+// --lean is set. Unlike the full TUI it renders to the normal terminal buffer
+// (no alternate screen) and sends the first/queued messages itself rather than
+// through the App's bubbletea command pipeline.
+func (f *runExecFlags) runLeanTUI(ctx context.Context, rt runtime.Runtime, sess *session.Session, cleanup func(), args []string, opts ...app.Opt) error {
+	if gen := rt.TitleGenerator(); gen != nil {
+		opts = append(opts, app.WithTitleGenerator(gen))
+	}
+	a := app.New(ctx, rt, sess, opts...)
+
+	firstMessage, err := readInitialMessage(args)
+	if err != nil {
+		return err
+	}
+	var queued []string
+	if len(args) > 2 {
+		queued = args[2:]
+	}
+	if cleanup == nil {
+		cleanup = func() {}
+	}
+
+	wd, _ := os.Getwd()
+	return leantui.Run(ctx, leantui.Config{
+		App:                    a,
+		WorkingDir:             wd,
+		Cleanup:                cleanup,
+		FirstMessage:           firstMessage,
+		FirstMessageAttachment: f.attachmentPath,
+		QueuedMessages:         queued,
+		AppName:                f.appName,
+		DisabledCommands:       f.disabledCommands,
+	})
 }
 
 func (f *runExecFlags) buildAppOpts(args []string) ([]app.Opt, error) {

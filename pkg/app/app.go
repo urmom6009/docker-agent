@@ -968,13 +968,20 @@ func (a *App) IsReadOnly() bool {
 	return a.readOnly
 }
 
-func (a *App) CompactSession(ctx context.Context, additionalPrompt string) {
+func (a *App) CompactSession(ctx context.Context, cancel context.CancelFunc, additionalPrompt string) {
+	a.cancel = cancel
+
 	sess := a.session
 	if sess == nil {
+		cancel()
 		return
 	}
 
 	go func() {
+		defer cancel()
+
+		agentName := a.runtime.CurrentAgentName()
+		completed := false
 		events := make(chan runtime.Event, 100)
 		go func() {
 			defer close(events)
@@ -984,7 +991,13 @@ func (a *App) CompactSession(ctx context.Context, additionalPrompt string) {
 			if ctx.Err() != nil {
 				return
 			}
+			if e, ok := event.(*runtime.SessionCompactionEvent); ok && e.Status == "completed" {
+				completed = true
+			}
 			a.sendEvent(ctx, event)
+		}
+		if !completed && ctx.Err() == nil {
+			a.sendEvent(ctx, runtime.SessionCompaction(sess.ID, "completed", agentName))
 		}
 	}()
 }
