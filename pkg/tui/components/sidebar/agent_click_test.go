@@ -1,13 +1,16 @@
 package sidebar
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/docker/docker-agent/pkg/runtime"
 	"github.com/docker/docker-agent/pkg/session"
+	"github.com/docker/docker-agent/pkg/tui/components/tab"
 	"github.com/docker/docker-agent/pkg/tui/service"
 )
 
@@ -153,4 +156,31 @@ func TestSidebar_BuildAgentClickZones_SkipsBlankOwners(t *testing.T) {
 	_, blankMapped := m.agentClickZones[tabHeaderLines+2]
 	assert.False(t, blankMapped, "blank separator line should not be clickable")
 	assert.Equal(t, "agent2", m.agentClickZones[tabHeaderLines+3])
+}
+
+// TestTabHeaderLineCount pins the number of rendered lines that tab.Render emits
+// before the body content starts. buildAgentClickZones hard-codes this value as
+// tabHeaderLines=2 (title row + TabStyle top padding); if tab.Render or TabStyle
+// ever changes its structure, this test fails immediately rather than letting
+// click-zone offsets drift silently.
+func TestTabHeaderLineCount(t *testing.T) {
+	t.Parallel()
+
+	const sentinel = "BODY_LINE_0"
+	rendered := tab.Render("Agents", sentinel, 40)
+	lines := strings.Split(ansi.Strip(rendered), "\n")
+
+	bodyLineIdx := -1
+	for i, l := range lines {
+		if strings.Contains(l, sentinel) {
+			bodyLineIdx = i
+			break
+		}
+	}
+	require.GreaterOrEqual(t, bodyLineIdx, 0, "sentinel body line not found in rendered tab")
+
+	const tabHeaderLines = 2 // must equal the constant in buildAgentClickZones
+	assert.Equal(t, tabHeaderLines, bodyLineIdx,
+		"tab header must be exactly %d lines before the body; update tabHeaderLines in buildAgentClickZones if this changes",
+		tabHeaderLines)
 }

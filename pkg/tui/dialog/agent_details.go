@@ -116,7 +116,7 @@ func (d *agentDetailsDialog) inlineList(contentWidth int, label string, items []
 	wrapped := toolcommon.WrapLinesWords(full, contentWidth)
 	out := make([]string, 0, len(wrapped))
 	for i, l := range wrapped {
-		if i == 0 {
+		if i == 0 && strings.HasPrefix(l, prefix) {
 			out = append(out, styles.BoldStyle.Render(prefix)+styles.MutedStyle.Render(strings.TrimPrefix(l, prefix)))
 			continue
 		}

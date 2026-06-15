@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/docker/docker-agent/pkg/config/types"
 	"github.com/docker/docker-agent/pkg/runtime"
@@ -214,6 +215,35 @@ func TestAgentDetailsDialog_LimitsOmitsUnsetValues(t *testing.T) {
 	assert.Contains(t, out, "Limits: history 40")
 	assert.NotContains(t, out, "max-iter", "unset max-iter is omitted")
 	assert.NotContains(t, out, "max-tool-calls", "unset max-tool-calls is omitted")
+}
+
+// TestInlineList_NarrowWidth_NoLabelDuplication verifies that when contentWidth
+// is narrower than the prefix string, the guard prevents the bold prefix from
+// being concatenated with the (unstripped) first wrapped fragment, which would
+// render the label text twice. At narrow width the whole output falls back to
+// the muted style so the label appears exactly once. At normal width the bold
+// prefix is applied correctly.
+func TestInlineList_NarrowWidth_NoLabelDuplication(t *testing.T) {
+	t.Parallel()
+
+	d := &agentDetailsDialog{agent: runtime.AgentDetails{Name: "root"}}
+	items := []string{"alpha", "beta", "gamma"}
+
+	// contentWidth=10 forces the word wrapper to put just "Sub-agents" on the
+	// first line (the full prefix "Sub-agents (3):" is 15 chars, so it splits).
+	// Without the HasPrefix guard this produces:
+	//   BoldStyle("Sub-agents (3):") + MutedStyle("Sub-agents") → label twice.
+	narrow := d.inlineList(10, "Sub-agents", items)
+	require.NotNil(t, narrow)
+	narrowOut := ansi.Strip(strings.Join(narrow, "\n"))
+	assert.Equal(t, 1, strings.Count(narrowOut, "Sub-agents"),
+		"label must appear exactly once at narrow width; got: %q", narrowOut)
+
+	// At normal width the first wrapped line starts with the full prefix, so
+	// the bold prefix is applied and the content follows on the same line.
+	wide := d.inlineList(60, "Sub-agents", items)
+	wideOut := ansi.Strip(strings.Join(wide, "\n"))
+	assert.Contains(t, wideOut, "Sub-agents (3): alpha, beta, gamma")
 }
 
 // TestAgentDetailsDialog_OmitsInstruction documents that the inspector never
