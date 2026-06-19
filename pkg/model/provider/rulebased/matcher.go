@@ -36,9 +36,15 @@ func newMatcher() *matcher {
 	return &matcher{docFreq: map[string]int{}}
 }
 
-// add indexes an example phrase under the given route index.
+// add indexes an example phrase under the given route index. Examples that
+// produce no terms after stop-word filtering (empty or all-stop-word phrases)
+// carry no routing signal and are skipped: indexing them would skew avgLen and,
+// if every example were empty, drive avgLen to zero and produce NaN scores.
 func (m *matcher) add(routeIndex int, text string) {
 	terms := tokenize(text)
+	if len(terms) == 0 {
+		return
+	}
 
 	termFreqs := make(map[string]int, len(terms))
 	for _, term := range terms {

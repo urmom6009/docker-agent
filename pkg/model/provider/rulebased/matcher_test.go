@@ -99,3 +99,38 @@ func TestMatcher_RareTermWins(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, 1, route)
 }
+
+func TestMatcher_SkipsEmptyExamples(t *testing.T) {
+	t.Parallel()
+
+	// Examples that are empty or made entirely of stop words carry no routing
+	// signal. They must not be indexed, otherwise they skew avgLen and, if every
+	// example were empty, produce NaN scores that silently break routing.
+	m := newMatcher()
+	m.add(0, "")
+	m.add(0, "the and is")
+	assert.Empty(t, m.docs)
+	assert.Zero(t, m.avgLen)
+
+	// A real example after the empty ones must still match and keep avgLen sane.
+	m.add(1, "deploy kubernetes cluster")
+	require.Len(t, m.docs, 1)
+	assert.InDelta(t, 3.0, m.avgLen, 1e-9)
+
+	route, ok := m.bestRoute("deploy kubernetes")
+	require.True(t, ok)
+	assert.Equal(t, 1, route)
+}
+
+func TestMatcher_AllEmptyExamples(t *testing.T) {
+	t.Parallel()
+
+	// When every example is empty, the matcher stays empty and any query falls
+	// through to the fallback rather than returning a NaN-driven false match.
+	m := newMatcher()
+	m.add(0, "")
+	m.add(1, "the of and")
+
+	_, ok := m.bestRoute("deploy kubernetes")
+	assert.False(t, ok)
+}
