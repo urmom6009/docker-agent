@@ -3,21 +3,21 @@
 // Package provider's js/wasm factory.
 //
 // The non-js factory.go pulls in every provider — including dmr (os/exec),
-// rulebased (bleve, mmap), bedrock and vertexai (cloud SDKs). None of those
-// can be cross-compiled to js/wasm, so this file replaces factory.go under
-// js/wasm with a slim variant that only knows about the providers that work
-// over plain net/http (which the Go runtime maps to fetch in the browser):
+// bedrock and vertexai (cloud SDKs). None of those can be cross-compiled to
+// js/wasm, so this file replaces factory.go under js/wasm with a slim variant
+// that only knows about the providers that work over plain net/http (which
+// the Go runtime maps to fetch in the browser):
 //
 //   - openai / openai_chatcompletions / openai_responses
 //   - anthropic
 //   - google (Gemini API; Vertex AI is unsupported under wasm)
 //
-// Routing rules and Docker Model Runner are unsupported and return an error.
+// Docker Model Runner is unsupported and returns an error. Rule-based routing
+// works under wasm because the rulebased provider no longer depends on bleve.
 package provider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -27,16 +27,37 @@ import (
 	"github.com/docker/docker-agent/pkg/model/provider/gemini"
 	"github.com/docker/docker-agent/pkg/model/provider/openai"
 	"github.com/docker/docker-agent/pkg/model/provider/options"
+	"github.com/docker/docker-agent/pkg/model/provider/rulebased"
 )
 
-// errRoutingUnsupported is returned by createRuleBasedRouter under js/wasm:
-// the rulebased provider depends on bleve which cannot be cross-compiled to
-// wasm (mmap, file locking).
-var errRoutingUnsupported = errors.New("rule-based model routing is not supported under js/wasm")
+// createRuleBasedRouter creates a rule-based routing provider.
+func createRuleBasedRouter(ctx context.Context, cfg *latest.ModelConfig, models map[string]latest.ModelConfig, env environment.Provider, opts ...options.Opt) (Provider, error) {
+	return rulebased.NewClient(ctx, cfg, models, env, resolveRoutedModel, opts...)
+}
 
-// createRuleBasedRouter is a stub that always returns an error under wasm.
-func createRuleBasedRouter(_ context.Context, _ *latest.ModelConfig, _ map[string]latest.ModelConfig, _ environment.Provider, _ ...options.Opt) (Provider, error) {
-	return nil, errRoutingUnsupported
+// resolveRoutedModel is the rulebased.ProviderFactory used by
+// createRuleBasedRouter. It resolves a routing target — which is either a name
+// from the models map or an inline "provider/model" spec — and returns the
+// provider for it. Routing targets cannot themselves have routing rules.
+func resolveRoutedModel(
+	ctx context.Context,
+	modelSpec string,
+	models map[string]latest.ModelConfig,
+	env environment.Provider,
+	factoryOpts ...options.Opt,
+) (rulebased.Provider, error) {
+	if modelCfg, exists := models[modelSpec]; exists {
+		if len(modelCfg.Routing) > 0 {
+			return nil, fmt.Errorf("model %q has routing rules and cannot be used as a routing target", modelSpec)
+		}
+		return createDirectProvider(ctx, &modelCfg, env, factoryOpts...)
+	}
+
+	inlineCfg, parseErr := latest.ParseModelRef(modelSpec)
+	if parseErr != nil {
+		return nil, fmt.Errorf("invalid model spec %q: expected 'provider/model' format or a model reference", modelSpec)
+	}
+	return createDirectProvider(ctx, &inlineCfg, env, factoryOpts...)
 }
 
 // createDirectProvider mirrors the non-wasm version but only dispatches to
