@@ -40,7 +40,7 @@ require (
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/goccy/go-yaml v1.19.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/google/go-containerregistry v0.21.6
+	github.com/google/go-containerregistry v0.21.7
 	github.com/google/jsonschema-go v0.4.3
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
@@ -102,8 +102,8 @@ require (
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
 	github.com/standard-webhooks/standard-webhooks/libraries v0.0.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
-	golang.org/x/mod v0.36.0 // indirect
-	golang.org/x/tools v0.45.0 // indirect
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/tools v0.46.0 // indirect
 	google.golang.org/api v0.272.0 // indirect
 )
 
