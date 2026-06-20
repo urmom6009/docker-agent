@@ -42,10 +42,11 @@ func resetThemes(t *testing.T) {
 	t.Cleanup(reset)
 }
 
-// TestRegisterBuiltinThemes_EmbedderFlow exercises the full embedder loop:
+// TestRegisterBuiltinThemes_Integration exercises the full embedder loop:
 // register a theme from a real embed.FS, then discover, load, and apply it the
-// way a downstream CLI/TUI would.
-func TestRegisterBuiltinThemes_EmbedderFlow(t *testing.T) {
+// way a downstream CLI/TUI would. The narrower tests below isolate individual
+// behaviors (merge, precedence, errors) with synthetic sources.
+func TestRegisterBuiltinThemes_Integration(t *testing.T) {
 	resetThemes(t)
 	original := CurrentTheme()
 	t.Cleanup(func() { ApplyTheme(original) })
@@ -100,8 +101,8 @@ func TestRegisterBuiltinThemes(t *testing.T) {
 }
 
 // TestRegisterBuiltinThemes_MultipleSources verifies the built-in set aggregates
-// across more than one registered source, and that the first-registered source
-// wins a name collision between two registered sources.
+// across more than one registered source, and that the later-registered source
+// wins a name collision between two registered sources (last-wins).
 func TestRegisterBuiltinThemes_MultipleSources(t *testing.T) {
 	resetThemes(t)
 
@@ -121,10 +122,10 @@ func TestRegisterBuiltinThemes_MultipleSources(t *testing.T) {
 	assert.Contains(t, refs, "alpha")
 	assert.Contains(t, refs, "beta")
 
-	// Earlier registration wins a collision between two registered sources.
+	// Later registration wins a collision between two registered sources (last-wins).
 	shared, err := LoadTheme("shared")
 	require.NoError(t, err)
-	assert.Equal(t, "First", shared.Name)
+	assert.Equal(t, "Second", shared.Name)
 }
 
 // TestRegisterBuiltinThemes_OverridesBuiltin verifies a registered source takes

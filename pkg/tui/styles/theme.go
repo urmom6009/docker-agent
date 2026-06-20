@@ -56,10 +56,12 @@ var (
 // in ListThemeRefs and the theme picker, resolve via LoadTheme/ApplyThemeRef, and
 // can be persisted as the user's selection. Registered sources take precedence
 // over the bundled themes, so a registered ref overrides the bundled theme of the
-// same name — including masking "default" with the embedder's own. An override is
-// still merged onto cagent's pristine DefaultTheme() base, so a registered theme
-// only needs to specify the fields it changes; DefaultTheme() itself stays the
-// bundled merge base, and each name is listed once.
+// same name — including masking "default" with the embedder's own. Precedence is
+// last-wins: when more than one registered source provides the same ref, a later
+// RegisterBuiltinThemes call overrides an earlier one. An override is still merged
+// onto cagent's pristine DefaultTheme() base, so a registered theme only needs to
+// specify the fields it changes; DefaultTheme() itself stays the bundled merge
+// base, and each name is listed once.
 //
 // Call this at startup, before applying any persisted theme, so that a persisted
 // selection naming a registered theme resolves.
@@ -132,13 +134,15 @@ func readThemeData(fsys fs.FS, ref string) ([]byte, bool) {
 	return nil, false
 }
 
-// readRegisteredThemeData returns the raw YAML for ref from the first registered
-// source that provides it. Registered sources take precedence over cagent's
-// bundled themes, so an embedder can override a built-in — including masking
-// "default" with their own.
+// readRegisteredThemeData returns the raw YAML for ref from the most recently
+// registered source that provides it. Registered sources take precedence over
+// cagent's bundled themes, so an embedder can override a built-in — including
+// masking "default" with their own — and a later RegisterBuiltinThemes call wins
+// a name collision with an earlier one (last-wins).
 func readRegisteredThemeData(ref string) ([]byte, bool) {
-	for _, fsys := range registeredThemeFSes() {
-		if data, ok := readThemeData(fsys, ref); ok {
+	fses := registeredThemeFSes()
+	for i := len(fses) - 1; i >= 0; i-- { // reverse: last-registered wins
+		if data, ok := readThemeData(fses[i], ref); ok {
 			return data, true
 		}
 	}
