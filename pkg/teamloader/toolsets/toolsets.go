@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/docker-agent/pkg/config"
 	"github.com/docker/docker-agent/pkg/config/latest"
+	"github.com/docker/docker-agent/pkg/model/provider/providers"
 	"github.com/docker/docker-agent/pkg/teamloader"
 	"github.com/docker/docker-agent/pkg/tools"
 	"github.com/docker/docker-agent/pkg/tools/a2a"
@@ -91,7 +92,7 @@ func DefaultToolsetCreators() map[string]teamloader.ToolsetCreator {
 			return agenttool.CreateToolSet()
 		},
 		"rag": func(ctx context.Context, toolset latest.Toolset, parentDir string, runConfig *config.RuntimeConfig, _ string) (tools.ToolSet, error) {
-			return rag.CreateToolSet(ctx, toolset, parentDir, runConfig)
+			return rag.CreateToolSet(ctx, toolset, parentDir, runConfig, providers.NewDefaultRegistry())
 		},
 	}
 }

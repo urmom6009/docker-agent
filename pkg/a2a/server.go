@@ -47,10 +47,11 @@ func Run(ctx context.Context, agentFilename, agentName, sessionDB string, runCon
 		return err
 	}
 
-	t, err := teamloader.Load(ctx, agentSource, runConfig, loaderdefaults.Opts()...)
+	loadResult, err := teamloader.LoadWithConfig(ctx, agentSource, runConfig, loaderdefaults.Opts()...)
 	if err != nil {
 		return fmt.Errorf("failed to load agents: %w", err)
 	}
+	t := loadResult.Team
 	defer func() {
 		if err := t.StopToolSets(ctx); err != nil {
 			slog.ErrorContext(ctx, "Failed to stop tool sets", "error", err)
@@ -66,7 +67,7 @@ func Run(ctx context.Context, agentFilename, agentName, sessionDB string, runCon
 		return fmt.Errorf("failed to open session store: %w", err)
 	}
 
-	adkAgent, err := newDockerAgentAdapter(t, agentName, sessStore)
+	adkAgent, err := newDockerAgentAdapter(t, agentName, sessStore, loadResult.ProviderRegistry)
 	if err != nil {
 		return fmt.Errorf("failed to create ADK agent adapter: %w", err)
 	}

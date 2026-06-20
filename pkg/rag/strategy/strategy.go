@@ -23,12 +23,20 @@ type BuildContext struct {
 	ModelsGateway string
 	RespectVCS    bool // Whether to respect VCS ignore files (e.g., .gitignore) when collecting files
 	RuntimeConfig *config.RuntimeConfig
+	// ProviderRegistry instantiates the strategy's embedding model providers.
+	// When nil, the slim default registry is used (dmr only), which fails for
+	// openai/anthropic/google/bedrock embedding models.
+	ProviderRegistry *provider.Registry
 }
 
 // NewProvider creates a model provider using the build context's environment,
 // gateway, and custom provider settings.
 func (c BuildContext) NewProvider(ctx context.Context, cfg *latest.ModelConfig) (provider.Provider, error) {
-	return provider.New(ctx, cfg, c.Env,
+	registry := c.ProviderRegistry
+	if registry == nil {
+		registry = provider.DefaultRegistry()
+	}
+	return registry.New(ctx, cfg, c.Env,
 		options.WithGateway(c.ModelsGateway),
 		options.WithProviders(c.Providers))
 }

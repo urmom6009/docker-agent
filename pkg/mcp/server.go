@@ -16,6 +16,7 @@ import (
 
 	"github.com/docker/docker-agent/pkg/agent"
 	"github.com/docker/docker-agent/pkg/config"
+	"github.com/docker/docker-agent/pkg/model/provider"
 	"github.com/docker/docker-agent/pkg/runtime"
 	"github.com/docker/docker-agent/pkg/session"
 	"github.com/docker/docker-agent/pkg/team"
@@ -92,10 +93,11 @@ func createMCPServer(ctx context.Context, agentFilename, agentName string, runCo
 		return nil, nil, err
 	}
 
-	t, err := teamloader.Load(ctx, agentSource, runConfig, loaderdefaults.Opts()...)
+	loadResult, err := teamloader.LoadWithConfig(ctx, agentSource, runConfig, loaderdefaults.Opts()...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load agents: %w", err)
 	}
+	t := loadResult.Team
 
 	cleanup := func() {
 		if err := t.StopToolSets(ctx); err != nil {
@@ -154,13 +156,13 @@ func createMCPServer(ctx context.Context, agentFilename, agentName string, runCo
 			OutputSchema: tools.MustSchemaFor[ToolOutput](),
 		}
 
-		mcp.AddTool(server, toolDef, CreateToolHandler(t, agentName))
+		mcp.AddTool(server, toolDef, CreateToolHandler(t, agentName, loadResult.ProviderRegistry))
 	}
 
 	return server, cleanup, nil
 }
 
-func CreateToolHandler(t *team.Team, agentName string) func(context.Context, *mcp.CallToolRequest, ToolInput) (*mcp.CallToolResult, ToolOutput, error) {
+func CreateToolHandler(t *team.Team, agentName string, providerRegistry *provider.Registry) func(context.Context, *mcp.CallToolRequest, ToolInput) (*mcp.CallToolResult, ToolOutput, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, input ToolInput) (*mcp.CallToolResult, ToolOutput, error) {
 		slog.DebugContext(ctx, "MCP tool called", "agent", agentName, "message", input.Message)
 
@@ -183,6 +185,7 @@ func CreateToolHandler(t *team.Team, agentName string) func(context.Context, *mc
 			runtime.WithCurrentAgent(agentName),
 			runtime.WithNonInteractive(true),
 			runtime.WithTracer(otel.Tracer("cagent")),
+			runtime.WithProviderRegistry(providerRegistry),
 		)
 		if err != nil {
 			return nil, ToolOutput{}, fmt.Errorf("failed to create runtime: %w", err)

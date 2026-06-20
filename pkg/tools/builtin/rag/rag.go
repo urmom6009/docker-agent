@@ -11,13 +11,16 @@ import (
 
 	"github.com/docker/docker-agent/pkg/config"
 	"github.com/docker/docker-agent/pkg/config/latest"
+	"github.com/docker/docker-agent/pkg/model/provider"
 	"github.com/docker/docker-agent/pkg/rag"
 	ragtypes "github.com/docker/docker-agent/pkg/rag/types"
 	"github.com/docker/docker-agent/pkg/tools"
 )
 
-// CreateToolSet is used by the tools registry.
-func CreateToolSet(ctx context.Context, toolset latest.Toolset, parentDir string, runConfig *config.RuntimeConfig) (tools.ToolSet, error) {
+// CreateToolSet is used by the tools registry. providerRegistry instantiates the
+// embedding/reranking model providers; pass the application's full registry
+// (e.g. providers.NewDefaultRegistry()) so non-dmr embedding models resolve.
+func CreateToolSet(ctx context.Context, toolset latest.Toolset, parentDir string, runConfig *config.RuntimeConfig, providerRegistry *provider.Registry) (tools.ToolSet, error) {
 	if toolset.RAGConfig == nil {
 		return nil, errors.New("rag toolset requires either a rag_config block or a ref")
 	}
@@ -25,12 +28,13 @@ func CreateToolSet(ctx context.Context, toolset latest.Toolset, parentDir string
 	ragName := cmp.Or(toolset.Name, "rag")
 
 	mgr, err := rag.NewManager(ctx, ragName, toolset.RAGConfig, rag.ManagersBuildConfig{
-		ParentDir:     parentDir,
-		ModelsGateway: runConfig.ModelsGateway,
-		Env:           runConfig.EnvProvider(),
-		Models:        runConfig.Models,
-		Providers:     runConfig.Providers,
-		RuntimeConfig: runConfig,
+		ParentDir:        parentDir,
+		ModelsGateway:    runConfig.ModelsGateway,
+		Env:              runConfig.EnvProvider(),
+		Models:           runConfig.Models,
+		Providers:        runConfig.Providers,
+		RuntimeConfig:    runConfig,
+		ProviderRegistry: providerRegistry,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create RAG manager: %w", err)

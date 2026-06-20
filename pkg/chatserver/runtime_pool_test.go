@@ -7,7 +7,7 @@ import (
 )
 
 func TestRuntimePool_DisabledIsNotCached(t *testing.T) {
-	p := newRuntimePool(nil, 0)
+	p := newRuntimePool(nil, 0, nil)
 
 	// Put with maxIdle=0 must be a no-op (we don't have a runtime to put,
 	// but the channel-for behaviour itself shouldn't allocate).
@@ -16,11 +16,11 @@ func TestRuntimePool_DisabledIsNotCached(t *testing.T) {
 }
 
 func TestRuntimePool_NegativeCapTreatedAsZero(t *testing.T) {
-	p := newRuntimePool(nil, -1)
+	p := newRuntimePool(nil, -1, nil)
 	assert.Equal(t, 0, p.maxIdle)
 }
 
 func TestRuntimePool_takeIdleNoChannel(t *testing.T) {
-	p := newRuntimePool(nil, 4)
+	p := newRuntimePool(nil, 4, nil)
 	assert.Nil(t, p.takeIdle("anything"))
 }

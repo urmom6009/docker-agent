@@ -15,6 +15,7 @@ import (
 	"google.golang.org/genai"
 
 	dagent "github.com/docker/docker-agent/pkg/agent"
+	"github.com/docker/docker-agent/pkg/model/provider"
 	"github.com/docker/docker-agent/pkg/runtime"
 	"github.com/docker/docker-agent/pkg/session"
 	"github.com/docker/docker-agent/pkg/team"
@@ -23,7 +24,7 @@ import (
 // newDockerAgentAdapter creates a new ADK agent adapter from a docker agent team and agent name.
 // When agentName is empty, the team's default agent (one explicitly named "root" if it
 // exists, otherwise the first agent declared) is used.
-func newDockerAgentAdapter(t *team.Team, agentName string, sessStore session.Store) (agent.Agent, error) {
+func newDockerAgentAdapter(t *team.Team, agentName string, sessStore session.Store, providerRegistry *provider.Registry) (agent.Agent, error) {
 	a, err := t.AgentOrDefault(agentName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get agent %s: %w", agentName, err)
@@ -36,13 +37,13 @@ func newDockerAgentAdapter(t *team.Team, agentName string, sessStore session.Sto
 		Name:        agentName,
 		Description: desc,
 		Run: func(ctx agent.InvocationContext) iter.Seq2[*adksession.Event, error] {
-			return runDockerAgent(ctx, t, agentName, a, sessStore)
+			return runDockerAgent(ctx, t, agentName, a, sessStore, providerRegistry)
 		},
 	})
 }
 
 // runDockerAgent executes a docker agent and returns ADK session events
-func runDockerAgent(ctx agent.InvocationContext, t *team.Team, agentName string, a *dagent.Agent, sessStore session.Store) iter.Seq2[*adksession.Event, error] {
+func runDockerAgent(ctx agent.InvocationContext, t *team.Team, agentName string, a *dagent.Agent, sessStore session.Store, providerRegistry *provider.Registry) iter.Seq2[*adksession.Event, error] {
 	return func(yield func(*adksession.Event, error) bool) {
 		// Extract user message from the ADK context
 		userContent := ctx.UserContent()
@@ -79,6 +80,7 @@ func runDockerAgent(ctx agent.InvocationContext, t *team.Team, agentName string,
 			runtime.WithCurrentAgent(agentName),
 			runtime.WithSessionStore(sessStore),
 			runtime.WithTracer(otel.Tracer("cagent")),
+			runtime.WithProviderRegistry(providerRegistry),
 		)
 		if err != nil {
 			yield(nil, fmt.Errorf("failed to create runtime: %w", err))

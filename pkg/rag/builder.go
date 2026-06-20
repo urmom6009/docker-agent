@@ -24,12 +24,20 @@ type ManagersBuildConfig struct {
 	Models        map[string]latest.ModelConfig    // Model configurations from config
 	Providers     map[string]latest.ProviderConfig // Custom provider configurations from config
 	RuntimeConfig *config.RuntimeConfig
+	// ProviderRegistry instantiates the embedding/reranking model providers.
+	// When nil, the slim default registry is used (dmr only), which fails for
+	// openai/anthropic/google/bedrock embedding models.
+	ProviderRegistry *provider.Registry
 }
 
 // NewProvider creates a model provider using the build config's environment,
 // gateway, and custom provider settings.
 func (c ManagersBuildConfig) NewProvider(ctx context.Context, cfg *latest.ModelConfig) (provider.Provider, error) {
-	return provider.New(ctx, cfg, c.Env,
+	registry := c.ProviderRegistry
+	if registry == nil {
+		registry = provider.DefaultRegistry()
+	}
+	return registry.New(ctx, cfg, c.Env,
 		options.WithGateway(c.ModelsGateway),
 		options.WithProviders(c.Providers))
 }
@@ -52,15 +60,16 @@ func NewManager(
 
 	// Build context for strategy builders
 	strategyBuildCtx := strategy.BuildContext{
-		RAGName:       ragName,
-		ParentDir:     buildCfg.ParentDir,
-		SharedDocs:    GetAbsolutePaths(buildCfg.ParentDir, ragCfg.Docs),
-		Models:        buildCfg.Models,
-		Providers:     buildCfg.Providers,
-		Env:           buildCfg.Env,
-		ModelsGateway: buildCfg.ModelsGateway,
-		RespectVCS:    ragCfg.GetRespectVCS(),
-		RuntimeConfig: buildCfg.RuntimeConfig,
+		RAGName:          ragName,
+		ParentDir:        buildCfg.ParentDir,
+		SharedDocs:       GetAbsolutePaths(buildCfg.ParentDir, ragCfg.Docs),
+		Models:           buildCfg.Models,
+		Providers:        buildCfg.Providers,
+		Env:              buildCfg.Env,
+		ModelsGateway:    buildCfg.ModelsGateway,
+		RespectVCS:       ragCfg.GetRespectVCS(),
+		RuntimeConfig:    buildCfg.RuntimeConfig,
+		ProviderRegistry: buildCfg.ProviderRegistry,
 	}
 
 	strategyConfigs, strategyEvents, err := buildStrategyConfigs(ctx, *ragCfg, strategyBuildCtx, ragName)

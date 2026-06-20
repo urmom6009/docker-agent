@@ -112,10 +112,11 @@ const (
 func Run(ctx context.Context, agentFilename string, opts Options, ln net.Listener) error {
 	slog.DebugContext(ctx, "Starting chat completions server", "agent", agentFilename, "addr", ln.Addr())
 
-	t, err := loadTeam(ctx, agentFilename, opts.RunConfig)
+	loadResult, err := loadTeam(ctx, agentFilename, opts.RunConfig)
 	if err != nil {
 		return err
 	}
+	t := loadResult.Team
 	defer func() {
 		if err := t.StopToolSets(ctx); err != nil {
 			slog.ErrorContext(ctx, "Failed to stop tool sets", "error", err)
@@ -133,7 +134,7 @@ func Run(ctx context.Context, agentFilename string, opts Options, ln net.Listene
 			policy:            policy,
 			conversations:     newConversationStore(opts.ConversationsMaxSessions, conversationTTL(opts)),
 			conversationLocks: newConversationLockSet(),
-			runtimes:          newRuntimePool(t, opts.MaxIdleRuntimes),
+			runtimes:          newRuntimePool(t, opts.MaxIdleRuntimes, loadResult.ProviderRegistry),
 		}, opts),
 		ReadHeaderTimeout: 30 * time.Second,
 	}
@@ -147,17 +148,19 @@ func conversationTTL(opts Options) time.Duration {
 	return defaultConversationTTL
 }
 
-// loadTeam resolves and loads the team referenced by agentFilename.
-func loadTeam(ctx context.Context, agentFilename string, runConfig *config.RuntimeConfig) (*team.Team, error) {
+// loadTeam resolves and loads the team referenced by agentFilename. It returns
+// the full LoadResult so callers can thread the provider registry into the
+// runtimes they build (needed by `type: model` hooks for non-dmr models).
+func loadTeam(ctx context.Context, agentFilename string, runConfig *config.RuntimeConfig) (*teamloader.LoadResult, error) {
 	src, err := config.Resolve(agentFilename, nil)
 	if err != nil {
 		return nil, err
 	}
-	t, err := teamloader.Load(ctx, src, runConfig, loaderdefaults.Opts()...)
+	loadResult, err := teamloader.LoadWithConfig(ctx, src, runConfig, loaderdefaults.Opts()...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load agents: %w", err)
 	}
-	return t, nil
+	return loadResult, nil
 }
 
 // serve runs httpServer on ln until ctx is cancelled, then triggers a

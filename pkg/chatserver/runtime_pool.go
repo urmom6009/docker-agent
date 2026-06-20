@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/docker/docker-agent/pkg/model/provider"
 	"github.com/docker/docker-agent/pkg/runtime"
 	"github.com/docker/docker-agent/pkg/team"
 )
@@ -23,8 +24,9 @@ import (
 // `maxIdle` bounds the number of idle runtimes per agent. Returning a
 // runtime to a full pool is a no-op; it simply gets garbage collected.
 type runtimePool struct {
-	team    *team.Team
-	maxIdle int
+	team             *team.Team
+	maxIdle          int
+	providerRegistry *provider.Registry
 
 	mu   sync.Mutex
 	idle map[string]chan runtime.Runtime
@@ -36,14 +38,15 @@ type runtimePool struct {
 // cancellation in a future async path).
 var errInvalidRuntime = errors.New("failed to acquire runtime")
 
-func newRuntimePool(t *team.Team, maxIdle int) *runtimePool {
+func newRuntimePool(t *team.Team, maxIdle int, providerRegistry *provider.Registry) *runtimePool {
 	if maxIdle < 0 {
 		maxIdle = 0
 	}
 	return &runtimePool{
-		team:    t,
-		maxIdle: maxIdle,
-		idle:    make(map[string]chan runtime.Runtime),
+		team:             t,
+		maxIdle:          maxIdle,
+		providerRegistry: providerRegistry,
+		idle:             make(map[string]chan runtime.Runtime),
 	}
 }
 
@@ -56,7 +59,7 @@ func (p *runtimePool) Get(agent string) (runtime.Runtime, error) {
 	if rt := p.takeIdle(agent); rt != nil {
 		return rt, nil
 	}
-	rt, err := runtime.New(p.team, runtime.WithCurrentAgent(agent))
+	rt, err := runtime.New(p.team, runtime.WithCurrentAgent(agent), runtime.WithProviderRegistry(p.providerRegistry))
 	if err != nil {
 		return nil, err
 	}
