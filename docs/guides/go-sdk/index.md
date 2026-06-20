@@ -55,6 +55,7 @@ When building custom UIs on top of docker-agent's TUI primitives, four packages 
 ```go
 import (
     "context"
+    "fmt"
     "strings"
 
     dagentcfg "github.com/docker/docker-agent/pkg/config"
