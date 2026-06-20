@@ -2,6 +2,7 @@ package styles
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -53,15 +54,18 @@ var (
 //
 // Registered themes are treated exactly like cagent's own built-ins: they appear
 // in ListThemeRefs and the theme picker, resolve via LoadTheme/ApplyThemeRef, and
-// can be persisted as the user's selection. The reserved "default" ref is ignored
-// (it always resolves to cagent's bundled default), and a ref that collides with
-// an existing built-in keeps the existing one.
+// can be persisted as the user's selection. Registered sources take precedence
+// over the bundled themes, so a registered ref overrides the bundled theme of the
+// same name — including masking "default" with the embedder's own. An override is
+// still merged onto cagent's pristine DefaultTheme() base, so a registered theme
+// only needs to specify the fields it changes; DefaultTheme() itself stays the
+// bundled merge base, and each name is listed once.
 //
 // Call this at startup, before applying any persisted theme, so that a persisted
 // selection naming a registered theme resolves.
 func RegisterBuiltinThemes(fsys fs.FS) error {
 	if fsys == nil {
-		return fmt.Errorf("register built-in themes: nil fs")
+		return errors.New("register built-in themes: nil fs")
 	}
 	// Surface an unreadable source eagerly rather than at picker time.
 	if _, err := fs.ReadDir(fsys, "themes"); err != nil {
@@ -76,6 +80,13 @@ func RegisterBuiltinThemes(fsys fs.FS) error {
 	builtinRefsCacheMu.Lock()
 	builtinRefsCacheOK = false
 	builtinRefsCacheMu.Unlock()
+
+	// Drop any theme already resolved under a ref this source overrides (a bundled
+	// built-in, or "default"), so the registered override/mask wins even when it
+	// was loaded before registration — built-in cache entries are otherwise treated
+	// as permanently valid. DefaultTheme()'s own cache is separate and untouched, so
+	// it stays the pristine merge base.
+	InvalidateThemeCache("")
 
 	return nil
 }

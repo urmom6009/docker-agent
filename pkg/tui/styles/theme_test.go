@@ -169,13 +169,51 @@ func TestRegisterBuiltinThemes_MasksDefault(t *testing.T) {
 	assert.Equal(t, "Default", DefaultTheme().Name)
 }
 
+// TestRegisterBuiltinThemes_OverrideAfterLoad verifies a registered override
+// still wins when the bundled built-in (and "default") were already loaded — and
+// therefore cached — before registration. LoadTheme treats built-in cache entries
+// as permanently valid, so registration must drop them; otherwise the override is
+// a silent no-op.
+func TestRegisterBuiltinThemes_OverrideAfterLoad(t *testing.T) {
+	resetThemes(t)
+
+	// Warm the theme cache with the bundled built-in and the bundled default.
+	bundledNord, err := LoadTheme("nord")
+	require.NoError(t, err)
+	require.NotEqual(t, "#123456", bundledNord.Colors.Accent)
+
+	bundledDefault, err := LoadTheme(DefaultThemeRef)
+	require.NoError(t, err)
+	require.NotEqual(t, "#ABCDEF", bundledDefault.Colors.Accent)
+
+	src := fstest.MapFS{
+		"themes/nord.yaml": &fstest.MapFile{
+			Data: []byte("name: NotNord\ncolors:\n  accent: \"#123456\"\n"),
+		},
+		"themes/default.yaml": &fstest.MapFile{
+			Data: []byte("name: Branded Default\ncolors:\n  accent: \"#ABCDEF\"\n"),
+		},
+	}
+	require.NoError(t, RegisterBuiltinThemes(src))
+
+	gotNord, err := LoadTheme("nord")
+	require.NoError(t, err)
+	assert.Equal(t, "#123456", gotNord.Colors.Accent)
+	assert.Equal(t, "NotNord", gotNord.Name)
+
+	gotDefault, err := LoadTheme(DefaultThemeRef)
+	require.NoError(t, err)
+	assert.Equal(t, "#ABCDEF", gotDefault.Colors.Accent)
+	assert.Equal(t, "Branded Default", gotDefault.Name)
+}
+
 // TestRegisterBuiltinThemes_Errors covers eager validation of the source.
 func TestRegisterBuiltinThemes_Errors(t *testing.T) {
 	resetThemes(t)
 
-	assert.Error(t, RegisterBuiltinThemes(nil))
+	require.Error(t, RegisterBuiltinThemes(nil))
 	// A source without a "themes" directory is rejected eagerly.
-	assert.Error(t, RegisterBuiltinThemes(fstest.MapFS{
+	require.Error(t, RegisterBuiltinThemes(fstest.MapFS{
 		"other/x.yaml": &fstest.MapFile{Data: []byte("{}")},
 	}))
 }
