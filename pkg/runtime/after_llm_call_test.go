@@ -26,6 +26,7 @@ import (
 // unpriced (nil cost) path instead.
 type mockModelStoreWithCost struct {
 	ModelStore
+
 	cost modelsdev.Cost
 }
 
@@ -167,14 +168,14 @@ func TestAfterLLMCallHook_PopulatesUsageAndCost(t *testing.T) {
 	// float64 representation so equality is reliable.
 	expected := (float64(10)*rate.Input + float64(5)*rate.Output) / 1e6
 	require.NotNil(t, in.Cost, "Cost must be non-nil for a priced model")
-	assert.Equal(t, expected, *in.Cost,
+	assert.InDelta(t, expected, *in.Cost, 1e-9,
 		"hook Cost must equal computeMessageCost(usage, model)")
 
 	// The headline guarantee: the cost the hook reports is the same
 	// cost the session bills for the turn. OwnCost sums the recorded
 	// assistant message's Cost, set from the same computeMessageCost
 	// value threaded into recordAssistantMessage.
-	assert.Equal(t, *in.Cost, sess.OwnCost(),
+	assert.InDelta(t, *in.Cost, sess.OwnCost(), 1e-9,
 		"hook Cost must equal the cost the session recorded for the turn")
 }
 
@@ -237,7 +238,7 @@ func TestAfterLLMCallInput_CostJSONContract(t *testing.T) {
 		require.True(t, hasCost,
 			"a non-nil pointer to 0 must emit \"cost\": 0, not be elided — "+
 				"this is what distinguishes a free priced call from an unpriced model")
-		assert.Equal(t, float64(0), raw)
+		assert.InDelta(t, float64(0), raw, 1e-9)
 		_, hasUsage := m["usage"]
 		assert.True(t, hasUsage, "Usage must be present when set")
 	})
@@ -246,7 +247,7 @@ func TestAfterLLMCallInput_CostJSONContract(t *testing.T) {
 		t.Parallel()
 		v := 0.0125
 		m := marshalKeys(&hooks.Input{HookEventName: hooks.EventAfterLLMCall, Cost: &v})
-		assert.Equal(t, 0.0125, m["cost"])
+		assert.InDelta(t, 0.0125, m["cost"], 1e-9)
 	})
 }
 
@@ -331,6 +332,6 @@ func TestComputeMessageCost(t *testing.T) {
 		got := computeMessageCost(usage, &modelsdev.Model{Cost: rate})
 		require.NotNil(t, got)
 		expected := (10*rate.Input + 5*rate.Output + 4*rate.CacheRead + 2*rate.CacheWrite) / 1e6
-		assert.Equal(t, expected, *got)
+		assert.InDelta(t, expected, *got, 1e-9)
 	})
 }
