@@ -29,3 +29,6 @@ docker-agent
 /wasm
 cmd/wasm/web/docker-agent.wasm
 cmd/wasm/web/wasm_exec.js
+
+# Knowledge graph output
+/graphify-out/

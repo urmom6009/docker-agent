@@ -59,6 +59,8 @@ docker-agent also includes built-in aliases for these providers:
 
 | Provider       | Alias            | API Key / Env Variable              |
 | -------------- | ---------------- | ----------------------------------- |
+| OpenCode Zen   | `opencode-zen`   | `OPENCODE_API_KEY`                  |
+| OpenCode Go    | `opencode-go`    | `OPENCODE_API_KEY`                  |
 | Mistral        | `mistral`        | `MISTRAL_API_KEY`                   |
 | xAI (Grok)     | `xai`            | `XAI_API_KEY`                       |
 | Nebius         | `nebius`         | `NEBIUS_API_KEY`                    |

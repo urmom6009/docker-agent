@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"slices"
 	"strings"
 	"text/tabwriter"
@@ -200,7 +202,79 @@ func (f *modelsListFlags) collectModels(ctx context.Context, availableProviders 
 		}
 	}
 
+	// For catalog providers not found in models.dev, try fetching models
+	// directly from the provider's own API (e.g. opencode-zen).
+	for _, name := range provider.CatalogProviders() {
+		if name == "dmr" {
+			continue
+		}
+		if _, exists := db.Providers[name]; exists {
+			continue
+		}
+		if !f.all && !availableProviders[name] {
+			continue
+		}
+
+		models := fetchProviderModels(ctx, name)
+		for _, m := range models {
+			ref := name + "/" + m
+			if seen[ref] {
+				continue
+			}
+			seen[ref] = true
+			rows = append(rows, modelRow{Provider: name, Model: m})
+		}
+	}
+
 	return rows
+}
+
+// openAIModelsResponse is the standard OpenAI-compatible models list format.
+type openAIModelsResponse struct {
+	Data []struct {
+		ID string `json:"id"`
+	} `json:"data"`
+}
+
+// fetchProviderModels fetches the model list from a provider's own /v1/models
+// endpoint. Only works for alias providers with a predefined BaseURL.
+func fetchProviderModels(ctx context.Context, providerName string) []string {
+	alias, ok := provider.LookupAlias(providerName)
+	if !ok || alias.BaseURL == "" {
+		return nil
+	}
+
+	modelsURL := strings.TrimRight(alias.BaseURL, "/") + "/models"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, modelsURL, http.NoBody)
+	if err != nil {
+		return nil
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil
+	}
+
+	var result openAIModelsResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil
+	}
+
+	models := make([]string, 0, len(result.Data))
+	for _, m := range result.Data {
+		models = append(models, m.ID)
+	}
+	return models
 }
 
 func isEmbeddingModel(family, name string) bool {

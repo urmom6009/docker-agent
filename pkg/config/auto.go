@@ -99,6 +99,8 @@ var DefaultModels = map[string]string{
 	"dmr":            "ai/qwen3:latest",
 	"mistral":        "mistral-small-latest",
 	"amazon-bedrock": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+	"opencode-go":    "deepseek-v4-flash",
+	"opencode-zen":   "deepseek-v4-flash-free",
 }
 
 func AvailableProviders(ctx context.Context, modelsGateway string, env environment.Provider) []string {
