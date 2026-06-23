@@ -23,6 +23,7 @@ import (
 	"github.com/docker/docker-agent/pkg/hooks/builtins"
 	"github.com/docker/docker-agent/pkg/httpclient"
 	"github.com/docker/docker-agent/pkg/model/provider"
+	"github.com/docker/docker-agent/pkg/model/provider/dmr"
 	"github.com/docker/docker-agent/pkg/modelsdev"
 	"github.com/docker/docker-agent/pkg/session"
 	"github.com/docker/docker-agent/pkg/sessiontitle"
@@ -212,6 +213,7 @@ type LocalRuntime struct {
 	modelSwitcherCfg          *ModelSwitcherConfig
 	providerRegistry          *provider.Registry
 	gatewayModels             gatewayModelsCache
+	dmrModels                 dmrModelsCache
 
 	// hooksRegistry is the runtime-private hooks.Registry used to build
 	// every Executor. It carries the runtime-owned builtin hooks
@@ -267,6 +269,12 @@ type LocalRuntime struct {
 	onToolsChanged func(Event)
 
 	bgAgents *agenttool.Handler
+
+	// dmrModelLister lists the models pulled locally in Docker Model Runner,
+	// used to populate DMR entries in the model picker. Defaults to
+	// dmr.ListModels in NewLocalRuntime; left nil by runtimes built directly
+	// (e.g. tests) so DMR discovery stays opt-in. Tests inject a stub here.
+	dmrModelLister func(ctx context.Context) ([]string, error)
 
 	// now is the runtime's clock. Defaults to time.Now and can be replaced
 	// in tests via WithClock to make timestamps and cooldown windows
@@ -549,6 +557,7 @@ func NewLocalRuntime(agents *team.Team, opts ...Opt) (*LocalRuntime, error) {
 		providerRegistry:       provider.DefaultRegistry(),
 		maxOverflowCompactions: defaultMaxOverflowCompactions,
 		toolListTimeout:        defaultToolListTimeout,
+		dmrModelLister:         dmr.ListModels,
 	}
 	r.bgAgents = agenttool.NewHandler(r)
 

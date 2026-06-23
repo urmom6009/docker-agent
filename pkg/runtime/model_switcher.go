@@ -502,6 +502,11 @@ func (r *LocalRuntime) AvailableModels(ctx context.Context) []ModelChoice {
 		}
 	}
 
+	// Surface models pulled locally in Docker Model Runner. They are not part
+	// of the models.dev catalog, so without this a working local DMR setup
+	// would show nothing selectable in the picker.
+	choices = append(choices, r.buildDMRChoices(ctx)...)
+
 	// Append models.dev catalog entries filtered by available credentials
 	catalogChoices := r.buildCatalogChoices(ctx)
 	choices = append(choices, catalogChoices...)
