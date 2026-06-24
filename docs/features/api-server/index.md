@@ -181,6 +181,13 @@ docker agent serve api <agent-file>|<agents-dir> [flags]
 | `--mcp-oauth-redirect-uri` | (none)   | Public HTTPS URL advertised as the OAuth `redirect_uri` for unmanaged MCP OAuth flows. When set, docker-agent drives PKCE and code exchange in-process and sends the full authorize URL to the client via elicitation. See [Remote MCP]({{ '/features/remote-mcp/' | relative_url }}) for details. |
 
 <div class="callout callout-tip" markdown="1">
+<div class="callout-title">Live profiling (advanced)
+</div>
+  <p>For production diagnostics, set the <code>CAGENT_PPROF_ADDR</code> environment variable (or the hidden <code>--pprof-addr</code> flag) to a TCP address such as <code>127.0.0.1:6060</code>. docker-agent will start a Go pprof HTTP server at <code>/debug/pprof/</code>, which you can query with <code>go tool pprof</code>. Use a loopback address — a non-loopback binding logs a security warning. This flag is intentionally hidden from <code>--help</code>.</p>
+
+</div>
+
+<div class="callout callout-tip" markdown="1">
 <div class="callout-title">Multi-agent configs
 </div>
   <p>You can point <code>docker agent serve api</code> at a directory containing multiple agent YAML files. Each becomes a separate agent accessible via <code>/api/agents</code>. Combine with <code>--pull-interval</code> to auto-refresh agents from an OCI registry.</p>
