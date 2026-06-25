@@ -228,13 +228,18 @@ func (m *model) addBlock(render func(width int) []string) {
 
 func (m *model) commitWelcome() {
 	m.addBlock(func(int) []string {
-		lines := make([]string, 0, len(bannerLines)+2)
+		lines := make([]string, 0, bannerTopPadding+len(bannerLines)+2)
+		for range bannerTopPadding {
+			lines = append(lines, "")
+		}
+
+		leftPad := strings.Repeat(" ", bannerLeftPadding)
 		for _, l := range bannerLines {
-			lines = append(lines, stAccent().Render(l))
+			lines = append(lines, stAccent().Render(leftPad+l))
 		}
 		lines = append(lines,
 			"",
-			stMuted().Render("Type a message, press / for commands, Ctrl+C to quit."),
+			stMuted().Render(leftPad+"Type a message, press / for commands, Ctrl+C to quit."),
 		)
 		return lines
 	})
