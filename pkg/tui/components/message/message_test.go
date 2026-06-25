@@ -324,3 +324,21 @@ func TestBareSpinnerKeepsPlayfulView(t *testing.T) {
 	assert.True(t, mv.isSpinnerDriven())
 	assert.Equal(t, mv.spinner.View(), mv.View(), "empty label must keep the default spinner rendering")
 }
+
+// TestDelegationReturnMarkerRenders covers the transcript return marker inserted
+// when a forwarded sub-agent (child) hands control back to its caller (parent):
+// it renders "↩ child → parent" and, being static, is NOT spinner-driven so it
+// caches normally.
+func TestDelegationReturnMarkerRenders(t *testing.T) {
+	t.Parallel()
+
+	// Sender holds the child (drives the accent color); Content holds the parent.
+	msg := types.DelegationReturn("librarian", "root")
+	mv := New(msg, nil)
+	mv.SetSize(80, 0)
+
+	assert.False(t, mv.isSpinnerDriven(), "static return marker must be cacheable, not spinner-driven")
+
+	out := stripANSI(mv.View())
+	assert.Contains(t, out, "↩ librarian → root", "marker should read ↩ child → parent")
+}

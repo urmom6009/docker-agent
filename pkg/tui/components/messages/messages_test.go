@@ -39,6 +39,27 @@ func TestViewDoesNotWrapWideLines(t *testing.T) {
 	}
 }
 
+// TestAddDelegationReturnAppendsMarker verifies AddDelegationReturn appends a
+// single MessageTypeDelegationReturn item (Sender=child, Content=parent) and
+// that it renders the "↩ child → parent" divider.
+func TestAddDelegationReturnAppendsMarker(t *testing.T) {
+	t.Parallel()
+
+	sessionState := &service.SessionState{}
+	m := NewScrollableView(80, 24, sessionState).(*model)
+	m.SetSize(80, 24)
+
+	cmd := m.AddDelegationReturn("librarian", "root")
+	require.NotNil(t, cmd, "appending the marker auto-scrolls a fresh transcript, yielding a cmd")
+
+	require.Len(t, m.messages, 1)
+	assert.Equal(t, types.MessageTypeDelegationReturn, m.messages[0].Type)
+	assert.Equal(t, "librarian", m.messages[0].Sender)
+	assert.Equal(t, "root", m.messages[0].Content)
+
+	assert.Contains(t, ansi.Strip(m.View()), "↩ librarian → root")
+}
+
 func TestMouseClickOnURLOpensURL(t *testing.T) {
 	t.Parallel()
 

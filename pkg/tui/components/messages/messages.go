@@ -57,6 +57,7 @@ type Model interface {
 	AddErrorMessage(content string) tea.Cmd
 	AddAssistantMessage(sender, label string) tea.Cmd
 	AddCancelledMessage() tea.Cmd
+	AddDelegationReturn(child, parent string) tea.Cmd
 	AddWelcomeMessage(content string) tea.Cmd
 	AddOrUpdateToolCall(agentName string, toolCall tools.ToolCall, toolDef tools.Tool, status types.ToolStatus) tea.Cmd
 	AppendToolOutput(msg *runtime.ToolCallOutputEvent) tea.Cmd
@@ -1025,6 +1026,9 @@ func (m *model) shouldCacheMessage(index int) bool {
 		return false
 	case types.MessageTypeUser:
 		return true
+	case types.MessageTypeDelegationReturn:
+		// Static divider line; safe to cache like a user message.
+		return true
 	default:
 		return false
 	}
@@ -1253,6 +1257,10 @@ func (m *model) AddCancelledMessage() tea.Cmd {
 	m.views = append(m.views, view)
 	m.renderDirty = true
 	return view.Init()
+}
+
+func (m *model) AddDelegationReturn(child, parent string) tea.Cmd {
+	return m.addMessage(types.DelegationReturn(child, parent))
 }
 
 func (m *model) AddWelcomeMessage(content string) tea.Cmd {

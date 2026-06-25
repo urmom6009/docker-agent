@@ -22,6 +22,7 @@ const (
 	MessageTypeToolResult
 	MessageTypeWelcome
 	MessageTypeLoading
+	MessageTypeDelegationReturn // "↩ child → parent" divider when a sub-agent returns
 )
 
 const (
@@ -108,6 +109,13 @@ func Cancelled() *Message {
 	return &Message{
 		Type: MessageTypeCancelled,
 	}
+}
+
+// DelegationReturn marks control returning from a sub-agent (child) to its
+// caller (parent). Sender holds the child (drives the accent color); Content
+// holds the parent name.
+func DelegationReturn(child, parent string) *Message {
+	return &Message{Type: MessageTypeDelegationReturn, Sender: child, Content: parent}
 }
 
 func Welcome(content string) *Message {

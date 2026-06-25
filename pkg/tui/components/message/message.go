@@ -375,6 +375,13 @@ func (mv *messageModel) render(width int) string {
 		return msg.Content
 	case types.MessageTypeCancelled:
 		return styles.WarningStyle.Render("⚠ stream cancelled ⚠")
+	case types.MessageTypeDelegationReturn:
+		label := "↩ " + msg.Sender + " → " + msg.Content
+		styled := styles.AgentAccentStyleFor(msg.Sender).Render(label)
+		// Trailing faded rule out to width, mirroring the collapsed-sidebar divider.
+		ruleW := max(width-ansi.StringWidth(styled)-3, 0)
+		rule := styles.FadingStyle.Render(" " + strings.Repeat("─", ruleW))
+		return styles.NoStyle.MarginLeft(2).Render(styled + rule)
 	case types.MessageTypeWelcome:
 		messageStyle := styles.WelcomeMessageStyle
 		// Convert explicit newlines to markdown hard line breaks (two trailing spaces)

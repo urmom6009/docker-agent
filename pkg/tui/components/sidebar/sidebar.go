@@ -137,6 +137,7 @@ type model struct {
 	sessionState       *service.SessionState
 	workingAgent       string   // Name of the agent currently working (empty if none)
 	sessionStack       []string // Active stream session IDs; the top is the active (deepest) session
+	agentChain         []string // Agent name per active stream level; invariant: len == len(sessionStack)
 	rootSessionID      string   // Main (top-level) session, shown when no stream is active
 	scrollview         *scrollview.Model
 	workingDirectory   string
@@ -477,6 +478,7 @@ func (m *model) LoadFromSession(sess *session.Session) {
 	// loaded session has no in-flight streams, so clear any stale stack entries.
 	m.rootSessionID = sess.ID
 	m.sessionStack = nil
+	m.agentChain = nil
 
 	// Load session title
 	if sess.Title != "" {
@@ -509,6 +511,7 @@ func (m *model) ResetStreamTracking() {
 		return
 	}
 	m.sessionStack = nil
+	m.agentChain = nil
 	m.invalidateCache()
 }
 
@@ -736,6 +739,7 @@ func (m *model) Update(msg tea.Msg) (layout.Model, tea.Cmd) {
 			m.rootSessionID = msg.SessionID
 		}
 		m.sessionStack = append(m.sessionStack, msg.SessionID)
+		m.agentChain = append(m.agentChain, msg.AgentName)
 		// If title hasn't been generated yet, show the title generation spinner
 		if !m.titleGenerated {
 			m.titleRegenerating = true
@@ -747,6 +751,9 @@ func (m *model) Update(msg tea.Msg) (layout.Model, tea.Cmd) {
 		m.workingAgent = ""
 		if n := len(m.sessionStack); n > 0 {
 			m.sessionStack = m.sessionStack[:n-1]
+		}
+		if n := len(m.agentChain); n > 0 {
+			m.agentChain = m.agentChain[:n-1]
 		}
 		m.invalidateCache()
 		m.stopSpinner() // Will only stop if no other state needs it
@@ -777,6 +784,7 @@ func (m *model) Update(msg tea.Msg) (layout.Model, tea.Cmd) {
 		m.streamCancelled = true
 		m.workingAgent = ""
 		m.sessionStack = nil
+		m.agentChain = nil
 		m.toolsLoading = false
 		m.mcpInit = false
 		m.titleRegenerating = false
@@ -1250,6 +1258,9 @@ func (m *model) agentInfo(contentWidth int) string {
 	}
 
 	var content strings.Builder
+	if breadcrumb := m.delegationBreadcrumb(contentWidth); breadcrumb != "" {
+		content.WriteString(breadcrumb)
+	}
 	for i, agent := range m.availableAgents {
 		if content.Len() > 0 {
 			content.WriteString("\n\n")
@@ -1259,6 +1270,47 @@ func (m *model) agentInfo(contentWidth int) string {
 	}
 
 	return m.renderTab(agentTitle, content.String(), contentWidth)
+}
+
+// delegationBreadcrumb renders the active delegation chain (e.g.
+// "root ⏵ librarian") shown under the Agents title while a sub-agent runs. It
+// returns "" unless the chain is deeper than the root (len > 1). When the full
+// chain would exceed contentWidth the middle is elided as "root ⏵ … ⏵ leaf".
+//
+// TODO(#3103, Appendix C.2): append a muted "+N background" count here once a
+// background-task snapshot is available.
+func (m *model) delegationBreadcrumb(contentWidth int) string {
+	chain := m.agentChain
+	if len(chain) <= 1 {
+		return ""
+	}
+
+	sep := styles.MutedStyle.Render(" ⏵ ")
+	colored := func(name string) string { return styles.AgentAccentStyleFor(name).Render(name) }
+
+	var b strings.Builder
+	b.WriteString(colored(chain[0]))
+	for _, name := range chain[1:] {
+		b.WriteString(sep)
+		b.WriteString(colored(name))
+	}
+	full := b.String()
+	if contentWidth <= 0 || ansi.StringWidth(full) <= contentWidth {
+		return full
+	}
+
+	// Too wide: keep the root and the deepest agent, elide the middle.
+	elided := colored(chain[0]) + sep + styles.MutedStyle.Render("…") + sep + colored(chain[len(chain)-1])
+	if ansi.StringWidth(elided) <= contentWidth {
+		return elided
+	}
+	return ansi.Truncate(full, contentWidth, "…")
+}
+
+// hasDelegationBreadcrumb reports whether agentInfo prepends a delegation
+// breadcrumb block; buildAgentClickZones uses it to keep click rows aligned.
+func (m *model) hasDelegationBreadcrumb() bool {
+	return len(m.agentChain) > 1
 }
 
 func (m *model) renderAgentEntry(content *strings.Builder, agent runtime.AgentDetails, isCurrent bool, index, contentWidth int) {
@@ -1317,6 +1369,20 @@ func isVisuallyBlank(line string) bool {
 	return strings.TrimSpace(ansi.Strip(line)) == ""
 }
 
+// skipLeadingBlock returns the index just past the first run of non-blank lines
+// and the blank separator that follows it. agentInfo emits the delegation
+// breadcrumb as one such block above the roster; buildAgentClickZones skips it.
+func skipLeadingBlock(lines []string, start int) int {
+	i := start
+	for i < len(lines) && !isVisuallyBlank(lines[i]) {
+		i++
+	}
+	for i < len(lines) && isVisuallyBlank(lines[i]) {
+		i++
+	}
+	return i
+}
+
 // buildAgentClickZones populates agentClickZones by scanning the rendered lines
 // to find which lines belong to which agent. It relies on the structure produced
 // by renderTab + agentInfo: a 2-line tab header, then agent blocks separated by
@@ -1329,10 +1395,16 @@ func (m *model) buildAgentClickZones(agentSectionStart int, lines []string) {
 	}
 
 	const tabHeaderLines = 2 // tab title + TabStyle top padding
+	start := agentSectionStart + tabHeaderLines
+	// agentInfo may prepend a single-line delegation breadcrumb block above the
+	// roster; skip it (and its trailing blank) so click rows map to agents.
+	if m.hasDelegationBreadcrumb() {
+		start = skipLeadingBlock(lines, start)
+	}
 	agentIdx := 0
 	inBlock := false
 
-	for i := agentSectionStart + tabHeaderLines; i < len(lines) && agentIdx < len(m.availableAgents); i++ {
+	for i := start; i < len(lines) && agentIdx < len(m.availableAgents); i++ {
 		if isVisuallyBlank(lines[i]) {
 			// Blank line: if we were inside a block, advance to the next agent
 			if inBlock {

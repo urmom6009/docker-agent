@@ -122,6 +122,11 @@ func (p *chatPage) handleRuntimeEvent(msg tea.Msg) (bool, tea.Cmd) {
 
 	case *runtime.AgentSwitchingEvent:
 		p.sidebar.SetAgentSwitching(msg.Switching)
+		if !msg.Switching && msg.FromAgent != "" && msg.ToAgent != "" {
+			// A forwarded sub-agent (FromAgent) just returned control to its
+			// caller (ToAgent); bracket the exit with a transcript marker.
+			return true, p.messages.AddDelegationReturn(msg.FromAgent, msg.ToAgent)
+		}
 		return true, nil
 
 	case *runtime.ToolsetInfoEvent:
