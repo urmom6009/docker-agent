@@ -855,6 +855,18 @@ func (r *LocalRuntime) CurrentAgentSkillsToolset() *skills.ToolSet {
 	return nil
 }
 
+// BackgroundAgents returns a read-only snapshot of the background agent tasks
+// spawned via the agent toolset, used by the TUI's live background-agent
+// surface. It is exposed only on the local runtime (which runs background
+// agents in-process); the App reaches it through an optional interface so
+// remote runtimes report none.
+func (r *LocalRuntime) BackgroundAgents() []agenttool.TaskInfo {
+	if r.bgAgents == nil {
+		return nil
+	}
+	return r.bgAgents.Snapshot()
+}
+
 // ExecuteMCPPrompt executes an MCP prompt with provided arguments and returns the content.
 func (r *LocalRuntime) ExecuteMCPPrompt(ctx context.Context, promptName string, arguments map[string]string) (string, error) {
 	currentAgent := r.CurrentAgent()

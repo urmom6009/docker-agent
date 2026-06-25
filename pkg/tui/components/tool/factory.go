@@ -6,6 +6,7 @@
 package tool
 
 import (
+	agenttool "github.com/docker/docker-agent/pkg/tools/builtin/agent"
 	"github.com/docker/docker-agent/pkg/tools/builtin/fetch"
 	"github.com/docker/docker-agent/pkg/tools/builtin/filesystem"
 	handofftool "github.com/docker/docker-agent/pkg/tools/builtin/handoff"
@@ -14,6 +15,7 @@ import (
 	transfertasktool "github.com/docker/docker-agent/pkg/tools/builtin/transfertask"
 	userpromptool "github.com/docker/docker-agent/pkg/tools/builtin/userprompt"
 	"github.com/docker/docker-agent/pkg/tui/components/tool/api"
+	"github.com/docker/docker-agent/pkg/tui/components/tool/backgroundagent"
 	"github.com/docker/docker-agent/pkg/tui/components/tool/defaulttool"
 	"github.com/docker/docker-agent/pkg/tui/components/tool/directorytree"
 	"github.com/docker/docker-agent/pkg/tui/components/tool/editfile"
@@ -38,23 +40,27 @@ type builder func(msg *types.Message, sessionState service.SessionStateReader) l
 // builders maps a tool name (or a "category:<name>" key) to its renderer.
 // Tools sharing the same visual representation point at the same builder.
 var builders = map[string]builder{
-	transfertasktool.ToolNameTransferTask: transfertask.New,
-	handofftool.ToolNameHandoff:           handoff.New,
-	filesystem.ToolNameEditFile:           editfile.New,
-	filesystem.ToolNameWriteFile:          writefile.New,
-	filesystem.ToolNameReadFile:           readfile.New,
-	filesystem.ToolNameReadMultipleFiles:  readmultiplefiles.New,
-	filesystem.ToolNameListDirectory:      listdirectory.New,
-	filesystem.ToolNameDirectoryTree:      directorytree.New,
-	filesystem.ToolNameSearchFilesContent: searchfilescontent.New,
-	shelltool.ToolNameShell:               shell.New,
-	userpromptool.ToolNameUserPrompt:      userprompt.New,
-	fetch.ToolNameFetch:                   api.New,
-	"category:api":                        api.New,
-	todo.ToolNameCreateTodo:               todotool.New,
-	todo.ToolNameCreateTodos:              todotool.New,
-	todo.ToolNameUpdateTodos:              todotool.New,
-	todo.ToolNameListTodos:                todotool.New,
+	transfertasktool.ToolNameTransferTask:  transfertask.New,
+	handofftool.ToolNameHandoff:            handoff.New,
+	agenttool.ToolNameRunBackgroundAgent:   backgroundagent.NewRun,
+	agenttool.ToolNameListBackgroundAgents: backgroundagent.NewList,
+	agenttool.ToolNameViewBackgroundAgent:  backgroundagent.NewView,
+	agenttool.ToolNameStopBackgroundAgent:  backgroundagent.NewStop,
+	filesystem.ToolNameEditFile:            editfile.New,
+	filesystem.ToolNameWriteFile:           writefile.New,
+	filesystem.ToolNameReadFile:            readfile.New,
+	filesystem.ToolNameReadMultipleFiles:   readmultiplefiles.New,
+	filesystem.ToolNameListDirectory:       listdirectory.New,
+	filesystem.ToolNameDirectoryTree:       directorytree.New,
+	filesystem.ToolNameSearchFilesContent:  searchfilescontent.New,
+	shelltool.ToolNameShell:                shell.New,
+	userpromptool.ToolNameUserPrompt:       userprompt.New,
+	fetch.ToolNameFetch:                    api.New,
+	"category:api":                         api.New,
+	todo.ToolNameCreateTodo:                todotool.New,
+	todo.ToolNameCreateTodos:               todotool.New,
+	todo.ToolNameUpdateTodos:               todotool.New,
+	todo.ToolNameListTodos:                 todotool.New,
 }
 
 // New returns the appropriate tool view for the given message.

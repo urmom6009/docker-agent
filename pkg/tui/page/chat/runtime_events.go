@@ -212,7 +212,10 @@ func (p *chatPage) handleStreamStarted(msg *runtime.StreamStartedEvent) tea.Cmd 
 	spinnerCmd := p.setWorking(true)
 	pendingCmd := p.setPendingResponse(true)
 	sidebarCmd := p.forwardToSidebar(msg)
-	return tea.Batch(pendingCmd, spinnerCmd, sidebarCmd)
+	// Begin polling the runtime's background-agent snapshot while work is in
+	// flight; the loop self-stops once no stream and no background task remain.
+	pollCmd := p.startBackgroundAgentPoll()
+	return tea.Batch(pendingCmd, spinnerCmd, sidebarCmd, pollCmd)
 }
 
 func (p *chatPage) handleAgentChoice(msg *runtime.AgentChoiceEvent) tea.Cmd {

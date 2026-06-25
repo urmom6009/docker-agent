@@ -39,6 +39,10 @@ The background agents tool lets an orchestrator dispatch work to sub-agents conc
 
 `list_background_agents` takes no parameters.
 
+## Live status in the TUI
+
+While background tasks are running, the TUI sidebar shows a live **Background agents (N)** panel — one row per running task with a colored activity dot, the sub-agent's name in its accent color, and the elapsed run time. The panel appears only while at least one task is running and clears automatically as tasks finish, so an idle session shows nothing. The same live count is surfaced as a muted `+N background` suffix on the delegation breadcrumb when the orchestrator is simultaneously delegating with `transfer_task`.
+
 ## Configuration
 
 ```yaml

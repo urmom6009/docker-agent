@@ -146,6 +146,10 @@ type chatPage struct {
 	agentStack      []string // agent per active stream level; len(agentStack)==streamDepth
 	streamStartTime time.Time
 
+	// backgroundPollActive guards the background-agent snapshot poll so only one
+	// tea.Tick loop runs at a time (see background_agents.go).
+	backgroundPollActive bool
+
 	// Track whether we've received content from an assistant response
 	// Used by --exit-after-response to ensure we don't exit before receiving content
 	hasReceivedAssistantContent bool
@@ -393,6 +397,10 @@ func (p *chatPage) Update(msg tea.Msg) (layout.Model, tea.Cmd) {
 
 	case msgtypes.ClearQueueMsg:
 		return p.handleClearQueue()
+
+	case backgroundAgentPollMsg:
+		cmd := p.handleBackgroundAgentPoll()
+		return p, cmd
 
 	case msgtypes.ThemeChangedMsg:
 		// Theme changed - forward to all child components to invalidate caches

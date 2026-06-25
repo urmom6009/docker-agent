@@ -116,7 +116,7 @@ func Icon(msg *types.Message, inProgress spinner.Spinner) string {
 		if msg.StartedAt != nil {
 			elapsed := time.Since(*msg.StartedAt)
 			if elapsed >= time.Second {
-				icon += " " + styles.ToolMessageStyle.Render(formatDuration(elapsed))
+				icon += " " + styles.ToolMessageStyle.Render(FormatDuration(elapsed))
 			}
 		}
 		return icon
@@ -146,8 +146,10 @@ func LongRunningWarning(msg *types.Message) string {
 	return "⚠ Tool call running for over 60s. The tool may be waiting for external input. Press Esc to cancel."
 }
 
-// formatDuration formats a duration as a human-readable string like "5s", "1m30s", "2m15s".
-func formatDuration(d time.Duration) string {
+// FormatDuration formats a duration as a compact human-readable string like
+// "5s", "1m30s", "2m". Exported so other components (e.g. the sidebar's
+// background-agents panel) can render elapsed times consistently.
+func FormatDuration(d time.Duration) string {
 	d = d.Truncate(time.Second)
 	if d < time.Minute {
 		return fmt.Sprintf("%ds", int(d.Seconds()))

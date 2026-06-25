@@ -29,6 +29,7 @@ import (
 	"github.com/docker/docker-agent/pkg/shellpath"
 	"github.com/docker/docker-agent/pkg/skills"
 	"github.com/docker/docker-agent/pkg/tools"
+	agenttool "github.com/docker/docker-agent/pkg/tools/builtin/agent"
 	skillstool "github.com/docker/docker-agent/pkg/tools/builtin/skills"
 	mcptools "github.com/docker/docker-agent/pkg/tools/mcp"
 	"github.com/docker/docker-agent/pkg/tui/messages"
@@ -234,6 +235,24 @@ func (a *App) CurrentAgentSkills() []skills.Skill {
 		return nil
 	}
 	return st.Skills()
+}
+
+// backgroundAgentLister is implemented by runtimes that run background agents
+// in-process (the local runtime). Remote/client runtimes don't, so the App
+// reports no background agents for them.
+type backgroundAgentLister interface {
+	BackgroundAgents() []agenttool.TaskInfo
+}
+
+// BackgroundAgents returns a read-only snapshot of in-flight background agent
+// tasks, or nil when the runtime doesn't run them in-process (e.g. remote
+// runtimes). Mirrors the other read-only accessors that surface runtime state
+// to the TUI, like CurrentAgentSkills.
+func (a *App) BackgroundAgents() []agenttool.TaskInfo {
+	if l, ok := a.runtime.(backgroundAgentLister); ok {
+		return l.BackgroundAgents()
+	}
+	return nil
 }
 
 // ResolveSkillCommand checks if the input matches a skill slash command (e.g. /skill-name args).

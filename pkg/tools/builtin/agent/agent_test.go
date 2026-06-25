@@ -110,6 +110,62 @@ func TestStatusToString(t *testing.T) {
 	}
 }
 
+// --- Snapshot ---
+
+func TestSnapshot_StatusPerTask(t *testing.T) {
+	cases := []struct {
+		name   string
+		status taskStatus
+		want   string
+	}{
+		{"running", taskRunning, StatusRunning},
+		{"completed", taskCompleted, StatusCompleted},
+		{"stopped", taskStopped, StatusStopped},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newTestHandler()
+			start := time.Now()
+			tk := insertTask(h, "t1", "researcher", tc.status)
+			tk.startTime = start
+
+			got := h.Snapshot()
+			require.Len(t, got, 1)
+			assert.Equal(t, TaskInfo{
+				ID:        "t1",
+				Agent:     "researcher",
+				Task:      "test task",
+				Status:    tc.want,
+				StartedAt: start,
+			}, got[0])
+		})
+	}
+}
+
+func TestSnapshot_AllTasks(t *testing.T) {
+	h := newTestHandler()
+	insertTask(h, "t1", "researcher", taskRunning)
+	insertTask(h, "t2", "writer", taskCompleted)
+	insertTask(h, "t3", "editor", taskStopped)
+
+	got := h.Snapshot()
+	require.Len(t, got, 3, "Snapshot must return one entry per task, finished tasks included")
+
+	statuses := make(map[string]string, len(got))
+	for _, ti := range got {
+		statuses[ti.ID] = ti.Status
+	}
+	assert.Equal(t, map[string]string{
+		"t1": StatusRunning,
+		"t2": StatusCompleted,
+		"t3": StatusStopped,
+	}, statuses)
+}
+
+func TestSnapshot_Empty(t *testing.T) {
+	assert.Empty(t, newTestHandler().Snapshot())
+}
+
 // --- runningTaskCount / totalTaskCount ---
 
 func TestTaskCounts(t *testing.T) {
@@ -566,6 +622,14 @@ func TestHandler_ConcurrentAccess(t *testing.T) {
 	for range 5 {
 		wg.Go(func() {
 			_, _ = h.HandleList(t.Context(), nil, tools.ToolCall{})
+		})
+	}
+
+	// Snapshot reads immutable task fields plus the atomic status concurrently
+	// with the HandleStop CAS writes below; -race must stay clean.
+	for range 5 {
+		wg.Go(func() {
+			_ = h.Snapshot()
 		})
 	}
 

@@ -89,17 +89,27 @@ const (
 	taskFailed
 )
 
+// Status string values surfaced via TaskInfo.Status (returned by
+// taskStatus.String). Exported so callers such as the TUI can match on a task's
+// status without depending on the unexported taskStatus enum.
+const (
+	StatusRunning   = "running"
+	StatusCompleted = "completed"
+	StatusStopped   = "stopped"
+	StatusFailed    = "failed"
+)
+
 // String returns a human-readable name for the status.
 func (s taskStatus) String() string {
 	switch s {
 	case taskRunning:
-		return "running"
+		return StatusRunning
 	case taskCompleted:
-		return "completed"
+		return StatusCompleted
 	case taskStopped:
-		return "stopped"
+		return StatusStopped
 	case taskFailed:
-		return "failed"
+		return StatusFailed
 	default:
 		return "unknown"
 	}
@@ -223,6 +233,38 @@ func NewHandler(runner Runner) *Handler {
 		runner: runner,
 		tasks:  concurrent.NewMap[string, *task](),
 	}
+}
+
+// TaskInfo is a lock-safe, read-only view of a background agent task. It exposes
+// only fields fixed when the task is created plus the atomically-loaded status,
+// so it can be read while the task runs without exposing the internal *task
+// (whose result and output fields mutate concurrently).
+type TaskInfo struct {
+	ID        string
+	Agent     string
+	Task      string
+	Status    string
+	StartedAt time.Time
+}
+
+// Snapshot returns a read-only view of every tracked background agent task,
+// running and finished. It reads only fields fixed at task creation plus the
+// atomic status, so it is safe to call concurrently with up to
+// maxConcurrentTasks running task goroutines and never exposes the internal
+// *task. This is a pure read model: it does not alter task state or lifecycle.
+func (h *Handler) Snapshot() []TaskInfo {
+	var out []TaskInfo
+	h.tasks.Range(func(id string, t *task) bool {
+		out = append(out, TaskInfo{
+			ID:        id,
+			Agent:     t.agentName,
+			Task:      t.taskDesc,
+			Status:    t.loadStatus().String(),
+			StartedAt: t.startTime,
+		})
+		return true
+	})
+	return out
 }
 
 func newTaskID() string {
