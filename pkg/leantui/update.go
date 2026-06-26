@@ -2,6 +2,8 @@ package leantui
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -36,6 +38,8 @@ func (m *model) handleKey(ctx context.Context, k key) {
 		m.editor.insertNewline()
 	case keyTab:
 		m.handleTab()
+	case keyShiftTab:
+		m.handleCycleThinkingLevel(ctx)
 	case keyUp:
 		if m.ac.active {
 			m.ac.moveUp()
@@ -116,6 +120,27 @@ func (m *model) handleTab() {
 		m.editor.setText("/" + cmd.name + " ")
 		m.ac.sync(m.editor.text())
 	}
+}
+
+func (m *model) handleCycleThinkingLevel(ctx context.Context) {
+	if m.app == nil {
+		return
+	}
+	if !m.app.SupportsModelSwitching() {
+		m.addNotice("", "Thinking levels can't be changed with remote runtimes", stMuted())
+		return
+	}
+	level, err := m.app.CycleAgentThinkingLevel(ctx)
+	if err != nil {
+		if errors.Is(err, runtime.ErrUnsupported) {
+			m.addNotice("", "Current model does not support thinking levels", stMuted())
+			return
+		}
+		m.addNotice("✗ ", fmt.Sprintf("Failed to change thinking level: %v", err), stError())
+		return
+	}
+	m.status.thinking = level.String()
+	m.addNotice("", "Thinking: "+level.String(), stMuted())
 }
 
 func (m *model) submit(ctx context.Context, text string) {
@@ -581,7 +606,8 @@ func (m *model) commitHelp() {
 			stBold().Render("Shortcuts"),
 			stMuted().Render("  Enter      send             Alt+Enter   insert newline"),
 			stMuted().Render("  Up/Down    history           Tab         complete command"),
-			stMuted().Render("  Ctrl+C     cancel / quit     Ctrl+W      delete previous word"),
+			stMuted().Render("  Shift+Tab  cycle thinking    Ctrl+C      cancel / quit"),
+			stMuted().Render("  Ctrl+W     delete previous word"),
 		}
 	})
 }
