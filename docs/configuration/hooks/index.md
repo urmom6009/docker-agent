@@ -334,6 +334,7 @@ The `hook_specific_output` for `pre_tool_use` (and `permission_request`) support
 | `permission_decision`        | string | `allow`, `deny`, or `ask`               |
 | `permission_decision_reason` | string | Explanation for the decision            |
 | `updated_input`              | object | Modified tool input (replaces original) |
+| `metadata`                   | object | (`permission_request` only) string key/value annotations merged onto the tool-call confirmation prompt — see below |
 
 ### Tool-Response-Transform Specific Output
 
@@ -727,6 +728,22 @@ hooks:
 ```
 
 Return nothing to fall through to the usual interactive confirmation.
+
+When the hook falls through (returns no `permission_decision`), it can still attach key/value `metadata` to the confirmation prompt the runtime shows the user. The runtime merges it onto any static metadata the toolset attached to the tool (hook keys win on a clash) and emits it on the tool-call confirmation message, so clients (TUI, HTTP) can render extra per-call context. Keys from multiple matching hooks are merged; the last hook in config order wins on a clash.
+
+```yaml
+hooks:
+  permission_request:
+    - matcher: "shell"
+      hooks:
+        - type: command
+          command: |
+            INPUT=$(cat)
+            CMD=$(echo "$INPUT" | jq -r '.tool_input.cmd // ""')
+            if echo "$CMD" | grep -qE '\brm\b'; then
+              echo '{"hook_specific_output":{"metadata":{"risk":"high","note":"deletes files"}}}'
+            fi
+```
 
 ### LLM as a Judge (Auto-Approving Tool Calls)
 
