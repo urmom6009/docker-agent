@@ -17,5 +17,6 @@
 //   - userprompt — ask the user for input
 //   - api        — external API tool
 //   - openapi    — OpenAPI spec-driven tool
+//   - openurl    — open a fixed URL in the user's browser
 //   - deferred   — deferred toolset wrapper
 package builtin

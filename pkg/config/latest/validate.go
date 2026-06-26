@@ -280,11 +280,11 @@ func (t *Toolset) validate() error {
 	if t.Config != nil && t.Type != "mcp" {
 		return errors.New("config can only be used with type 'mcp'")
 	}
-	if t.URL != "" && t.Type != "a2a" && t.Type != "openapi" {
-		return errors.New("url can only be used with type 'a2a' or 'openapi'")
+	if t.URL != "" && t.Type != "a2a" && t.Type != "openapi" && t.Type != "open_url" {
+		return errors.New("url can only be used with type 'a2a', 'openapi' or 'open_url'")
 	}
-	if t.Name != "" && (t.Type != "mcp" && t.Type != "a2a" && t.Type != "rag") {
-		return errors.New("name can only be used with type 'mcp', 'a2a', or 'rag'")
+	if t.Name != "" && (t.Type != "mcp" && t.Type != "a2a" && t.Type != "rag" && t.Type != "open_url") {
+		return errors.New("name can only be used with type 'mcp', 'a2a', 'rag', or 'open_url'")
 	}
 	if t.RAGConfig != nil && t.Type != "rag" {
 		return errors.New("rag_config can only be used with type 'rag'")
@@ -357,6 +357,10 @@ func (t *Toolset) validate() error {
 	case "openapi":
 		if t.URL == "" {
 			return errors.New("openapi toolset requires a url to be set")
+		}
+	case "open_url":
+		if t.URL == "" {
+			return errors.New("open_url toolset requires a url to be set")
 		}
 	case "model_picker":
 		if len(t.Models) == 0 {

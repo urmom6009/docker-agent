@@ -43,6 +43,7 @@ docker-agent ships with several built-in tools that require no external dependen
 | [RAG]({{ '/tools/rag/' | relative_url }}) | Retrieval-augmented generation over indexed sources |
 | [Model Picker]({{ '/tools/model-picker/' | relative_url }}) | Let the agent pick between several models per turn |
 | [User Prompt]({{ '/tools/user-prompt/' | relative_url }}) | Ask users questions and collect interactive input |
+| [Open URL]({{ '/tools/open-url/' | relative_url }}) | Open a fixed URL in the user's default browser |
 | [Transfer Task]({{ '/tools/transfer-task/' | relative_url }}) | Delegate tasks to sub-agents (auto-enabled with `sub_agents`) |
 | [Background Agents]({{ '/tools/background-agents/' | relative_url }}) | Dispatch work to sub-agents concurrently |
 | [Handoff]({{ '/tools/handoff/' | relative_url }}) | Hand the conversation off to another local agent in the same config (auto-enabled with `handoffs:`) |

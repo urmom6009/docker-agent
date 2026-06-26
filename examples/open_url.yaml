@@ -1,0 +1,20 @@
+agents:
+  root:
+    description: Agent that can open a dashboard in the user's browser
+    instruction: |
+      When the user asks to see the dashboard, call the open_dashboard tool.
+      The tool opens a fixed URL in the user's default browser.
+    model: openai/gpt-4o
+    toolsets:
+      # The open_url toolset exposes a single tool that opens a hardcoded URL
+      # in the user's default browser. It works on macOS, Linux and Windows.
+      # The URL is baked into the toolset definition — the model never supplies
+      # it. The optional `name` field renames the tool (defaults to "open_url").
+      - type: open_url
+        name: open_dashboard
+        url: https://example.com/dashboard
+      # ${env.X} interpolation is supported, so the URL can be configured via
+      # the environment without editing the agent file.
+      - type: open_url
+        name: open_docs
+        url: https://docs.example.com/${env.DOCS_VERSION}

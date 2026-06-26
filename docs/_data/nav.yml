@@ -69,6 +69,8 @@
       url: /tools/api/
     - title: User Prompt
       url: /tools/user-prompt/
+    - title: Open URL
+      url: /tools/open-url/
     - title: Transfer Task
       url: /tools/transfer-task/
     - title: Background Agents

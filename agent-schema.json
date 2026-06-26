@@ -1890,6 +1890,7 @@
             "lsp",
             "user_prompt",
             "openapi",
+            "open_url",
             "model_picker",
             "background_agents",
             "rag"
@@ -2099,7 +2100,7 @@
         },
         "url": {
           "type": "string",
-          "description": "URL for the a2a or openapi tool",
+          "description": "URL for the a2a, openapi or open_url tool",
           "format": "uri"
         },
         "headers": {
@@ -2275,6 +2276,22 @@
               "properties": {
                 "type": {
                   "const": "openapi"
+                }
+              }
+            },
+            {
+              "required": [
+                "url"
+              ]
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "open_url"
                 }
               }
             },
