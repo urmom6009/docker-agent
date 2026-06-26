@@ -53,10 +53,11 @@ type programStarter interface {
 // that advances state returns the Driver so calls can be chained. Assertion
 // failures are reported through testing.TB and stop the test.
 type Driver struct {
-	tb      testing.TB
-	program programStarter
-	frames  *frameStore
-	sink    frameSink
+	tb        testing.TB
+	program   programStarter
+	frames    *frameStore
+	sink      frameSink
+	clipboard *clipboardStore
 
 	waitTimeout time.Duration
 	runDone     chan struct{}
@@ -117,6 +118,7 @@ func New(tb testing.TB, model tea.Model, width, height int, opts ...Option) *Dri
 	tb.Helper()
 
 	sink := newDebugSink(tb)
+	clipboard, restoreClipboard := newClipboardStore()
 	store := &frameStore{}
 	capture := &captureModel{inner: model, frames: store, sink: sink}
 
@@ -141,6 +143,7 @@ func New(tb testing.TB, model tea.Model, width, height int, opts ...Option) *Dri
 		program:     p,
 		frames:      store,
 		sink:        sink,
+		clipboard:   clipboard,
 		waitTimeout: defaultWaitTimeout,
 		runDone:     make(chan struct{}),
 	}
@@ -158,7 +161,10 @@ func New(tb testing.TB, model tea.Model, width, height int, opts ...Option) *Dri
 	// ready state.
 	p.Send(tea.WindowSizeMsg{Width: width, Height: height})
 
-	tb.Cleanup(d.stop)
+	tb.Cleanup(func() {
+		d.stop()
+		restoreClipboard()
+	})
 	return d
 }
 

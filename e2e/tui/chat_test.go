@@ -16,6 +16,7 @@ import (
 
 	"github.com/docker/docker-agent/pkg/tui"
 	"github.com/docker/docker-agent/pkg/tui/tuitest"
+	"github.com/docker/docker-agent/pkg/tui/types"
 )
 
 // TestChat_BasicMath types a question, submits it, and waits for the agent's
@@ -42,6 +43,19 @@ func TestChat_PromptIsEditable(t *testing.T) {
 	// After submitting, the draft is sent and the agent's reply streams in.
 	d.Enter().
 		WaitFor(tuitest.Contains("2 + 2 equals 4."))
+}
+
+func TestChat_CopyAssistantMessageToClipboard(t *testing.T) {
+	d := newTUI(t, "testdata/basic.yaml", 120, 40, tui.WithHideSidebar())
+
+	d.Type("What's 2+2?").
+		Enter().
+		WaitFor(tuitest.Contains("2 + 2 equals 4."))
+
+	d.MoveMouseToText("2 + 2 equals 4.").
+		WaitFor(tuitest.Contains(types.AssistantMessageCopyLabel)).
+		ClickText(types.AssistantMessageCopyLabel).
+		WaitForClipboard("2 + 2 equals 4.")
 }
 
 // TestCommandPalette_Opens exercises a pure-UI interaction that needs no agent

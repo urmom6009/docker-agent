@@ -2,6 +2,7 @@ package messages
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -11,6 +12,37 @@ import (
 
 	"github.com/docker/docker-agent/pkg/tui/components/notification"
 )
+
+var (
+	clipboardMu    sync.RWMutex
+	writeClipboard = clipboard.WriteAll
+)
+
+// SetClipboardWriterForTest replaces the system clipboard writer and returns a
+// restore function. It is intended for black-box TUI tests that need to assert
+// copy behavior without touching the developer or CI machine's real clipboard.
+func SetClipboardWriterForTest(fn func(string) error) func() {
+	clipboardMu.Lock()
+	prev := writeClipboard
+	if fn == nil {
+		writeClipboard = clipboard.WriteAll
+	} else {
+		writeClipboard = fn
+	}
+	clipboardMu.Unlock()
+
+	return func() {
+		clipboardMu.Lock()
+		writeClipboard = prev
+		clipboardMu.Unlock()
+	}
+}
+
+func clipboardWriter() func(string) error {
+	clipboardMu.RLock()
+	defer clipboardMu.RUnlock()
+	return writeClipboard
+}
 
 // boxDrawingChars contains Unicode box-drawing characters used by lipgloss borders.
 // These need to be stripped when copying text to clipboard.
@@ -221,7 +253,7 @@ func (m *model) copySelectedMessageToClipboard() tea.Cmd {
 func copyTextToClipboard(text string) tea.Cmd {
 	return tea.Sequence(
 		func() tea.Msg {
-			_ = clipboard.WriteAll(text)
+			_ = clipboardWriter()(text)
 			return nil
 		},
 		tea.SetClipboard(text),

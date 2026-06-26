@@ -42,6 +42,10 @@ func (m *echoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case delayedMsg:
 		m.delayed = msg.text
+	case tea.MouseClickMsg:
+		m.buf = "clicked"
+	case tea.MouseMotionMsg:
+		m.delayed = "moved"
 	}
 	return m, nil
 }
@@ -68,6 +72,28 @@ func TestDriver_WaitForPollsAsyncFrames(t *testing.T) {
 	// The delayed message only arrives via tea.Tick, so a synchronous Assert
 	// would miss it — WaitFor must poll until the frame updates.
 	d.Press('x').WaitFor(Contains("later"))
+}
+
+func TestDriver_MouseHelpers(t *testing.T) {
+	d := New(t, &echoModel{}, 80, 24)
+	d.Type("target")
+
+	x, y := d.MustFindText("target")
+	if x != len("echo: ") || y != 0 {
+		t.Fatalf("MustFindText returned (%d,%d), want (%d,0)", x, y, len("echo: "))
+	}
+
+	d.MoveMouseToText("target").WaitFor(Contains("moved"))
+	d.ClickText("target").WaitFor(Contains("clicked"))
+}
+
+func TestDriver_ClipboardAssertions(t *testing.T) {
+	d := New(t, &echoModel{}, 80, 24)
+	d.clipboard.mu.Lock()
+	d.clipboard.values = append(d.clipboard.values, "hello clipboard")
+	d.clipboard.mu.Unlock()
+
+	d.WaitForClipboard("clipboard").AssertClipboard(Contains("hello"))
 }
 
 func TestMatchers(t *testing.T) {
