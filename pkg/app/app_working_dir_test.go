@@ -12,13 +12,12 @@ import (
 func TestApp_NewSession_PreservesWorkingDir(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	rt := &mockRuntime{}
 
 	initialSess := session.New(
 		session.WithWorkingDir("/projects/myapp"),
 	)
-	app := New(ctx, rt, initialSess)
+	app := New(rt, initialSess)
 	require.Equal(t, "/projects/myapp", app.Session().WorkingDir)
 
 	app.NewSession()
@@ -32,7 +31,6 @@ func TestApp_NewSession_PreservesWorkingDir(t *testing.T) {
 func TestApp_NewSession_PreservesAllSessionFlags(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	rt := &mockRuntime{}
 
 	initialSess := session.New(
@@ -40,7 +38,7 @@ func TestApp_NewSession_PreservesAllSessionFlags(t *testing.T) {
 		session.WithHideToolResults(true),
 		session.WithWorkingDir("/work"),
 	)
-	app := New(ctx, rt, initialSess)
+	app := New(rt, initialSess)
 
 	app.NewSession()
 

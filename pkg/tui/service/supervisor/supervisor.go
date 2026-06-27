@@ -85,6 +85,9 @@ func (s *Supervisor) AddSession(ctx context.Context, a *app.App, sess *session.S
 	// Create a cancellable context for this session
 	sessionCtx, cancel := context.WithCancel(ctx)
 	runner.cancel = cancel
+	if a != nil {
+		a.Start(sessionCtx)
+	}
 
 	s.runners[sess.ID] = runner
 	s.order = append(s.order, sess.ID)
@@ -94,7 +97,9 @@ func (s *Supervisor) AddSession(ctx context.Context, a *app.App, sess *session.S
 	}
 
 	// Start the subscription goroutine with routing
-	go s.subscribeWithRouting(sessionCtx, a, sess.ID)
+	if a != nil {
+		go s.subscribeWithRouting(sessionCtx, a, sess.ID)
+	}
 
 	return sess.ID
 }
@@ -355,6 +360,7 @@ func (s *Supervisor) ReplaceRunnerApp(ctx context.Context, sessionID string, new
 	// Create a new cancellable context for the replacement.
 	sessionCtx, cancel := context.WithCancel(ctx)
 	runner.cancel = cancel
+	newApp.Start(sessionCtx)
 
 	s.notifyTabsUpdated()
 	s.mu.Unlock()

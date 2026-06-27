@@ -195,14 +195,13 @@ var _ builtins.SnapshotController = (*stubSnapshotController)(nil)
 func TestApp_NewSession_PreservesToolsApproved(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	rt := &mockRuntime{}
 
 	// Create initial session with tools approved
 	initialSess := session.New(session.WithToolsApproved(true))
 	require.True(t, initialSess.ToolsApproved, "Initial session should have tools approved")
 
-	app := New(ctx, rt, initialSess)
+	app := New(rt, initialSess)
 
 	// Call NewSession - should preserve ToolsApproved
 	app.NewSession()
@@ -213,14 +212,13 @@ func TestApp_NewSession_PreservesToolsApproved(t *testing.T) {
 func TestApp_NewSession_PreservesHideToolResults(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	rt := &mockRuntime{}
 
 	// Create initial session with hide tool results
 	initialSess := session.New(session.WithHideToolResults(true))
 	require.True(t, initialSess.HideToolResults, "Initial session should have HideToolResults")
 
-	app := New(ctx, rt, initialSess)
+	app := New(rt, initialSess)
 
 	// Call NewSession - should preserve HideToolResults
 	app.NewSession()
@@ -322,7 +320,7 @@ func TestApp_ResolveSkillCommand_NoLocalRuntime(t *testing.T) {
 	ctx := t.Context()
 	rt := &mockRuntime{}
 	sess := session.New()
-	app := New(ctx, rt, sess)
+	app := New(rt, sess)
 
 	// mockRuntime is not a LocalRuntime, so no skills should be returned
 	resolved, err := app.ResolveSkillCommand(ctx, "/some-skill")
@@ -336,7 +334,7 @@ func TestApp_ResolveSkillCommand_NotSlashCommand(t *testing.T) {
 	ctx := t.Context()
 	rt := &mockRuntime{}
 	sess := session.New()
-	app := New(ctx, rt, sess)
+	app := New(rt, sess)
 
 	resolved, err := app.ResolveSkillCommand(ctx, "not a slash command")
 	require.NoError(t, err)
@@ -347,7 +345,7 @@ func TestApp_UndoLastSnapshot(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	app := New(ctx, &mockRuntime{}, session.New(),
+	app := New(&mockRuntime{}, session.New(),
 		WithSnapshotController(&stubSnapshotController{enabled: true, files: 2, ok: true}),
 	)
 	result, err := app.UndoLastSnapshot(ctx)
@@ -359,7 +357,7 @@ func TestApp_UndoLastSnapshot_NoSnapshot(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	app := New(ctx, &mockRuntime{}, session.New(),
+	app := New(&mockRuntime{}, session.New(),
 		WithSnapshotController(&stubSnapshotController{enabled: true}),
 	)
 	_, err := app.UndoLastSnapshot(ctx)
@@ -373,7 +371,7 @@ func TestApp_UndoLastSnapshot_NoController(t *testing.T) {
 	// so the same UI affordance can light up regardless of which
 	// runtime the embedder paired the App with.
 	ctx := t.Context()
-	app := New(ctx, &mockRuntime{}, session.New())
+	app := New(&mockRuntime{}, session.New())
 	_, err := app.UndoLastSnapshot(ctx)
 	require.ErrorIs(t, err, ErrNothingToUndo)
 	assert.False(t, app.SnapshotsEnabled())
@@ -399,7 +397,7 @@ func TestApp_SubscribeWith_FanOutToMultipleSubscribers(t *testing.T) {
 	defer cancel()
 
 	rt := &mockRuntime{}
-	app := New(ctx, rt, session.New())
+	app := New(rt, session.New())
 
 	recv := func() (chan tea.Msg, context.CancelFunc) {
 		subCtx, subCancel := context.WithCancel(ctx)

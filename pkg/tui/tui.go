@@ -65,6 +65,8 @@ const (
 
 // Model is the top-level TUI model that wraps the chat page.
 type appModel struct {
+	shutdownDone <-chan struct{}
+
 	supervisor *supervisor.Supervisor
 	tabBar     *tabbar.TabBar
 	tuiStore   *tuistate.Store
@@ -344,6 +346,7 @@ func New(ctx context.Context, spawner SessionSpawner, initialApp *app.App, initi
 	sessID := initialApp.Session().ID
 
 	m := &appModel{
+		shutdownDone: ctx.Done(),
 		buildCommandCategories: func(ctx context.Context, _ tea.Model) []commands.Category {
 			return commands.BuildCommandCategories(ctx, initialApp)
 		},
@@ -400,18 +403,6 @@ func New(ctx context.Context, spawner SessionSpawner, initialApp *app.App, initi
 	tabs, activeIdx := sv.GetTabs()
 	tb.SetTabs(tabs, activeIdx)
 	m.statusBar.SetShowNewTab(tb.Height() == 0)
-
-	// Make sure to stop on context cancellation.
-	// Note: chatPages/editors cleanup is handled by cleanupAll() on the
-	// normal exit path (ExitConfirmedMsg). We don't iterate those maps
-	// here to avoid racing with the Bubble Tea event loop.
-	go func() {
-		<-ctx.Done()
-		if ts != nil {
-			_ = ts.Close()
-		}
-		sv.Shutdown()
-	}()
 
 	return m
 }
@@ -533,8 +524,22 @@ func (m *appModel) initAndFocusComponents() tea.Cmd {
 	)
 }
 
+func (m *appModel) contextShutdownCmd() tea.Cmd {
+	return func() tea.Msg {
+		go func() {
+			<-m.shutdownDone
+			if m.tuiStore != nil {
+				_ = m.tuiStore.Close()
+			}
+			m.supervisor.Shutdown()
+		}()
+		return nil
+	}
+}
+
 // Init initializes the model.
 func (m *appModel) Init() tea.Cmd {
+	shutdownCmd := m.contextShutdownCmd()
 	// If a different tab should be active on startup, switch to it directly.
 	// The initial tab's pending restore stays lazy — it will be loaded via
 	// handleSwitchTab when the user eventually opens it, just like every
@@ -543,7 +548,7 @@ func (m *appModel) Init() tea.Cmd {
 		tabID := m.pendingActiveTab
 		m.pendingActiveTab = ""
 		_, switchCmd := m.handleSwitchTab(tabID)
-		return tea.Batch(m.dialogMgr.Init(), switchCmd)
+		return tea.Batch(m.dialogMgr.Init(), switchCmd, shutdownCmd)
 	}
 
 	// If the initial tab has a pending session restore, go through
@@ -564,12 +569,13 @@ func (m *appModel) Init() tea.Cmd {
 				cmd = tea.Batch(cmd, m.applySidebarCollapsed(activeID))
 				m.persistActiveTab(sess.ID)
 
-				return tea.Batch(m.dialogMgr.Init(), cmd)
+				return tea.Batch(m.dialogMgr.Init(), cmd, shutdownCmd)
 			}
 		}
 	}
 
 	return tea.Batch(
+		shutdownCmd,
 		m.dialogMgr.Init(),
 		m.chatPage.Init(),
 		m.editor.Init(),

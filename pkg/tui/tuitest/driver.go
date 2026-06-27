@@ -151,7 +151,8 @@ func New(tb testing.TB, model tea.Model, width, height int, opts ...Option) *Dri
 		opt(d)
 	}
 
-	go func() {
+	// tuitest.New intentionally returns a running driver and registers cleanup with testing.TB.
+	go func() { //rubocop:disable Lint/ConstructorPurity
 		defer close(d.runDone)
 		_, _ = p.Run()
 	}()

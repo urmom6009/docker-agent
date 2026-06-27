@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"google.golang.org/genai"
@@ -21,7 +22,11 @@ const http2BodyClosedError = "http2: response body closed"
 
 // StreamAdapter adapts the Gemini streaming iterator to chat.MessageStream
 type StreamAdapter struct {
+	iter       func(func(*genai.GenerateContentResponse, error) bool)
 	ch         chan result
+	done       chan struct{}
+	startOnce  sync.Once
+	closeOnce  sync.Once
 	model      string
 	trackUsage bool
 }
@@ -34,112 +39,138 @@ type result struct {
 
 // NewStreamAdapter constructs a StreamAdapter from Gemini's iterator
 func NewStreamAdapter(iter func(func(*genai.GenerateContentResponse, error) bool), model string, trackUsage bool) *StreamAdapter {
-	adapter := &StreamAdapter{
+	return &StreamAdapter{
+		iter:       iter,
 		ch:         make(chan result),
+		done:       make(chan struct{}),
 		model:      model,
 		trackUsage: trackUsage,
 	}
+}
 
-	go func() {
-		defer close(adapter.ch)
+func (g *StreamAdapter) start() {
+	g.startOnce.Do(func() {
+		go g.run()
+	})
+}
 
-		hasContent := false
-		hasToolCalls := false
-		var lastResponse *genai.GenerateContentResponse
+func (g *StreamAdapter) run() {
+	defer close(g.ch)
 
-		// Consume the iterator
-		iter(func(resp *genai.GenerateContentResponse, err error) bool {
-			// Skip noisy http2 errors
-			if err != nil && err.Error() == http2BodyClosedError {
-				return true
-			}
+	hasContent := false
+	hasToolCalls := false
+	var lastResponse *genai.GenerateContentResponse
 
-			// Handle streaming parser errors from new Gemini 2.5 response fields
-			if err != nil {
-				errMsg := err.Error()
-				// Check if this is a streaming chunk parsing error that contains valid response data
-				if strings.Contains(errMsg, "invalid stream chunk") && strings.Contains(errMsg, `"text":`) {
-					// Try to extract text content from the error message
-					if textContent := extractTextFromError(errMsg); textContent != "" {
-						// Create a synthetic response with the extracted text
-						adapter.ch <- result{resp: &genai.GenerateContentResponse{
-							Candidates: []*genai.Candidate{
-								{
-									Content: &genai.Content{
-										Parts: []*genai.Part{
-											{Text: textContent},
-										},
+	// Consume the iterator
+	g.iter(func(resp *genai.GenerateContentResponse, err error) bool {
+		// Skip noisy http2 errors
+		if err != nil && err.Error() == http2BodyClosedError {
+			return true
+		}
+
+		// Handle streaming parser errors from new Gemini 2.5 response fields
+		if err != nil {
+			errMsg := err.Error()
+			// Check if this is a streaming chunk parsing error that contains valid response data
+			if strings.Contains(errMsg, "invalid stream chunk") && strings.Contains(errMsg, `"text":`) {
+				// Try to extract text content from the error message
+				if textContent := extractTextFromError(errMsg); textContent != "" {
+					// Create a synthetic response with the extracted text
+					if !g.send(result{resp: &genai.GenerateContentResponse{
+						Candidates: []*genai.Candidate{
+							{
+								Content: &genai.Content{
+									Parts: []*genai.Part{
+										{Text: textContent},
 									},
 								},
 							},
-						}}
-						hasContent = true
+						},
+					}}) {
+						return false
+					}
+					hasContent = true
 
-						// Check if this appears to be a complete response (has finishReason)
-						if strings.Contains(errMsg, `"finishReason"`) {
-							// This is the final chunk, send done signal
-							adapter.ch <- result{done: true}
+					// Check if this appears to be a complete response (has finishReason)
+					if strings.Contains(errMsg, `"finishReason"`) {
+						// This is the final chunk, send done signal
+						if !g.send(result{done: true}) {
 							return false
 						}
-
-						// Continue iteration to potentially get more chunks
-						return true
+						return false
 					}
-				}
 
-				adapter.ch <- result{err: err}
+					// Continue iteration to potentially get more chunks
+					return true
+				}
+			}
+
+			if !g.send(result{err: err}) {
 				return false
 			}
+			return false
+		}
 
-			if resp != nil {
-				// Check for text content without using Text() to avoid warnings
-				hasText := false
-				for _, candidate := range resp.Candidates {
-					if candidate.Content != nil {
-						for _, part := range candidate.Content.Parts {
-							if part.Text != "" {
-								hasText = true
-								break
-							}
+		if resp != nil {
+			// Check for text content without using Text() to avoid warnings
+			hasText := false
+			for _, candidate := range resp.Candidates {
+				if candidate.Content != nil {
+					for _, part := range candidate.Content.Parts {
+						if part.Text != "" {
+							hasText = true
+							break
 						}
 					}
-					if hasText {
-						break
-					}
 				}
-
-				// Check for function calls
-				hasFuncs := len(resp.FunctionCalls()) > 0
-				// Gemini 3 can emit usage metadata on chunks without text/tool
-				// calls. Forward such chunks so downstream can capture token usage.
-				hasUsage := resp.UsageMetadata != nil
-
-				// Send response if it has content, function calls, or usage metadata
-				if hasText || hasFuncs || hasUsage {
-					hasContent = hasContent || hasText
-					hasToolCalls = hasToolCalls || hasFuncs
-					lastResponse = resp // Store for final message
-					adapter.ch <- result{resp: resp}
+				if hasText {
+					break
 				}
 			}
 
-			return true
-		})
+			// Check for function calls
+			hasFuncs := len(resp.FunctionCalls()) > 0
+			// Gemini 3 can emit usage metadata on chunks without text/tool
+			// calls. Forward such chunks so downstream can capture token usage.
+			hasUsage := resp.UsageMetadata != nil
 
-		// Send final message with appropriate stop reason
-		if hasContent || hasToolCalls {
-			if lastResponse == nil {
-				lastResponse = &genai.GenerateContentResponse{}
+			// Send response if it has content, function calls, or usage metadata
+			if hasText || hasFuncs || hasUsage {
+				hasContent = hasContent || hasText
+				hasToolCalls = hasToolCalls || hasFuncs
+				lastResponse = resp // Store for final message
+				if !g.send(result{resp: resp}) {
+					return false
+				}
 			}
-			adapter.ch <- result{done: true, resp: lastResponse}
 		}
-	}()
 
-	return adapter
+		return true
+	})
+
+	// Send final message with appropriate stop reason
+	if hasContent || hasToolCalls {
+		if lastResponse == nil {
+			lastResponse = &genai.GenerateContentResponse{}
+		}
+		if !g.send(result{done: true, resp: lastResponse}) {
+			return
+		}
+	}
+}
+
+func (g *StreamAdapter) send(res result) bool {
+	select {
+	case g.ch <- res:
+		return true
+	case <-g.done:
+		return false
+	}
 }
 
 // Recv gets the next Gemini content chunk
 func (g *StreamAdapter) Recv() (chat.MessageStreamResponse, error) {
+	g.start()
 	res, ok := <-g.ch
 	if !ok {
 		return chat.MessageStreamResponse{}, io.EOF
@@ -242,11 +273,9 @@ func (g *StreamAdapter) Recv() (chat.MessageStreamResponse, error) {
 
 // Close closes the stream
 func (g *StreamAdapter) Close() {
-	// Drain channel to let goroutine exit
-	go func() {
-		for range g.ch {
-		}
-	}()
+	g.closeOnce.Do(func() {
+		close(g.done)
+	})
 }
 
 // extractTextFromError attempts to extract text content from streaming parsing errors

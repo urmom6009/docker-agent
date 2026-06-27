@@ -890,7 +890,8 @@ func (f *runExecFlags) runLeanTUI(ctx context.Context, rt runtime.Runtime, sess 
 	if gen := rt.TitleGenerator(); gen != nil {
 		opts = append(opts, app.WithTitleGenerator(gen))
 	}
-	a := app.New(ctx, rt, sess, opts...)
+	a := app.New(rt, sess, opts...)
+	a.Start(ctx)
 
 	firstMessage, err := readInitialMessage(args)
 	if err != nil {
@@ -1020,7 +1021,7 @@ func (f *runExecFlags) createSessionSpawner(agentSource config.Source, sessStore
 			appOpts = append(appOpts, app.WithSnapshotController(ctrl))
 		}
 
-		a := app.New(spawnCtx, localRt, newSess, appOpts...)
+		a := app.New(localRt, newSess, appOpts...)
 
 		return a, newSess, cleanup, nil
 	}

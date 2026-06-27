@@ -205,7 +205,7 @@ func TestQueueFlow_BusyAgent_BangCommandBypassesQueue(t *testing.T) {
 	t.Parallel()
 
 	sess := session.New()
-	p := New(app.New(t.Context(), queueTestRuntime{}, sess), service.NewSessionState(sess)).(*chatPage)
+	p := New(app.New(queueTestRuntime{}, sess), service.NewSessionState(sess)).(*chatPage)
 	p.working = true
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -237,7 +237,7 @@ func TestQueueFlow_SkillCommand_DispatchesOnceWithoutLooping(t *testing.T) {
 	t.Parallel()
 
 	sess := session.New()
-	p := New(app.New(t.Context(), queueTestRuntime{}, sess), service.NewSessionState(sess)).(*chatPage)
+	p := New(app.New(queueTestRuntime{}, sess), service.NewSessionState(sess)).(*chatPage)
 
 	calls := 0
 	p.commandParser = commands.NewParser(commands.Category{
@@ -396,7 +396,7 @@ func TestReadOnly_RejectsMessages(t *testing.T) {
 	t.Parallel()
 
 	sess := session.New()
-	a := app.New(t.Context(), queueTestRuntime{}, sess, app.WithReadOnly())
+	a := app.New(queueTestRuntime{}, sess, app.WithReadOnly())
 	require.True(t, a.IsReadOnly())
 
 	p := New(a, service.NewSessionState(sess)).(*chatPage)
@@ -411,7 +411,7 @@ func TestReadOnly_AllowsSlashCommands(t *testing.T) {
 	t.Parallel()
 
 	sess := session.New()
-	a := app.New(t.Context(), queueTestRuntime{}, sess, app.WithReadOnly())
+	a := app.New(queueTestRuntime{}, sess, app.WithReadOnly())
 	p := New(a, service.NewSessionState(sess)).(*chatPage)
 	p.commandParser = commands.NewParser(commands.Category{
 		Name: "Test",
@@ -489,7 +489,7 @@ func TestHandleSendMsg_ForkSkillRunsViaFork(t *testing.T) {
 	}}, t.TempDir())
 	rt := &skillDispatchRuntime{skillset: skillSet}
 	sess := session.New()
-	p := New(app.New(t.Context(), rt, sess), service.NewSessionState(sess)).(*chatPage)
+	p := New(app.New(rt, sess), service.NewSessionState(sess)).(*chatPage)
 	p.commandParser = skillCommandParser("services")
 
 	dispatchTypedSkill(t, p, "/services please")
@@ -514,7 +514,7 @@ func TestHandleSendMsg_InlineSkillRunsViaResolveInput(t *testing.T) {
 	}}, t.TempDir())
 	rt := &skillDispatchRuntime{skillset: skillSet}
 	sess := session.New()
-	p := New(app.New(t.Context(), rt, sess), service.NewSessionState(sess)).(*chatPage)
+	p := New(app.New(rt, sess), service.NewSessionState(sess)).(*chatPage)
 	p.commandParser = skillCommandParser("services")
 
 	dispatchTypedSkill(t, p, "/services please")
@@ -535,7 +535,7 @@ func TestReadOnly_RejectsBypassQueueCommands(t *testing.T) {
 	t.Parallel()
 
 	sess := session.New()
-	a := app.New(t.Context(), queueTestRuntime{}, sess, app.WithReadOnly())
+	a := app.New(queueTestRuntime{}, sess, app.WithReadOnly())
 	p := New(a, service.NewSessionState(sess)).(*chatPage)
 
 	_, cmd := p.handleSendMsg(messages.SendMsg{Content: "/myskill", BypassQueue: true})

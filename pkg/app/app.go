@@ -50,6 +50,7 @@ type App struct {
 	titleGen               *sessiontitle.Generator     // Title generator for local runtime (nil for remote)
 	snapshotController     builtins.SnapshotController // Drives /undo, /snapshots, /reset; nil for runtimes that don't capture snapshots
 
+	startOnce  sync.Once
 	subsMu     sync.Mutex
 	subs       []chan tea.Msg
 	fanoutOnce sync.Once
@@ -117,7 +118,7 @@ func WithSnapshotController(c builtins.SnapshotController) Opt {
 	}
 }
 
-func New(ctx context.Context, rt runtime.Runtime, sess *session.Session, opts ...Opt) *App {
+func New(rt runtime.Runtime, sess *session.Session, opts ...Opt) *App {
 	app := &App{
 		runtime:          rt,
 		session:          sess,
@@ -129,34 +130,41 @@ func New(ctx context.Context, rt runtime.Runtime, sess *session.Session, opts ..
 		opt(app)
 	}
 
-	// Emit startup info (agent, team, tools) through the events channel.
-	// This runs in the background so the TUI can start immediately while
-	// slow operations (like MCP tool loading) complete asynchronously.
-	go func() {
-		startupEvents := make(chan runtime.Event, 10)
-		go func() {
-			defer close(startupEvents)
-			rt.EmitStartupInfo(ctx, sess, runtime.NewChannelSink(startupEvents))
-		}()
-		for event := range startupEvents {
-			select {
-			case app.events <- event:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	// Subscribe to tool list changes so the sidebar updates immediately
-	// when an MCP server adds or removes tools (outside of a RunStream).
-	rt.OnToolsChanged(func(event runtime.Event) {
-		select {
-		case app.events <- event:
-		case <-ctx.Done():
-		}
-	})
-
 	return app
+}
+
+// Start begins App-owned background event producers. Construction stays cheap
+// and side-effect free; embedders call Start when the App enters a managed
+// lifecycle.
+func (a *App) Start(ctx context.Context) {
+	a.startOnce.Do(func() {
+		// Emit startup info (agent, team, tools) through the events channel.
+		// This runs in the background so the TUI can start immediately while
+		// slow operations (like MCP tool loading) complete asynchronously.
+		go func() {
+			startupEvents := make(chan runtime.Event, 10)
+			go func() {
+				defer close(startupEvents)
+				a.runtime.EmitStartupInfo(ctx, a.session, runtime.NewChannelSink(startupEvents))
+			}()
+			for event := range startupEvents {
+				select {
+				case a.events <- event:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+
+		// Subscribe to tool list changes so the sidebar updates immediately
+		// when an MCP server adds or removes tools (outside of a RunStream).
+		a.runtime.OnToolsChanged(func(event runtime.Event) {
+			select {
+			case a.events <- event:
+			case <-ctx.Done():
+			}
+		})
+	})
 }
 
 func (a *App) SendFirstMessage() tea.Cmd {
