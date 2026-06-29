@@ -15,6 +15,14 @@ import (
 	"github.com/docker/docker-agent/pkg/modelsdev"
 )
 
+// modelsDevAbsentProviders lists providers that are valid at runtime but
+// are not expected to exist in the remote models.dev catalog. The test
+// skips models.dev lookups for these to avoid false failures.
+var modelsDevAbsentProviders = map[string]bool{
+	"dmr":          true, // Docker Model Runner (local, not in catalog)
+	"opencode-zen": true, // not yet registered in models.dev
+}
+
 func collectExamples(t *testing.T) []string {
 	t.Helper()
 
@@ -67,8 +75,8 @@ func TestParseExamples(t *testing.T) {
 				}
 				require.NotEmpty(t, model.Provider)
 				require.NotEmpty(t, model.Model)
-				// Skip providers that don't have entries in models.dev
-				if model.Provider == "dmr" {
+				// Skip providers that don't have entries in models.dev.
+				if modelsDevAbsentProviders[model.Provider] {
 					continue
 				}
 				// Skip models with routing rules - they use multiple providers

@@ -1158,14 +1158,15 @@ func isCustomProvider(cfg *latest.ModelConfig) bool {
 // autoSelectsResponsesAPI reports whether, absent an explicit api_type, the
 // provider should auto-select the Responses API for models that require it.
 //
-// This covers OpenAI directly and GitHub Copilot, which proxies the same
+// This covers OpenAI directly, GitHub Copilot (which proxies the same
 // OpenAI models and rejects newer ones (gpt-5, Codex, ...) on the legacy
-// /chat/completions endpoint with a 400. Detection is driven by
-// modelinfo.SupportsResponsesAPI so new models are picked up by naming
-// convention rather than a hardcoded allow-list.
+// /chat/completions endpoint with a 400), and OpenCode Zen (which publishes
+// the same OpenAI Responses endpoint for its GPT model lineup). Detection is
+// driven by modelinfo.SupportsResponsesAPI so new models are picked up by
+// naming convention rather than a hardcoded allow-list.
 func autoSelectsResponsesAPI(provider string) bool {
 	switch provider {
-	case "openai", "github-copilot":
+	case "openai", "github-copilot", "opencode-zen":
 		return true
 	}
 	return false

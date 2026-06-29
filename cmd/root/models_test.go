@@ -2,8 +2,12 @@ package root
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -134,6 +138,160 @@ func TestModelsListCommand_DefaultMarker(t *testing.T) {
 			assert.True(t, r.Default, "auto-selected model %s/%s should be marked as default", r.Provider, r.Model)
 		}
 	}
+}
+
+func TestFetchModelsFromURL_Success(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/v1/models", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{"object":"list","data":[
+			{"id":"model-a","object":"model"},
+			{"id":"model-b","object":"model"},
+			{"id":"model-c","object":"model"}
+		]}`))
+		assert.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	models := fetchModelsFromURL(t.Context(), server.URL+"/v1/models", server.Client())
+	assert.Equal(t, []string{"model-a", "model-b", "model-c"}, models)
+}
+
+func TestFetchModelsFromURL_Non200(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	models := fetchModelsFromURL(t.Context(), server.URL+"/v1/models", server.Client())
+	assert.Empty(t, models)
+}
+
+func TestFetchModelsFromURL_Status500(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	models := fetchModelsFromURL(t.Context(), server.URL+"/v1/models", server.Client())
+	assert.Empty(t, models)
+}
+
+func TestFetchModelsFromURL_MalformedJSON(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`not json`))
+		assert.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	models := fetchModelsFromURL(t.Context(), server.URL+"/v1/models", server.Client())
+	assert.Empty(t, models)
+}
+
+func TestFetchModelsFromURL_EmptyBody(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+	}))
+	t.Cleanup(server.Close)
+
+	models := fetchModelsFromURL(t.Context(), server.URL+"/v1/models", server.Client())
+	assert.Empty(t, models)
+}
+
+func TestFetchModelsFromURL_EmptyDataArray(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{"object":"list","data":[]}`))
+		assert.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	models := fetchModelsFromURL(t.Context(), server.URL+"/v1/models", server.Client())
+	assert.Empty(t, models)
+}
+
+func TestFetchModelsFromURL_DuplicateIDs(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{"object":"list","data":[
+			{"id":"dup"},
+			{"id":"dup"},
+			{"id":"unique"}
+		]}`))
+		assert.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	models := fetchModelsFromURL(t.Context(), server.URL+"/v1/models", server.Client())
+	assert.Equal(t, []string{"dup", "dup", "unique"}, models)
+}
+
+func TestFetchModelsFromURL_EmptyIDs(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{"object":"list","data":[
+			{"id":""},
+			{"id":"valid"},
+			{"id":""}
+		]}`))
+		assert.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	models := fetchModelsFromURL(t.Context(), server.URL+"/v1/models", server.Client())
+	assert.Equal(t, []string{"valid"}, models)
+}
+
+func TestFetchModelsFromURL_ContextCanceled(t *testing.T) {
+	t.Parallel()
+
+	var called atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called.Store(true)
+	}))
+	t.Cleanup(server.Close)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	models := fetchModelsFromURL(ctx, server.URL+"/v1/models", server.Client())
+	assert.Empty(t, models)
+}
+
+func TestFetchModelsFromURL_SkipsEmbeddingModels(t *testing.T) {
+	// The function passes all model IDs through; embedding filtering
+	// is done at the caller level (collectModels). Verify IDs are intact.
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{"object":"list","data":[
+			{"id":"text-embedding-3"},
+			{"id":"gpt-5"}
+		]}`))
+		assert.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	models := fetchModelsFromURL(t.Context(), server.URL+"/v1/models", server.Client())
+	assert.Equal(t, []string{"text-embedding-3", "gpt-5"}, models)
 }
 
 func TestModelsListCommand_NoCredentials(t *testing.T) {

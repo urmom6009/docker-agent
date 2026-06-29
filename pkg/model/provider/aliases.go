@@ -68,6 +68,16 @@ var Aliases = map[string]Alias{
 		BaseURL:     "https://api.githubcopilot.com",
 		TokenEnvVar: "GITHUB_TOKEN",
 	},
+	"opencode-go": {
+		APIType:     "openai",
+		BaseURL:     "https://opencode.ai/zen/go/v1",
+		TokenEnvVar: "OPENCODE_API_KEY",
+	},
+	"opencode-zen": {
+		APIType:     "openai",
+		BaseURL:     "https://opencode.ai/zen/v1",
+		TokenEnvVar: "OPENCODE_API_KEY",
+	},
 }
 
 // LookupAlias returns the Alias registered for the given name (if any).

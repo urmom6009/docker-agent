@@ -29,6 +29,11 @@ type providerConfig struct {
 // cloudProviders defines the available cloud providers in priority order.
 // The first provider with a configured API key will be selected by AutoModelConfig.
 // DMR is always appended as the final fallback (not listed here).
+//
+// opencode-zen is ordered before opencode-go because both share OPENCODE_API_KEY:
+// when the key is set, Zen wins auto-selection. A subscriber who only uses Go
+// should set the provider explicitly (e.g. `--model opencode-go/...`) rather than
+// relying on auto; see docs/providers/opencode-go for details.
 var cloudProviders = []providerConfig{
 	{"anthropic", []string{"ANTHROPIC_API_KEY"}, "ANTHROPIC_API_KEY"},
 	{"openai", []string{"OPENAI_API_KEY"}, "OPENAI_API_KEY"},
@@ -44,6 +49,8 @@ var cloudProviders = []providerConfig{
 		"AWS_PROFILE",
 		"AWS_ROLE_ARN",
 	}, "AWS_ACCESS_KEY_ID (or AWS_PROFILE, AWS_ROLE_ARN, AWS_BEARER_TOKEN_BEDROCK)"},
+	{"opencode-zen", []string{"OPENCODE_API_KEY"}, "OPENCODE_API_KEY"},
+	{"opencode-go", []string{"OPENCODE_API_KEY"}, "OPENCODE_API_KEY"},
 }
 
 // AutoModelFallbackError is returned when auto model selection fails because
@@ -99,6 +106,8 @@ var DefaultModels = map[string]string{
 	"dmr":            "ai/qwen3:latest",
 	"mistral":        "mistral-small-latest",
 	"amazon-bedrock": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+	"opencode-go":    "deepseek-v4-flash",
+	"opencode-zen":   "deepseek-v4-flash-free",
 }
 
 func AvailableProviders(ctx context.Context, modelsGateway string, env environment.Provider) []string {

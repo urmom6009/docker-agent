@@ -279,7 +279,7 @@ func TestDefaultModels(t *testing.T) {
 	t.Parallel()
 
 	// Test that DefaultModels map has all expected providers
-	expectedProviders := []string{"openai", "anthropic", "google", "dmr", "mistral", "amazon-bedrock"}
+	expectedProviders := []string{"openai", "anthropic", "google", "dmr", "mistral", "amazon-bedrock", "opencode-zen", "opencode-go"}
 
 	for _, provider := range expectedProviders {
 		t.Run(provider, func(t *testing.T) {
@@ -296,13 +296,15 @@ func TestDefaultModels(t *testing.T) {
 	assert.Equal(t, "ai/qwen3:latest", DefaultModels["dmr"])
 	assert.Equal(t, "mistral-small-latest", DefaultModels["mistral"])
 	assert.Equal(t, "global.anthropic.claude-sonnet-4-5-20250929-v1:0", DefaultModels["amazon-bedrock"])
+	assert.Equal(t, "deepseek-v4-flash", DefaultModels["opencode-go"])
+	assert.Equal(t, "deepseek-v4-flash-free", DefaultModels["opencode-zen"])
 }
 
 func TestAutoModelConfig_IntegrationWithDefaultModels(t *testing.T) {
 	t.Parallel()
 
 	// Verify that AutoModelConfig always returns a model from DefaultModels
-	providers := []string{"openai", "anthropic", "google", "mistral"}
+	providers := []string{"openai", "anthropic", "google", "mistral", "opencode-zen"}
 
 	for _, provider := range providers {
 		t.Run(provider, func(t *testing.T) {
@@ -320,6 +322,8 @@ func TestAutoModelConfig_IntegrationWithDefaultModels(t *testing.T) {
 				envVars["GOOGLE_API_KEY"] = "test-key"
 			case "mistral":
 				envVars["MISTRAL_API_KEY"] = "test-key"
+			case "opencode-zen":
+				envVars["OPENCODE_API_KEY"] = "test-key"
 			}
 
 			modelConfig := AutoModelConfig(t.Context(), "", environment.NewMapEnvProvider(envVars), nil, nil)
@@ -330,6 +334,20 @@ func TestAutoModelConfig_IntegrationWithDefaultModels(t *testing.T) {
 			assert.Equal(t, provider, modelConfig.Provider)
 		})
 	}
+
+	// opencode-go shares OPENCODE_API_KEY with opencode-zen, so it can never be
+	// auto-selected when the env var is set (zen wins due to cloudProviders
+	// ordering). Test it via a user-specified default model instead.
+	t.Run("opencode-go", func(t *testing.T) {
+		t.Parallel()
+
+		modelConfig := AutoModelConfig(t.Context(), "", environment.NewMapEnvProvider(map[string]string{
+			"OPENCODE_API_KEY": "test-key",
+		}), &latest.ModelConfig{Provider: "opencode-go", Model: DefaultModels["opencode-go"]}, nil)
+
+		assert.Equal(t, "opencode-go", modelConfig.Provider)
+		assert.Equal(t, DefaultModels["opencode-go"], modelConfig.Model)
+	})
 
 	// Test dmr provider (no API keys)
 	t.Run("dmr", func(t *testing.T) {
@@ -352,33 +370,44 @@ func TestAvailableProviders_PrecedenceOrder(t *testing.T) {
 		"OPENAI_API_KEY":    "test-key",
 		"GOOGLE_API_KEY":    "test-key",
 		"MISTRAL_API_KEY":   "test-key",
+		"OPENCODE_API_KEY":  "test-key",
 	})
 	providers := AvailableProviders(t.Context(), "", env)
 	assert.Equal(t, "anthropic", providers[0])
 
 	// No anthropic - openai should win
 	env = environment.NewMapEnvProvider(map[string]string{
-		"OPENAI_API_KEY":  "test-key",
-		"GOOGLE_API_KEY":  "test-key",
-		"MISTRAL_API_KEY": "test-key",
+		"OPENAI_API_KEY":   "test-key",
+		"GOOGLE_API_KEY":   "test-key",
+		"MISTRAL_API_KEY":  "test-key",
+		"OPENCODE_API_KEY": "test-key",
 	})
 	providers = AvailableProviders(t.Context(), "", env)
 	assert.Equal(t, "openai", providers[0])
 
 	// No anthropic or openai - google should win
 	env = environment.NewMapEnvProvider(map[string]string{
-		"GOOGLE_API_KEY":  "test-key",
-		"MISTRAL_API_KEY": "test-key",
+		"GOOGLE_API_KEY":   "test-key",
+		"MISTRAL_API_KEY":  "test-key",
+		"OPENCODE_API_KEY": "test-key",
 	})
 	providers = AvailableProviders(t.Context(), "", env)
 	assert.Equal(t, "google", providers[0])
 
 	// No anthropic, openai, or google - mistral should win
 	env = environment.NewMapEnvProvider(map[string]string{
-		"MISTRAL_API_KEY": "test-key",
+		"MISTRAL_API_KEY":  "test-key",
+		"OPENCODE_API_KEY": "test-key",
 	})
 	providers = AvailableProviders(t.Context(), "", env)
 	assert.Equal(t, "mistral", providers[0])
+
+	// Only OPENCODE_API_KEY set - opencode-zen should win (higher priority than opencode-go)
+	env = environment.NewMapEnvProvider(map[string]string{
+		"OPENCODE_API_KEY": "test-key",
+	})
+	providers = AvailableProviders(t.Context(), "", env)
+	assert.Equal(t, "opencode-zen", providers[0])
 
 	// No keys at all - dmr should be selected
 	env = environment.NewNoEnvProvider()

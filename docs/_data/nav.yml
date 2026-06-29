@@ -131,6 +131,10 @@
       url: /providers/bedrock/
     - title: Docker Model Runner
       url: /providers/dmr/
+    - title: OpenCode Zen
+      url: /providers/opencode-zen/
+    - title: OpenCode Go
+      url: /providers/opencode-go/
     - title: Mistral
       url: /providers/mistral/
     - title: "xAI (Grok)"
