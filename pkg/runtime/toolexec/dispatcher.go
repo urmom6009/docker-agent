@@ -47,6 +47,13 @@ const (
 	ApprovalSourceUserApprovedTool           = "user_approved_tool"
 	ApprovalSourceUserRejected               = "user_rejected"
 	ApprovalSourceContextCanceled            = "context_canceled"
+	// ApprovalSourceNonInteractiveDeny is recorded when a tool call
+	// reaches [call.askUser] in a non-interactive session (eval, MCP
+	// serve, A2A adapter, …). With no human at the keyboard and no
+	// Resume listener, the deterministic safe answer is Deny; without
+	// this guard the dispatcher would block on the Resume channel
+	// forever.
+	ApprovalSourceNonInteractiveDeny = "non_interactive_deny"
 )
 
 // CallOutcome captures the verdicts of a single tool invocation as
@@ -580,6 +587,19 @@ func (c *call) askUser(ctx context.Context, runTool func() CallOutcome) CallOutc
 			return outcome
 		}
 		hookMeta = meta
+	}
+
+	// Non-interactive sessions (eval, MCP serve, A2A adapter) have no
+	// Resume listener. Blocking on the select below would hang forever.
+	// The deterministic safe answer is Deny: nobody is at the keyboard
+	// to approve, and an auto-Allow here would bypass whatever rule
+	// routed the call to askUser in the first place (a checker
+	// ForceAsk, a preempt-yolo Ask, or the default Ask).
+	if c.sess.NonInteractive {
+		slog.DebugContext(ctx, "Tool denied: non-interactive session reached askUser", "tool", c.tc.Function.Name, "session_id", c.sess.ID)
+		c.notifyApproval(ctx, ApprovalDecisionDeny, ApprovalSourceNonInteractiveDeny)
+		c.errorResponse(ctx, fmt.Sprintf("Tool '%s' requires user confirmation but the session is non-interactive.", c.tc.Function.Name))
+		return CallOutcome{}
 	}
 
 	slog.DebugContext(ctx, "Tools not approved, waiting for resume", "tool", c.tc.Function.Name, "session_id", c.sess.ID)

@@ -904,3 +904,86 @@ func TestDispatcher_PreToolUseDefaultLaneSkippedUnderYolo(t *testing.T) {
 		"default pre_tool_use lane must not fire under --yolo; only preempt_yolo:true entries do")
 	assert.Empty(t, em.confirmations)
 }
+
+// TestDispatcher_NonInteractiveAskAutoDenies pins the universal
+// headless guard: any path that would reach askUser in a
+// non-interactive session (eval, MCP serve, A2A adapter) must
+// auto-deny rather than block on the Resume channel. This covers the
+// preempt-yolo Ask lane (this test), checker ForceAsk
+// (TestDispatcher_NonInteractiveCheckerForceAskAutoDenies), and the
+// default Ask
+// (TestDispatcher_NonInteractiveDefaultAskAutoDenies). Without this
+// guard each path would hang indefinitely with no Resume listener.
+func TestDispatcher_NonInteractiveAskAutoDenies(t *testing.T) {
+	a := newAgent()
+	sess := session.New()
+	sess.ToolsApproved = true
+	sess.NonInteractive = true
+
+	tool := tools.Tool{
+		Name: "shell",
+		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+			panic("must not run when denied")
+		},
+	}
+
+	hd := &stubHookDispatcher{
+		on: map[hooks.EventType]*hooks.Result{
+			hooks.EventPreToolUsePreYolo: {
+				Allowed:        true,
+				Decision:       hooks.DecisionAsk,
+				DecisionReason: "rm -rf <path>: irreversible",
+				Metadata:       map[string]string{"blast_radius": "high"},
+			},
+		},
+	}
+
+	d := &toolexec.Dispatcher{
+		AgentFor: func(*session.Session) *agent.Agent { return a },
+		Hooks:    hd,
+	}
+	em := &captureEmitter{}
+
+	d.Process(t.Context(), sess, []tools.ToolCall{{
+		ID:       "danger",
+		Function: tools.FunctionCall{Name: "shell", Arguments: `{"cmd":"rm -rf /tmp/x"}`},
+	}}, []tools.Tool{tool}, em)
+
+	require.Len(t, em.responses, 1)
+	assert.True(t, em.responses[0].IsError, "non-interactive ask must produce an error tool response")
+	assert.Contains(t, em.responses[0].Output, "non-interactive",
+		"deny message should name the cause so eval traces are debuggable")
+	assert.Empty(t, em.confirmations,
+		"confirmation event must not be emitted in non-interactive mode — there is no one to confirm")
+}
+
+// TestDispatcher_NonInteractiveDefaultAskAutoDenies covers the
+// no-rule-matched path: a non-interactive session with no preempt-yolo
+// hook, no checker rules, no readonly hint, and no --yolo. Today this
+// falls through to askUser and would hang. The guard must deny.
+func TestDispatcher_NonInteractiveDefaultAskAutoDenies(t *testing.T) {
+	a := newAgent()
+	sess := session.New()
+	sess.NonInteractive = true
+
+	tool := tools.Tool{
+		Name: "shell",
+		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+			panic("must not run when denied")
+		},
+	}
+
+	d := &toolexec.Dispatcher{
+		AgentFor: func(*session.Session) *agent.Agent { return a },
+	}
+	em := &captureEmitter{}
+
+	d.Process(t.Context(), sess, []tools.ToolCall{{
+		ID:       "x",
+		Function: tools.FunctionCall{Name: "shell", Arguments: `{"cmd":"docker ps"}`},
+	}}, []tools.Tool{tool}, em)
+
+	require.Len(t, em.responses, 1)
+	assert.True(t, em.responses[0].IsError)
+	assert.Contains(t, em.responses[0].Output, "non-interactive")
+}
