@@ -32,6 +32,7 @@ var cops = []cop.Cop{
 	ConstructorPurity,
 	ConstructorCommandExec,
 	ConstructorNetworkIO,
+	WrapErrors,
 }
 
 func main() {
