@@ -89,6 +89,7 @@ func (m *MockHTTPClient) GetRequestCount() int {
 }
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 	// Note: debug mode does NOT disable HTTP calls - it only adds extra logging
@@ -106,6 +107,7 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestSessionTracking(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	mockHTTP := NewMockHTTPClient()
 	client := newClient(t.Context(), logger, true, true, "test-version", mockHTTP.Client)
@@ -144,6 +146,7 @@ func TestSessionTracking(t *testing.T) {
 }
 
 func TestCommandTracking(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	mockHTTP := NewMockHTTPClient()
 	client := newClient(t.Context(), logger, true, true, "test-version", mockHTTP.Client)
@@ -179,6 +182,7 @@ func TestCommandTracking(t *testing.T) {
 }
 
 func TestCommandTrackingWithError(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	mockHTTP := NewMockHTTPClient()
 	client := newClient(t.Context(), logger, true, true, "test-version", mockHTTP.Client)
@@ -208,6 +212,7 @@ func TestCommandTrackingWithError(t *testing.T) {
 }
 
 func TestStructuredEvent(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	// Use debug mode to avoid HTTP calls in tests
 	client := newClient(t.Context(), logger, true, true, "test-version")
@@ -310,6 +315,7 @@ func (tc *Client) TrackServerStart(ctx context.Context, commandInfo CommandInfo,
 
 // TestAllEventTypes tests all possible telemetry events with mock HTTP client
 func TestAllEventTypes(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	// Use mock HTTP client to avoid actual HTTP calls in tests
 	mockHTTP := NewMockHTTPClient()
@@ -530,6 +536,7 @@ func TestAllEventTypes(t *testing.T) {
 
 // TestTrackServerStart tests long-running server command tracking
 func TestTrackServerStart(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	client := newClient(t.Context(), logger, true, true, "test-version")
 
@@ -549,6 +556,7 @@ func TestTrackServerStart(t *testing.T) {
 
 // TestGlobalTelemetryFunctions tests the global telemetry convenience functions
 func TestGlobalTelemetryFunctions(t *testing.T) {
+	t.Parallel()
 	// Save original global state
 	originalClient := globalToolTelemetryClient
 	originalVersion := globalTelemetryVersion
@@ -577,6 +585,7 @@ func TestGlobalTelemetryFunctions(t *testing.T) {
 
 // TestHTTPRequestVerification tests that HTTP requests are made correctly when telemetry is enabled
 func TestHTTPRequestVerification(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	mockHTTP := NewMockHTTPClient()
 
@@ -904,6 +913,7 @@ func TestTelemetryTags(t *testing.T) {
 
 // TestNon2xxHTTPResponseHandling ensures that 5xx responses are logged and handled gracefully
 func TestNon2xxHTTPResponseHandling(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	mockHTTP := NewMockHTTPClient()
 	client := newClient(t.Context(), logger, true, true, "test-version", mockHTTP.Client)

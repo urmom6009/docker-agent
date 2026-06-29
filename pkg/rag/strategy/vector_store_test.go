@@ -25,6 +25,7 @@ import (
 )
 
 func TestClassifyModelCallError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		err         error
@@ -154,6 +155,7 @@ func newTestVectorStore(t *testing.T, embedErr error) (*VectorStore, *fakeEmbedd
 }
 
 func TestInitializeAbortsOnNonRetryableModelError(t *testing.T) {
+	t.Parallel()
 	embedErr := &modelerrors.StatusError{
 		StatusCode: http.StatusNotFound,
 		Err:        errors.New("not_found_error: model: claude-sonnet-4-7"),
@@ -168,6 +170,7 @@ func TestInitializeAbortsOnNonRetryableModelError(t *testing.T) {
 }
 
 func TestInitializeContinuesOnTransientModelError(t *testing.T) {
+	t.Parallel()
 	embedErr := &modelerrors.StatusError{
 		StatusCode: http.StatusInternalServerError,
 		Err:        errors.New("internal server error"),
@@ -181,6 +184,7 @@ func TestInitializeContinuesOnTransientModelError(t *testing.T) {
 }
 
 func TestCheckAndReindexAbortsOnNonRetryableModelError(t *testing.T) {
+	t.Parallel()
 	embedErr := &modelerrors.StatusError{
 		StatusCode: http.StatusTooManyRequests,
 		Err:        errors.New("too many requests"),
@@ -206,6 +210,7 @@ func (b *abortingInputBuilder) BuildEmbeddingInput(context.Context, string, chun
 }
 
 func TestBuildEmbeddingInputsAbortsOnNonRetryableModelError(t *testing.T) {
+	t.Parallel()
 	store, fake, docPaths := newTestVectorStore(t, nil)
 	builder := &abortingInputBuilder{err: &modelerrors.StatusError{
 		StatusCode: http.StatusNotFound,
@@ -221,6 +226,7 @@ func TestBuildEmbeddingInputsAbortsOnNonRetryableModelError(t *testing.T) {
 }
 
 func TestBuildEmbeddingInputsFallsBackOnTransientError(t *testing.T) {
+	t.Parallel()
 	store, fake, docPaths := newTestVectorStore(t, nil)
 	builder := &abortingInputBuilder{err: errors.New("request timeout")}
 	store.SetEmbeddingInputBuilder(builder)

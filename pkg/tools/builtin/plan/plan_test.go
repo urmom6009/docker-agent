@@ -31,6 +31,7 @@ func newTestPlanToolWithDir(t *testing.T) (*ToolSet, string) {
 }
 
 func TestPlanTool_DisplayNames(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	all, err := tool.Tools(t.Context())
@@ -43,22 +44,26 @@ func TestPlanTool_DisplayNames(t *testing.T) {
 }
 
 func TestPlanTool_Instructions(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 	assert.NotEmpty(t, tool.Instructions())
 }
 
 func TestPlanTool_Describe(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 	assert.Contains(t, tool.Describe(), "plan(dir=")
 }
 
 func TestPlanTool_DescribeCustomBackend(t *testing.T) {
+	t.Parallel()
 	// A custom backend that is not a fmt.Stringer falls back to a bare label.
 	tool := New(WithStorage(newMemoryStorage()))
 	assert.Equal(t, "plan", tool.Describe())
 }
 
 func TestPlanTool_Write(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.writePlan(t.Context(), WritePlanArgs{
@@ -81,6 +86,7 @@ func TestPlanTool_Write(t *testing.T) {
 }
 
 func TestPlanTool_WriteEmptyContent(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: ""})
@@ -90,6 +96,7 @@ func TestPlanTool_WriteEmptyContent(t *testing.T) {
 }
 
 func TestPlanTool_InvalidNames(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	for _, name := range []string{"", "///", "Has Space", "UPPER", "../escape", "a/b", "-leading", "with.dot"} {
@@ -101,6 +108,7 @@ func TestPlanTool_InvalidNames(t *testing.T) {
 }
 
 func TestPlanTool_ValidNames(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	for _, name := range []string{"release", "release-2025", "db_migration", "a", "1plan"} {
@@ -111,6 +119,7 @@ func TestPlanTool_ValidNames(t *testing.T) {
 }
 
 func TestPlanTool_NoSilentCollision(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	// "a-b" is valid; "a/b" and "a b" are rejected outright rather than
@@ -133,6 +142,7 @@ func TestPlanTool_NoSilentCollision(t *testing.T) {
 }
 
 func TestPlanTool_ReadNotFound(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.readPlan(t.Context(), ReadPlanArgs{Name: "missing"})
@@ -142,6 +152,7 @@ func TestPlanTool_ReadNotFound(t *testing.T) {
 }
 
 func TestPlanTool_ReadCorruptReportsError(t *testing.T) {
+	t.Parallel()
 	tool, dir := newTestPlanToolWithDir(t)
 
 	// Write a corrupt plan file directly.
@@ -155,6 +166,7 @@ func TestPlanTool_ReadCorruptReportsError(t *testing.T) {
 }
 
 func TestPlanTool_WriteThenRead(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "migration", Content: "the plan", Title: "T"})
@@ -171,6 +183,7 @@ func TestPlanTool_WriteThenRead(t *testing.T) {
 }
 
 func TestPlanTool_RevisionIncrementsAndMetadataPreserved(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1", Title: "Original", Author: "alice"})
@@ -189,6 +202,7 @@ func TestPlanTool_RevisionIncrementsAndMetadataPreserved(t *testing.T) {
 }
 
 func TestPlanTool_AuthorCanBeUpdated(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1", Author: "alice"})
@@ -203,6 +217,7 @@ func TestPlanTool_AuthorCanBeUpdated(t *testing.T) {
 }
 
 func TestPlanTool_ListPlans(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "beta", Content: "b", Author: "x"})
@@ -224,6 +239,7 @@ func TestPlanTool_ListPlans(t *testing.T) {
 }
 
 func TestPlanTool_ListEmpty(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.listPlans(t.Context(), tools.ToolCall{})
@@ -239,6 +255,7 @@ func TestPlanTool_ListEmpty(t *testing.T) {
 }
 
 func TestPlanTool_ListSkipsCorrupt(t *testing.T) {
+	t.Parallel()
 	tool, dir := newTestPlanToolWithDir(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "good", Content: "ok"})
@@ -259,6 +276,7 @@ func TestPlanTool_ListSkipsCorrupt(t *testing.T) {
 }
 
 func TestPlanTool_ListNameFromFilename(t *testing.T) {
+	t.Parallel()
 	tool, dir := newTestPlanToolWithDir(t)
 
 	// A plan file whose stored name field disagrees with its filename. The
@@ -284,6 +302,7 @@ func TestPlanTool_ListNameFromFilename(t *testing.T) {
 }
 
 func TestPlanTool_DeletePlan(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "temp", Content: "x"})
@@ -301,6 +320,7 @@ func TestPlanTool_DeletePlan(t *testing.T) {
 }
 
 func TestPlanTool_DeleteCorruptSucceeds(t *testing.T) {
+	t.Parallel()
 	tool, dir := newTestPlanToolWithDir(t)
 
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "broken.json"), []byte("{nope"), 0o600))
@@ -311,6 +331,7 @@ func TestPlanTool_DeleteCorruptSucceeds(t *testing.T) {
 }
 
 func TestPlanTool_DeleteNotFound(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.deletePlan(t.Context(), DeletePlanArgs{Name: "nope"})
@@ -320,6 +341,7 @@ func TestPlanTool_DeleteNotFound(t *testing.T) {
 }
 
 func TestPlanTool_SharedAcrossInstances(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// One agent writes the plan.
@@ -344,6 +366,7 @@ func TestPlanTool_SharedAcrossInstances(t *testing.T) {
 }
 
 func TestPlanTool_ParametersAreObjects(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	allTools, err := tool.Tools(t.Context())
@@ -363,6 +386,7 @@ func TestPlanTool_ParametersAreObjects(t *testing.T) {
 // TestPlanTool_WithCustomStorage verifies WithStorage injects a backend that
 // the handlers actually write to and read from.
 func TestPlanTool_WithCustomStorage(t *testing.T) {
+	t.Parallel()
 	storage := newMemoryStorage()
 	tool := New(WithStorage(storage))
 
@@ -395,6 +419,7 @@ func TestPlanTool_WithCustomStorage(t *testing.T) {
 }
 
 func TestPlanTool_WithStorage_NilPanics(t *testing.T) {
+	t.Parallel()
 	assert.Panics(t, func() {
 		WithStorage(nil)
 	})
@@ -404,6 +429,7 @@ func TestPlanTool_WithStorage_NilPanics(t *testing.T) {
 // backend whose List returns a nil slice, proving the handler emits
 // "plans":[] rather than "plans":null regardless of the backend.
 func TestPlanTool_ListNilNormalizedToEmptyArray(t *testing.T) {
+	t.Parallel()
 	tool := New(WithStorage(noBumpStorage{}))
 
 	result, err := tool.listPlans(t.Context(), tools.ToolCall{})
@@ -417,6 +443,7 @@ func TestPlanTool_ListNilNormalizedToEmptyArray(t *testing.T) {
 // backend error to an IsError result rather than masking it as not-found,
 // empty, or success.
 func TestPlanTool_StorageErrorsSurfaceAsIsError(t *testing.T) {
+	t.Parallel()
 	tool := New(WithStorage(errStorage{}))
 	ctx := t.Context()
 
@@ -445,6 +472,7 @@ func TestPlanTool_StorageErrorsSurfaceAsIsError(t *testing.T) {
 // Storage.Upsert, not the handler: a backend that never bumps leaves the
 // revision untouched across repeated writes.
 func TestPlanTool_RevisionOwnedByStorage(t *testing.T) {
+	t.Parallel()
 	tool := New(WithStorage(noBumpStorage{}))
 
 	for range 3 {
@@ -460,6 +488,7 @@ func TestPlanTool_RevisionOwnedByStorage(t *testing.T) {
 // against both the default filesystem backend and a custom in-memory one, so
 // the two stay behaviorally equivalent.
 func TestStorage_Conformance(t *testing.T) {
+	t.Parallel()
 	t.Run("filesystem", func(t *testing.T) {
 		runStorageConformance(t, NewFilesystemStorage(t.TempDir()))
 	})
@@ -711,6 +740,7 @@ func (errStorage) Delete(context.Context, string, *int) (bool, error) {
 // --- Status feature ---------------------------------------------------------
 
 func TestPlanTool_WriteWithStatus(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "x", Status: "in-progress"})
@@ -723,6 +753,7 @@ func TestPlanTool_WriteWithStatus(t *testing.T) {
 }
 
 func TestPlanTool_StatusPreservedWhenOmitted(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1", Status: "blocked"})
@@ -738,6 +769,7 @@ func TestPlanTool_StatusPreservedWhenOmitted(t *testing.T) {
 }
 
 func TestPlanTool_SetPlanStatus(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "the body", Title: "T", Author: "alice"})
@@ -768,6 +800,7 @@ func TestPlanTool_SetPlanStatus(t *testing.T) {
 // TestPlanTool_SetStatusIsTokenLight proves set_plan_status returns only the
 // lightweight status view, never the plan body, so updating the status is cheap.
 func TestPlanTool_SetStatusIsTokenLight(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "SECRET-BODY-MARKER"})
@@ -781,6 +814,7 @@ func TestPlanTool_SetStatusIsTokenLight(t *testing.T) {
 }
 
 func TestPlanTool_SetStatusNotFound(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.setPlanStatus(t.Context(), SetPlanStatusArgs{Name: "ghost", Status: "done"})
@@ -790,6 +824,7 @@ func TestPlanTool_SetStatusNotFound(t *testing.T) {
 }
 
 func TestPlanTool_SetStatusEmptyRejected(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "x"})
@@ -802,6 +837,7 @@ func TestPlanTool_SetStatusEmptyRejected(t *testing.T) {
 }
 
 func TestPlanTool_GetPlanStatus(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "SECRET-BODY-MARKER", Status: "in-progress"})
@@ -821,6 +857,7 @@ func TestPlanTool_GetPlanStatus(t *testing.T) {
 }
 
 func TestPlanTool_GetStatusNotFound(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.getPlanStatus(t.Context(), GetPlanStatusArgs{Name: "missing"})
@@ -830,6 +867,7 @@ func TestPlanTool_GetStatusNotFound(t *testing.T) {
 }
 
 func TestPlanTool_ListIncludesStatus(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "x", Status: "review"})
@@ -846,6 +884,7 @@ func TestPlanTool_ListIncludesStatus(t *testing.T) {
 // --- File-based revisions ---------------------------------------------------
 
 func TestPlanTool_ExportPlanToFile(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "SECRET-BODY-MARKER", Title: "T", Status: "draft"})
@@ -875,6 +914,7 @@ func TestPlanTool_ExportPlanToFile(t *testing.T) {
 }
 
 func TestPlanTool_ExportCreatesParentDirs(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "body"})
@@ -891,6 +931,7 @@ func TestPlanTool_ExportCreatesParentDirs(t *testing.T) {
 }
 
 func TestPlanTool_ExportNotFound(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	dest := filepath.Join(t.TempDir(), "export.md")
@@ -902,6 +943,7 @@ func TestPlanTool_ExportNotFound(t *testing.T) {
 }
 
 func TestPlanTool_ExportEmptyPath(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "body"})
@@ -914,6 +956,7 @@ func TestPlanTool_ExportEmptyPath(t *testing.T) {
 }
 
 func TestPlanTool_UpdatePlanFromFile(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1", Title: "T", Author: "alice"})
@@ -938,6 +981,7 @@ func TestPlanTool_UpdatePlanFromFile(t *testing.T) {
 // TestPlanTool_FileRoundTrip exercises the cheap edit loop the feature exists
 // for: export to disk, edit the file, commit it back with update_plan_from_file.
 func TestPlanTool_FileRoundTrip(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "original", Title: "Roadmap"})
@@ -964,6 +1008,7 @@ func TestPlanTool_FileRoundTrip(t *testing.T) {
 }
 
 func TestPlanTool_UpdateFromFileEmptyPath(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.updatePlanFromFile(t.Context(), UpdatePlanFromFileArgs{Name: "p", Path: ""})
@@ -973,6 +1018,7 @@ func TestPlanTool_UpdateFromFileEmptyPath(t *testing.T) {
 }
 
 func TestPlanTool_UpdateFromFileMissingFile(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.updatePlanFromFile(t.Context(), UpdatePlanFromFileArgs{Name: "p", Path: filepath.Join(t.TempDir(), "nope.md")})
@@ -982,6 +1028,7 @@ func TestPlanTool_UpdateFromFileMissingFile(t *testing.T) {
 }
 
 func TestPlanTool_UpdateFromFileEmptyFile(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	src := filepath.Join(t.TempDir(), "empty.md")
@@ -994,6 +1041,7 @@ func TestPlanTool_UpdateFromFileEmptyFile(t *testing.T) {
 }
 
 func TestPlanTool_UpdateFromFileDirectory(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	dir := t.TempDir()
@@ -1006,6 +1054,7 @@ func TestPlanTool_UpdateFromFileDirectory(t *testing.T) {
 // TestPlanTool_UpdateFromFileTooLarge proves the size cap is enforced: a file
 // over the limit is rejected rather than slurped into a plan.
 func TestPlanTool_UpdateFromFileTooLarge(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	src := filepath.Join(t.TempDir(), "big.md")
@@ -1021,6 +1070,7 @@ func TestPlanTool_UpdateFromFileTooLarge(t *testing.T) {
 // the caller can actually use (the filename), not a drifted "name" field stored
 // inside the file, so a read -> write round-trip can't land on the wrong plan.
 func TestPlanTool_ReadNormalizesNameFromFilename(t *testing.T) {
+	t.Parallel()
 	tool, dir := newTestPlanToolWithDir(t)
 
 	drifted := Plan{Name: "wrong-name", Content: "x", Revision: 1}
@@ -1041,6 +1091,7 @@ func TestPlanTool_ReadNormalizesNameFromFilename(t *testing.T) {
 // optimistic-lock guard and a corrupt plan: a guarded delete can't read the
 // revision to compare so it fails, while an unguarded delete still recovers it.
 func TestPlanTool_GuardedDeleteOnCorrupt(t *testing.T) {
+	t.Parallel()
 	tool, dir := newTestPlanToolWithDir(t)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "broken.json"), []byte("{nope"), 0o600))
 
@@ -1056,6 +1107,7 @@ func TestPlanTool_GuardedDeleteOnCorrupt(t *testing.T) {
 // --- Optimistic locking -----------------------------------------------------
 
 func TestPlanTool_WriteWithMatchingVersion(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1"})
@@ -1070,6 +1122,7 @@ func TestPlanTool_WriteWithMatchingVersion(t *testing.T) {
 }
 
 func TestPlanTool_WriteWithStaleVersionConflicts(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1"})
@@ -1095,6 +1148,7 @@ func TestPlanTool_WriteWithStaleVersionConflicts(t *testing.T) {
 // TestPlanTool_CreateWithVersionZero documents that a fresh plan can be guarded
 // with last_known_revision 0 ("I expect this not to exist yet").
 func TestPlanTool_CreateWithVersionZero(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	result, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1", LastKnownRevision: new(0)})
@@ -1109,6 +1163,7 @@ func TestPlanTool_CreateWithVersionZero(t *testing.T) {
 }
 
 func TestPlanTool_UpdateFromFileWithStaleVersionConflicts(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1"})
@@ -1126,6 +1181,7 @@ func TestPlanTool_UpdateFromFileWithStaleVersionConflicts(t *testing.T) {
 }
 
 func TestPlanTool_SetStatusWithStaleVersionConflicts(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1"})
@@ -1140,6 +1196,7 @@ func TestPlanTool_SetStatusWithStaleVersionConflicts(t *testing.T) {
 }
 
 func TestPlanTool_DeleteWithStaleVersionConflicts(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1"})
@@ -1159,6 +1216,7 @@ func TestPlanTool_DeleteWithStaleVersionConflicts(t *testing.T) {
 }
 
 func TestPlanTool_DeleteWithMatchingVersion(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "v1"})
@@ -1178,6 +1236,7 @@ func TestPlanTool_DeleteWithMatchingVersion(t *testing.T) {
 // last_known_revision=1. Exactly one wins and the rest get a conflict, so the
 // plan can never silently lose a concurrent edit and lands at exactly one bump.
 func TestPlanTool_ConcurrentWritesOptimisticLock(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	ctx := t.Context()
@@ -1224,6 +1283,7 @@ func TestPlanTool_ConcurrentWritesOptimisticLock(t *testing.T) {
 // TestPlanTool_NewToolsRegistered locks in that the new tools are exposed with
 // their documented names so a config or client referencing them keeps working.
 func TestPlanTool_NewToolsRegistered(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	all, err := tool.Tools(t.Context())

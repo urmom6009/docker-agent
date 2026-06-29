@@ -119,6 +119,7 @@ func (r *reconnectingToolSet) Tools(context.Context) ([]tools.Tool, error) {
 }
 
 func TestAgentTools(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		toolsets      []tools.ToolSet

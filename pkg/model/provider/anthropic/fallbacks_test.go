@@ -7,6 +7,7 @@ import (
 )
 
 func TestFallbackModels(t *testing.T) {
+	t.Parallel()
 	t.Run("absent", func(t *testing.T) {
 		assert.Nil(t, fallbackModels(nil))
 		assert.Nil(t, fallbackModels(map[string]any{"top_k": 40}))

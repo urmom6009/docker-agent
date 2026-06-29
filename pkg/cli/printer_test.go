@@ -7,23 +7,27 @@ import (
 )
 
 func TestFormatToolCallResponse_Empty(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallResponse(``)
 
 	assert.Equal(t, ` → ()`, formatted)
 }
 
 func TestFormatToolCallResponse_Map(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallResponse(`{"text": "hello"}`)
 
 	assert.Equal(t, ` → (text: "hello")`, formatted)
 }
 
 func TestFormatToolCallResponse_MapOfEmptyArray(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallResponse(`{"array": []}`)
 	assert.Equal(t, ` → (array: [])`, formatted)
 }
 
 func TestFormatToolCallResponse_MapOfArray(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallResponse(`{"array": [1,2,3]}`)
 	assert.Equal(t, ` → (
   array: [
@@ -35,18 +39,21 @@ func TestFormatToolCallResponse_MapOfArray(t *testing.T) {
 }
 
 func TestFormatToolCallResponse_PlainText(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallResponse(`Plain Text`)
 
 	assert.Equal(t, ` → "Plain Text"`, formatted)
 }
 
 func TestFormatToolCallArguments_Empty(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallArguments(``)
 
 	assert.Equal(t, `()`, formatted)
 }
 
 func TestFormatToolCallArguments_Map(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallArguments(`{"first": "hello", "second": 42}`)
 
 	assert.Equal(t, `(
@@ -56,6 +63,7 @@ func TestFormatToolCallArguments_Map(t *testing.T) {
 }
 
 func TestFormatToolCallArguments_MapOfArray(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallArguments(`{"array": [1,2,3]}`)
 	assert.Equal(t, `(
   array: [
@@ -67,16 +75,19 @@ func TestFormatToolCallArguments_MapOfArray(t *testing.T) {
 }
 
 func TestFormatToolCallArguments_MapOfEmptyArray(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallArguments(`{"array": []}`)
 	assert.Equal(t, `(array: [])`, formatted)
 }
 
 func TestFormatToolCallArguments_MapOfSingleItemArray(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallArguments(`{"array": ["value"]}`)
 	assert.Equal(t, `(array: ["value"])`, formatted)
 }
 
 func TestFormatToolCallArguments_PlainText(t *testing.T) {
+	t.Parallel()
 	formatted := formatToolCallArguments(`Plain Text`)
 
 	assert.Equal(t, `(Plain Text)`, formatted)

@@ -12,6 +12,7 @@ import (
 // single request carrying the specialist agent's system prompt, which proves
 // the message reached the specialist directly.
 func TestExec_CommandTargetsAgent(t *testing.T) {
+	t.Parallel()
 	out := runCLI(t, "run", "--exec", "testdata/command_agent.yaml", "/ask What's 2+2?")
 
 	require.Equal(t, "SPECIALIST: 4", out)

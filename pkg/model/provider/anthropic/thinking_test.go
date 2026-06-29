@@ -15,6 +15,7 @@ import (
 )
 
 func TestAnthropicThinkingDisplay(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		opts   map[string]any
@@ -125,6 +126,7 @@ func clientWithModel(model string, budget *latest.ThinkingBudget, opts map[strin
 }
 
 func TestApplyThinkingConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		model           string // optional; defaults to a non-Opus-4-6/4-7 model.
@@ -285,6 +287,7 @@ func TestApplyThinkingConfig(t *testing.T) {
 }
 
 func TestApplyBetaThinkingConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		model           string // optional; defaults to a non-Opus-4-6/4-7 model.
@@ -370,6 +373,7 @@ func TestApplyBetaThinkingConfig(t *testing.T) {
 }
 
 func TestAdjustMaxTokensForThinking(t *testing.T) {
+	t.Parallel()
 	t.Run("no budget returns input unchanged", func(t *testing.T) {
 		c := clientWith(nil, nil)
 		got, err := c.adjustMaxTokensForThinking(8192)
@@ -425,6 +429,7 @@ func TestAdjustMaxTokensForThinking(t *testing.T) {
 }
 
 func TestCoerceAdaptiveThinking(t *testing.T) {
+	t.Parallel()
 	t.Run("nil budget stays nil", func(t *testing.T) {
 		c := clientWithModel("claude-opus-4-7", nil, nil)
 		assert.Nil(t, c.coerceAdaptiveThinking())
@@ -472,6 +477,7 @@ func TestCoerceAdaptiveThinking(t *testing.T) {
 }
 
 func TestFloorMaxTokensForNoThinking(t *testing.T) {
+	t.Parallel()
 	buildOpts := func(opts ...options.Opt) options.ModelOptions {
 		var mo options.ModelOptions
 		for _, opt := range opts {
@@ -521,6 +527,7 @@ func TestFloorMaxTokensForNoThinking(t *testing.T) {
 }
 
 func TestInterleavedThinkingEnabled(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		opts map[string]any

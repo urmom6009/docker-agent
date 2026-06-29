@@ -17,6 +17,7 @@ func testCommands() []command {
 }
 
 func TestAutocompleteActivation(t *testing.T) {
+	t.Parallel()
 	a := newAutocomplete()
 	a.setCommands(testCommands())
 
@@ -31,6 +32,7 @@ func TestAutocompleteActivation(t *testing.T) {
 }
 
 func TestAutocompleteNavigation(t *testing.T) {
+	t.Parallel()
 	a := newAutocomplete()
 	a.setCommands(testCommands())
 	require.True(t, a.sync("/")) // all commands match
@@ -46,6 +48,7 @@ func TestAutocompleteNavigation(t *testing.T) {
 }
 
 func TestAutocompleteRenderWidth(t *testing.T) {
+	t.Parallel()
 	a := newAutocomplete()
 	a.setCommands(testCommands())
 	require.True(t, a.sync("/"))
@@ -57,6 +60,7 @@ func TestAutocompleteRenderWidth(t *testing.T) {
 }
 
 func TestAutocompleteBuiltinsBeforeAgent(t *testing.T) {
+	t.Parallel()
 	matches := filterCommands(testCommands(), "")
 	// The agent command "plan" must sort after every built-in.
 	last := matches[len(matches)-1]

@@ -25,6 +25,7 @@ func (m *mockToolSet) Tools(ctx context.Context) ([]tools.Tool, error) {
 }
 
 func TestWithToolsFilter_NilToolNames(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{}
 
 	wrapped := WithToolsFilter(inner)
@@ -33,6 +34,7 @@ func TestWithToolsFilter_NilToolNames(t *testing.T) {
 }
 
 func TestWithToolsFilter_EmptyNames(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{}
 
 	wrapped := WithToolsFilter(inner, []string{}...)
@@ -41,6 +43,7 @@ func TestWithToolsFilter_EmptyNames(t *testing.T) {
 }
 
 func TestWithToolsFilter_PickOne(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{{Name: "tool1"}, {Name: "tool2"}, {Name: "tool3"}}, nil
@@ -56,6 +59,7 @@ func TestWithToolsFilter_PickOne(t *testing.T) {
 }
 
 func TestWithToolsFilter_PickAll(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{{Name: "tool1"}, {Name: "tool2"}, {Name: "tool3"}}, nil
@@ -74,6 +78,7 @@ func TestWithToolsFilter_PickAll(t *testing.T) {
 }
 
 func TestWithToolsFilter_NoMatch(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{{Name: "tool1"}, {Name: "tool2"}}, nil
@@ -88,6 +93,7 @@ func TestWithToolsFilter_NoMatch(t *testing.T) {
 }
 
 func TestWithToolsFilter_ErrorFromInner(t *testing.T) {
+	t.Parallel()
 	expectedErr := errors.New("mock error")
 	inner := &mockToolSet{
 		toolsFunc: func(context.Context) ([]tools.Tool, error) {
@@ -103,6 +109,7 @@ func TestWithToolsFilter_ErrorFromInner(t *testing.T) {
 }
 
 func TestWithToolsFilter_CaseSensitive(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(ctx context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{
@@ -132,6 +139,7 @@ func (i *instructableToolSet) Instructions() string {
 }
 
 func TestWithToolsFilter_InstructablePassthrough(t *testing.T) {
+	t.Parallel()
 	// Test that filtering preserves instructions from inner toolset
 	inner := &instructableToolSet{
 		mockToolSet: mockToolSet{
@@ -156,6 +164,7 @@ func TestWithToolsFilter_InstructablePassthrough(t *testing.T) {
 }
 
 func TestWithToolsFilter_NonInstructableInner(t *testing.T) {
+	t.Parallel()
 	// Test that filter works with toolsets that don't implement Instructable
 	inner := &mockToolSet{
 		toolsFunc: func(context.Context) ([]tools.Tool, error) {

@@ -14,6 +14,7 @@ import (
 )
 
 func TestLoadRemoteSkills(t *testing.T) {
+	t.Parallel()
 	t.Run("valid index with skills and prefetch", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
@@ -200,6 +201,7 @@ func TestLoadRemoteSkills(t *testing.T) {
 }
 
 func TestLoadWithRemoteSources(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.well-known/skills/index.json":
@@ -261,6 +263,7 @@ func TestLoadWithMixedSources(t *testing.T) {
 }
 
 func TestLoadWithEmptySources(t *testing.T) {
+	t.Parallel()
 	skills := Load(t.Context(), nil)
 	assert.Empty(t, skills)
 
@@ -269,6 +272,7 @@ func TestLoadWithEmptySources(t *testing.T) {
 }
 
 func TestRemoteIndex_JSONParsing(t *testing.T) {
+	t.Parallel()
 	input := `{
 		"skills": [
 			{
@@ -289,6 +293,7 @@ func TestRemoteIndex_JSONParsing(t *testing.T) {
 }
 
 func TestIsValidFilePath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path  string
 		valid bool
@@ -314,6 +319,7 @@ func TestIsValidFilePath(t *testing.T) {
 }
 
 func TestIsValidSkillName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		valid bool
@@ -344,6 +350,7 @@ func TestIsValidSkillName(t *testing.T) {
 // index cannot use the skill name to place cache files outside the cache
 // directory.
 func TestLoadRemoteSkills_RejectsSkillNameTraversal(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.well-known/skills/index.json":

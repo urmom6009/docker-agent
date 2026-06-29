@@ -25,6 +25,7 @@ func testClient() *Client {
 }
 
 func TestCreateChatCompletionStream_ErrorOnEmptyMessages(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		t.Fatal("request should not have been sent")
 		w.WriteHeader(http.StatusOK)
@@ -79,6 +80,7 @@ func TestCreateChatCompletionStream_ErrorOnEmptyMessages(t *testing.T) {
 // filters whitespace-only system messages — normalizeMessageContent in the session
 // layer does this before messages reach any provider converter.
 func TestConvertMessages_SkipEmptySystemText(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{{
 		Role:    chat.MessageRoleSystem,
 		Content: "   \n\t  ",
@@ -97,6 +99,7 @@ func TestConvertMessages_SkipEmptySystemText(t *testing.T) {
 // TestConvertMessages_SkipEmptyUserText_NoMultiContent documents that whitespace
 // filtering is now the session layer's responsibility, not the converter's.
 func TestConvertMessages_SkipEmptyUserText_NoMultiContent(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{{
 		Role:    chat.MessageRoleUser,
 		Content: "   \n\t  ",
@@ -110,6 +113,7 @@ func TestConvertMessages_SkipEmptyUserText_NoMultiContent(t *testing.T) {
 }
 
 func TestConvertMessages_UserMultiContent_SkipEmptyText_KeepImage(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{{
 		Role: chat.MessageRoleUser,
 		MultiContent: []chat.MessagePart{
@@ -138,6 +142,7 @@ func TestConvertMessages_UserMultiContent_SkipEmptyText_KeepImage(t *testing.T) 
 // TestConvertMessages_SkipEmptyAssistantText_NoToolCalls documents that the
 // converter no longer filters whitespace-only assistant messages.
 func TestConvertMessages_SkipEmptyAssistantText_NoToolCalls(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{{
 		Role:    chat.MessageRoleAssistant,
 		Content: "  \t\n  ",
@@ -151,6 +156,7 @@ func TestConvertMessages_SkipEmptyAssistantText_NoToolCalls(t *testing.T) {
 }
 
 func TestConvertMessages_AssistantToolCalls_NoText_IncludesToolUse(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{{
 		Role:    chat.MessageRoleAssistant,
 		Content: "   ",
@@ -180,6 +186,7 @@ func TestConvertMessages_AssistantToolCalls_NoText_IncludesToolUse(t *testing.T)
 }
 
 func TestSystemMessages_AreExtractedAndNotInMessageList(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{Role: chat.MessageRoleSystem, Content: "  system rules here  "},
 		{Role: chat.MessageRoleUser, Content: "hi"},
@@ -197,6 +204,7 @@ func TestSystemMessages_AreExtractedAndNotInMessageList(t *testing.T) {
 }
 
 func TestSystemMessages_MultipleExtractedAndExcludedFromMessageList(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{Role: chat.MessageRoleSystem, Content: " sys A "},
 		{Role: chat.MessageRoleSystem, Content: "\n sys B \t"},
@@ -214,6 +222,7 @@ func TestSystemMessages_MultipleExtractedAndExcludedFromMessageList(t *testing.T
 }
 
 func TestSystemMessages_InterspersedExtractedAndExcluded(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{Role: chat.MessageRoleSystem, Content: " S1 "},
 		{Role: chat.MessageRoleUser, Content: "U1"},
@@ -243,6 +252,7 @@ func TestSystemMessages_InterspersedExtractedAndExcluded(t *testing.T) {
 }
 
 func TestConvertMessages_GroupToolResults_AfterAssistantToolUse(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{Role: chat.MessageRoleUser, Content: "start"},
 		{
@@ -287,6 +297,7 @@ func TestConvertMessages_GroupToolResults_AfterAssistantToolUse(t *testing.T) {
 
 // TestCountAnthropicTokens_Success tests successful token counting for standard API
 func TestCountAnthropicTokens_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/v1/messages/count_tokens", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("content-type"))
@@ -330,6 +341,7 @@ func TestCountAnthropicTokens_Success(t *testing.T) {
 
 // TestCountAnthropicTokens_NoAPIKey tests error when API key is missing
 func TestCountAnthropicTokens_NoAPIKey(t *testing.T) {
+	t.Parallel()
 	// Use a test server that returns 401 Unauthorized
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -354,6 +366,7 @@ func TestCountAnthropicTokens_NoAPIKey(t *testing.T) {
 
 // TestCountAnthropicTokens_ServerError tests error handling for server errors
 func TestCountAnthropicTokens_ServerError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -376,6 +389,7 @@ func TestCountAnthropicTokens_ServerError(t *testing.T) {
 
 // TestCountAnthropicTokens_WithTools tests token counting includes tools
 func TestCountAnthropicTokens_WithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload map[string]any
 		err := json.NewDecoder(r.Body).Decode(&payload)
@@ -414,6 +428,7 @@ func TestCountAnthropicTokens_WithTools(t *testing.T) {
 
 // TestExtractSystemBlocks_SingleSystemMessage tests extracting system messages
 func TestExtractSystemBlocks_SingleSystemMessage(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleSystem,
@@ -429,6 +444,7 @@ func TestExtractSystemBlocks_SingleSystemMessage(t *testing.T) {
 
 // TestExtractSystemBlocks_MultipleSystemMessages tests extracting multiple system messages
 func TestExtractSystemBlocks_MultipleSystemMessages(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleSystem,
@@ -455,6 +471,7 @@ func TestExtractSystemBlocks_MultipleSystemMessages(t *testing.T) {
 // System blocks are trimmed because YAML literal-block instructions (instruction: |) always
 // append a trailing newline that should not be sent to the API.
 func TestExtractSystemBlocks_SkipsEmptyText(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleSystem,
@@ -474,6 +491,7 @@ func TestExtractSystemBlocks_SkipsEmptyText(t *testing.T) {
 
 // TestExtractSystemBlocks_MultiContent tests extracting from multi-content system messages
 func TestExtractSystemBlocks_MultiContent(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role: chat.MessageRoleSystem,
@@ -492,6 +510,7 @@ func TestExtractSystemBlocks_MultiContent(t *testing.T) {
 }
 
 func TestExtractSystemBlocksCacheControl(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleSystem,

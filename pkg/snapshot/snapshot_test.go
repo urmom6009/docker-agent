@@ -11,6 +11,7 @@ import (
 )
 
 func TestTrackPatchAndRevert(t *testing.T) {
+	t.Parallel()
 	dir := bootstrapRepo(t)
 	repo := openRepo(t, dir)
 
@@ -37,6 +38,7 @@ func TestTrackPatchAndRevert(t *testing.T) {
 }
 
 func TestGitignoreAndLargeFilesAreNotSnapshotted(t *testing.T) {
+	t.Parallel()
 	dir := bootstrapRepo(t)
 	repo := openRepo(t, dir)
 
@@ -64,6 +66,7 @@ func TestGitignoreAndLargeFilesAreNotSnapshotted(t *testing.T) {
 }
 
 func TestDiffFullReportsFileMetadata(t *testing.T) {
+	t.Parallel()
 	dir := bootstrapRepo(t)
 	repo := openRepo(t, dir)
 
@@ -87,6 +90,7 @@ func TestDiffFullReportsFileMetadata(t *testing.T) {
 }
 
 func TestInvalidHashPatchIsEmpty(t *testing.T) {
+	t.Parallel()
 	dir := bootstrapRepo(t)
 	repo := openRepo(t, dir)
 
@@ -101,6 +105,7 @@ func TestInvalidHashPatchIsEmpty(t *testing.T) {
 }
 
 func TestOpenOutsideGitRepo(t *testing.T) {
+	t.Parallel()
 	_, err := NewManager(t.TempDir()).Open(t.Context(), t.TempDir())
 	assert.ErrorIs(t, err, ErrNotGitRepository)
 }
@@ -111,6 +116,7 @@ func TestOpenOutsideGitRepo(t *testing.T) {
 // "pathspec did not match any files" errors caused by mixing cwd-relative
 // and worktree-relative paths.
 func TestTrackPatchFromSubfolder(t *testing.T) {
+	t.Parallel()
 	root := bootstrapRepo(t)
 	sub := filepath.Join(root, "assistant")
 	require.NoError(t, os.MkdirAll(sub, 0o755))
@@ -149,6 +155,7 @@ func TestTrackPatchFromSubfolder(t *testing.T) {
 // When the agent runs from a subfolder, changes outside that subfolder
 // must not appear in patches scoped to the agent's directory.
 func TestSubfolderScopeIgnoresSiblingChanges(t *testing.T) {
+	t.Parallel()
 	root := bootstrapRepo(t)
 	sub := filepath.Join(root, "assistant")
 	require.NoError(t, os.MkdirAll(sub, 0o755))
@@ -177,6 +184,7 @@ func TestSubfolderScopeIgnoresSiblingChanges(t *testing.T) {
 // produce a "..-prefixed path and scope() would silently expand to the
 // entire worktree — defeating the subfolder-scoping fix.
 func TestOpenCanonicalizesSymlinkedDirectory(t *testing.T) {
+	t.Parallel()
 	root := bootstrapRepo(t)
 	sub := filepath.Join(root, "assistant")
 	require.NoError(t, os.MkdirAll(sub, 0o755))

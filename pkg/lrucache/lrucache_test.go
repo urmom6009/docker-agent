@@ -7,6 +7,7 @@ import (
 )
 
 func TestLRU_GetReturnsStoredValues(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](3)
 	c.Put("a", 1)
 	c.Put("b", 2)
@@ -20,6 +21,7 @@ func TestLRU_GetReturnsStoredValues(t *testing.T) {
 }
 
 func TestLRU_GetMissReturnsZero(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](2)
 
 	v, ok := c.Get("missing")
@@ -28,6 +30,7 @@ func TestLRU_GetMissReturnsZero(t *testing.T) {
 }
 
 func TestLRU_PutEvictsLeastRecentlyUsed(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](2)
 	c.Put("a", 1)
 	c.Put("b", 2)
@@ -40,6 +43,7 @@ func TestLRU_PutEvictsLeastRecentlyUsed(t *testing.T) {
 }
 
 func TestLRU_GetPromotesEntry(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](2)
 	c.Put("a", 1)
 	c.Put("b", 2)
@@ -52,6 +56,7 @@ func TestLRU_GetPromotesEntry(t *testing.T) {
 }
 
 func TestLRU_PutOnExistingKeyUpdatesAndPromotes(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](2)
 	c.Put("a", 1)
 	c.Put("b", 2)
@@ -66,6 +71,7 @@ func TestLRU_PutOnExistingKeyUpdatesAndPromotes(t *testing.T) {
 }
 
 func TestLRU_Delete(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](3)
 	c.Put("a", 1)
 	c.Put("b", 2)
@@ -80,6 +86,7 @@ func TestLRU_Delete(t *testing.T) {
 }
 
 func TestLRU_Clear(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](3)
 	c.Put("a", 1)
 	c.Put("b", 2)
@@ -95,6 +102,7 @@ func TestLRU_Clear(t *testing.T) {
 }
 
 func TestLRU_NonPositiveSizeIsClampedToOne(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](0)
 	c.Put("a", 1)
 	c.Put("b", 2)
@@ -106,6 +114,7 @@ func TestLRU_NonPositiveSizeIsClampedToOne(t *testing.T) {
 }
 
 func TestLRU_RangeVisitsAllEntriesInLRUOrder(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](3)
 	c.Put("a", 1)
 	c.Put("b", 2)
@@ -121,6 +130,7 @@ func TestLRU_RangeVisitsAllEntriesInLRUOrder(t *testing.T) {
 }
 
 func TestLRU_RangeStopsWhenFnReturnsFalse(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](3)
 	c.Put("a", 1)
 	c.Put("b", 2)
@@ -135,6 +145,7 @@ func TestLRU_RangeStopsWhenFnReturnsFalse(t *testing.T) {
 }
 
 func TestLRU_RangeOnEmptyCacheIsNoOp(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](3)
 
 	visited := 0
@@ -146,6 +157,7 @@ func TestLRU_RangeOnEmptyCacheIsNoOp(t *testing.T) {
 }
 
 func TestLRU_LenTracksEntryCount(t *testing.T) {
+	t.Parallel()
 	c := New[string, int](3)
 	assert.Equal(t, 0, c.Len())
 

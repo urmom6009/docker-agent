@@ -19,6 +19,7 @@ func newTestTasksTool(t *testing.T) *ToolSet {
 }
 
 func TestTasksTool_DisplayNames(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	all, err := tool.Tools(t.Context())
@@ -31,6 +32,7 @@ func TestTasksTool_DisplayNames(t *testing.T) {
 }
 
 func TestTasksTool_CreateTask(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	result, err := tool.createTask(t.Context(), CreateTaskArgs{
@@ -54,6 +56,7 @@ func TestTasksTool_CreateTask(t *testing.T) {
 }
 
 func TestTasksTool_CreateTask_WithPriority(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	result, err := tool.createTask(t.Context(), CreateTaskArgs{
@@ -69,6 +72,7 @@ func TestTasksTool_CreateTask_WithPriority(t *testing.T) {
 }
 
 func TestTasksTool_CreateTask_InvalidPriority(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	result, err := tool.createTask(t.Context(), CreateTaskArgs{
@@ -81,6 +85,7 @@ func TestTasksTool_CreateTask_InvalidPriority(t *testing.T) {
 }
 
 func TestTasksTool_CreateTask_WithDependencies(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, err := tool.createTask(t.Context(), CreateTaskArgs{Title: "Task A"})
@@ -101,6 +106,7 @@ func TestTasksTool_CreateTask_WithDependencies(t *testing.T) {
 }
 
 func TestTasksTool_CreateTask_InvalidDependency(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	result, err := tool.createTask(t.Context(), CreateTaskArgs{
@@ -113,6 +119,7 @@ func TestTasksTool_CreateTask_InvalidDependency(t *testing.T) {
 }
 
 func TestTasksTool_CreateTask_FromFile(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	mdFile := filepath.Join(tool.basePath, "desc.md")
@@ -131,6 +138,7 @@ func TestTasksTool_CreateTask_FromFile(t *testing.T) {
 }
 
 func TestTasksTool_GetTask(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "Test"})
@@ -148,6 +156,7 @@ func TestTasksTool_GetTask(t *testing.T) {
 }
 
 func TestTasksTool_GetTask_Blocked(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "Blocker"})
@@ -170,6 +179,7 @@ func TestTasksTool_GetTask_Blocked(t *testing.T) {
 }
 
 func TestTasksTool_GetTask_NotFound(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	result, err := tool.getTask(t.Context(), GetTaskArgs{ID: "nonexistent"})
@@ -179,6 +189,7 @@ func TestTasksTool_GetTask_NotFound(t *testing.T) {
 }
 
 func TestTasksTool_UpdateTask(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "Original"})
@@ -202,6 +213,7 @@ func TestTasksTool_UpdateTask(t *testing.T) {
 }
 
 func TestTasksTool_UpdateTask_NotFound(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	result, err := tool.updateTask(t.Context(), UpdateTaskArgs{ID: "nope", Title: "X"})
@@ -211,6 +223,7 @@ func TestTasksTool_UpdateTask_NotFound(t *testing.T) {
 }
 
 func TestTasksTool_UpdateTask_InvalidStatus(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "T"})
@@ -224,6 +237,7 @@ func TestTasksTool_UpdateTask_InvalidStatus(t *testing.T) {
 }
 
 func TestTasksTool_DeleteTask(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "To delete"})
@@ -242,6 +256,7 @@ func TestTasksTool_DeleteTask(t *testing.T) {
 }
 
 func TestTasksTool_DeleteTask_RemovesDependencies(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "Dep"})
@@ -268,6 +283,7 @@ func TestTasksTool_DeleteTask_RemovesDependencies(t *testing.T) {
 }
 
 func TestTasksTool_DeleteTask_NotFound(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	result, err := tool.deleteTask(t.Context(), DeleteTaskArgs{ID: "nope"})
@@ -276,6 +292,7 @@ func TestTasksTool_DeleteTask_NotFound(t *testing.T) {
 }
 
 func TestTasksTool_ListTasks(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	tool.createTask(t.Context(), CreateTaskArgs{Title: "Low", Priority: "low"})           //nolint:errcheck // test setup
@@ -295,6 +312,7 @@ func TestTasksTool_ListTasks(t *testing.T) {
 }
 
 func TestTasksTool_ListTasks_FilterByStatus(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "Pending"})
@@ -315,6 +333,7 @@ func TestTasksTool_ListTasks_FilterByStatus(t *testing.T) {
 }
 
 func TestTasksTool_ListTasks_FilterByPriority(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	tool.createTask(t.Context(), CreateTaskArgs{Title: "High", Priority: "high"})      //nolint:errcheck // test setup
@@ -333,6 +352,7 @@ func TestTasksTool_ListTasks_FilterByPriority(t *testing.T) {
 }
 
 func TestTasksTool_ListTasks_BlockedLast(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "Blocker", Priority: "low"})
@@ -358,6 +378,7 @@ func TestTasksTool_ListTasks_BlockedLast(t *testing.T) {
 }
 
 func TestTasksTool_NextTask(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "Blocker", Priority: "high"})
@@ -380,6 +401,7 @@ func TestTasksTool_NextTask(t *testing.T) {
 }
 
 func TestTasksTool_NextTask_NoneAvailable(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "Done"})
@@ -393,6 +415,7 @@ func TestTasksTool_NextTask_NoneAvailable(t *testing.T) {
 }
 
 func TestTasksTool_AddDependency(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "A"})
@@ -414,6 +437,7 @@ func TestTasksTool_AddDependency(t *testing.T) {
 }
 
 func TestTasksTool_AddDependency_Cycle(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "A"})
@@ -437,6 +461,7 @@ func TestTasksTool_AddDependency_Cycle(t *testing.T) {
 }
 
 func TestTasksTool_AddDependency_Duplicate(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "A"})
@@ -460,6 +485,7 @@ func TestTasksTool_AddDependency_Duplicate(t *testing.T) {
 }
 
 func TestTasksTool_RemoveDependency(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	r1, _ := tool.createTask(t.Context(), CreateTaskArgs{Title: "A"})
@@ -486,6 +512,7 @@ func TestTasksTool_RemoveDependency(t *testing.T) {
 }
 
 func TestTasksTool_RemoveDependency_NotFound(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	result, err := tool.removeDependency(t.Context(), RemoveDependencyArgs{
@@ -498,6 +525,7 @@ func TestTasksTool_RemoveDependency_NotFound(t *testing.T) {
 }
 
 func TestTasksTool_Persistence(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	storagePath := filepath.Join(dir, "tasks.json")
 
@@ -515,6 +543,7 @@ func TestTasksTool_Persistence(t *testing.T) {
 }
 
 func TestTasksTool_ParametersAreObjects(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 
 	allTools, err := tool.Tools(t.Context())
@@ -532,6 +561,7 @@ func TestTasksTool_ParametersAreObjects(t *testing.T) {
 }
 
 func TestTasksTool_Instructions(t *testing.T) {
+	t.Parallel()
 	tool := newTestTasksTool(t)
 	assert.NotEmpty(t, tool.Instructions())
 }

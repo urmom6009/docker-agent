@@ -11,6 +11,7 @@ import (
 )
 
 func TestBuildAgentCache_disabled(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		cfg  *latest.CacheConfig
@@ -28,12 +29,14 @@ func TestBuildAgentCache_disabled(t *testing.T) {
 }
 
 func TestBuildAgentCache_inMemory(t *testing.T) {
+	t.Parallel()
 	c, err := buildAgentCache("agent", &latest.CacheConfig{Enabled: true}, t.TempDir())
 	require.NoError(t, err)
 	require.NotNil(t, c)
 }
 
 func TestBuildAgentCache_relativePath(t *testing.T) {
+	t.Parallel()
 	parent := t.TempDir()
 	c, err := buildAgentCache("agent",
 		&latest.CacheConfig{Enabled: true, Path: "cache.json"}, parent)
@@ -47,6 +50,7 @@ func TestBuildAgentCache_relativePath(t *testing.T) {
 }
 
 func TestBuildAgentCache_absolutePath(t *testing.T) {
+	t.Parallel()
 	abs := filepath.Join(t.TempDir(), "absolute.json")
 	c, err := buildAgentCache("agent",
 		&latest.CacheConfig{Enabled: true, Path: abs}, t.TempDir())
@@ -55,6 +59,7 @@ func TestBuildAgentCache_absolutePath(t *testing.T) {
 }
 
 func TestBuildAgentCache_pathTraversalRejected(t *testing.T) {
+	t.Parallel()
 	parent := t.TempDir()
 	_, err := buildAgentCache("agent",
 		&latest.CacheConfig{Enabled: true, Path: "../escape.json"}, parent)

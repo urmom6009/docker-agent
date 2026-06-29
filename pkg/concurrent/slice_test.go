@@ -9,6 +9,7 @@ import (
 )
 
 func TestSlice_Append(t *testing.T) {
+	t.Parallel()
 	s := NewSlice[int]()
 
 	s.Append(1)
@@ -20,6 +21,7 @@ func TestSlice_Append(t *testing.T) {
 }
 
 func TestSlice_Get(t *testing.T) {
+	t.Parallel()
 	s := NewSlice[string]()
 	s.Append("a")
 	s.Append("b")
@@ -40,6 +42,7 @@ func TestSlice_Get(t *testing.T) {
 }
 
 func TestSlice_Set(t *testing.T) {
+	t.Parallel()
 	s := NewSlice[int]()
 	s.Append(1)
 	s.Append(2)
@@ -58,6 +61,7 @@ func TestSlice_Set(t *testing.T) {
 }
 
 func TestSlice_All(t *testing.T) {
+	t.Parallel()
 	s := NewSlice[int]()
 	s.Append(1)
 	s.Append(2)
@@ -72,6 +76,7 @@ func TestSlice_All(t *testing.T) {
 }
 
 func TestSlice_AllEmpty(t *testing.T) {
+	t.Parallel()
 	s := NewSlice[int]()
 	all := s.All()
 	assert.NotNil(t, all)
@@ -79,6 +84,7 @@ func TestSlice_AllEmpty(t *testing.T) {
 }
 
 func TestSlice_Range(t *testing.T) {
+	t.Parallel()
 	s := NewSlice[int]()
 	s.Append(10)
 	s.Append(20)
@@ -101,6 +107,7 @@ func TestSlice_Range(t *testing.T) {
 }
 
 func TestSlice_Find(t *testing.T) {
+	t.Parallel()
 	s := NewSlice[string]()
 	s.Append("apple")
 	s.Append("banana")
@@ -115,6 +122,7 @@ func TestSlice_Find(t *testing.T) {
 }
 
 func TestSlice_Update(t *testing.T) {
+	t.Parallel()
 	s := NewSlice[int]()
 	s.Append(1)
 	s.Append(2)
@@ -130,6 +138,7 @@ func TestSlice_Update(t *testing.T) {
 }
 
 func TestSlice_Concurrent(t *testing.T) {
+	t.Parallel()
 	s := NewSlice[int]()
 	var wg sync.WaitGroup
 

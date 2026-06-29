@@ -11,6 +11,7 @@ import (
 )
 
 func TestOpenAPIEndpoint(t *testing.T) {
+	t.Parallel()
 	srv, _ := newTestServer("root")
 	r := newRouter(srv, Options{})
 
@@ -31,6 +32,7 @@ func TestOpenAPIEndpoint(t *testing.T) {
 }
 
 func TestOpenAPIEndpoint_BypassesAuth(t *testing.T) {
+	t.Parallel()
 	// /openapi.json must be reachable without a bearer token even when
 	// --api-key is set, so introspection tooling works against locked-
 	// down deployments.

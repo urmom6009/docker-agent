@@ -112,6 +112,7 @@ func newTestClient(srv *httptest.Server, cfg latest.ModelConfig) *Client {
 //  2. attaches the `task-budgets-2026-03-13` beta header, and
 //  3. serializes `output_config.task_budget` in the request body.
 func TestTaskBudget_RoutesToBetaAPIWithBetaHeader(t *testing.T) {
+	t.Parallel()
 	var (
 		gotPath  string
 		gotBetas []string
@@ -157,6 +158,7 @@ func TestTaskBudget_RoutesToBetaAPIWithBetaHeader(t *testing.T) {
 // (and no other beta-only features) the request targets /v1/messages and
 // does not carry the task-budgets beta header.
 func TestNoTaskBudget_UsesStandardPath(t *testing.T) {
+	t.Parallel()
 	var (
 		gotPath  string
 		gotBetas []string
@@ -187,6 +189,7 @@ func TestNoTaskBudget_UsesStandardPath(t *testing.T) {
 // (shorthand for "disabled") does NOT route through the Beta path and does
 // NOT emit the task-budgets beta header, matching the documented behavior.
 func TestZeroTaskBudget_DisablesFeature(t *testing.T) {
+	t.Parallel()
 	var gotBetas []string
 	var gotBody []byte
 	srv := anthropicTestServer(t, func(r *http.Request, body []byte) {

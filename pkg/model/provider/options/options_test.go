@@ -16,6 +16,7 @@ func (s *sentinelTransport) RoundTrip(req *http.Request) (*http.Response, error)
 }
 
 func TestWithHTTPTransportWrapper_SetAndGet(t *testing.T) {
+	t.Parallel()
 	var called bool
 	wrapFn := func(base http.RoundTripper) http.RoundTripper {
 		called = true
@@ -35,11 +36,13 @@ func TestWithHTTPTransportWrapper_SetAndGet(t *testing.T) {
 }
 
 func TestTransportWrapper_NilByDefault(t *testing.T) {
+	t.Parallel()
 	var opts ModelOptions
 	assert.Nil(t, opts.TransportWrapper())
 }
 
 func TestFromModelOptions_RoundTripsTransportWrapper(t *testing.T) {
+	t.Parallel()
 	var wrapperInvoked bool
 	wrapFn := func(base http.RoundTripper) http.RoundTripper {
 		wrapperInvoked = true
@@ -66,6 +69,7 @@ func TestFromModelOptions_RoundTripsTransportWrapper(t *testing.T) {
 }
 
 func TestFromModelOptions_NilWrapperNotIncluded(t *testing.T) {
+	t.Parallel()
 	// A ModelOptions with no transport wrapper should not add a
 	// WithHTTPTransportWrapper opt, so TransportWrapper() stays nil.
 	var src ModelOptions

@@ -14,6 +14,7 @@ import (
 )
 
 func TestDiskCache_FetchAndStore(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Cache-Control", "max-age=3600")
 		fmt.Fprint(w, "file content")
@@ -39,6 +40,7 @@ func TestDiskCache_FetchAndStore(t *testing.T) {
 }
 
 func TestDiskCache_Get_NotCached(t *testing.T) {
+	t.Parallel()
 	cache := newDiskCache(t.TempDir())
 
 	_, ok := cache.Get("https://example.com", "nonexistent", "SKILL.md")
@@ -46,6 +48,7 @@ func TestDiskCache_Get_NotCached(t *testing.T) {
 }
 
 func TestDiskCache_Get_Cached(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Cache-Control", "max-age=3600")
 		fmt.Fprint(w, "cached content")
@@ -63,6 +66,7 @@ func TestDiskCache_Get_Cached(t *testing.T) {
 }
 
 func TestDiskCache_Get_Expired(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Cache-Control", "max-age=0")
 		fmt.Fprint(w, "expired content")
@@ -80,6 +84,7 @@ func TestDiskCache_Get_Expired(t *testing.T) {
 }
 
 func TestDiskCache_NestedFiles(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, "nested file content")
 	}))
@@ -99,6 +104,7 @@ func TestDiskCache_NestedFiles(t *testing.T) {
 }
 
 func TestDiskCache_DifferentURLsGetDifferentDirs(t *testing.T) {
+	t.Parallel()
 	cache := newDiskCache(t.TempDir())
 
 	dir1 := cache.cacheDir("https://example.com", "skill")
@@ -108,6 +114,7 @@ func TestDiskCache_DifferentURLsGetDifferentDirs(t *testing.T) {
 }
 
 func TestParseCacheControl(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 
 	t.Run("empty header uses default", func(t *testing.T) {
@@ -159,6 +166,7 @@ func TestParseCacheControl(t *testing.T) {
 }
 
 func TestDiskCache_HTTPError(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.NotFoundHandler())
 	defer srv.Close()
 
@@ -182,6 +190,7 @@ func TestDiskCache_HTTPError(t *testing.T) {
 // rest of the process. A future refactor (in-memory cache shared with
 // the reader) can make this strictly RFC-compliant.
 func TestDiskCache_NoStoreStoresButExpiresImmediately(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		fmt.Fprint(w, "private content")
@@ -210,6 +219,7 @@ func TestDiskCache_NoStoreStoresButExpiresImmediately(t *testing.T) {
 // allows storage but forces revalidation: the entry is written so it can be
 // inspected, but Get() must report a miss so the next read refetches.
 func TestDiskCache_NoCacheStoresButExpiresImmediately(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Cache-Control", "no-cache")
 		fmt.Fprint(w, "revalidate me")

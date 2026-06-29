@@ -10,6 +10,7 @@ import (
 )
 
 func TestBuffer_Write(t *testing.T) {
+	t.Parallel()
 	var b Buffer
 
 	n, err := b.Write([]byte("hello"))
@@ -24,6 +25,7 @@ func TestBuffer_Write(t *testing.T) {
 }
 
 func TestBuffer_Bytes(t *testing.T) {
+	t.Parallel()
 	var b Buffer
 	_, _ = b.Write([]byte("hello"))
 
@@ -36,6 +38,7 @@ func TestBuffer_Bytes(t *testing.T) {
 }
 
 func TestBuffer_Len(t *testing.T) {
+	t.Parallel()
 	var b Buffer
 	assert.Equal(t, 0, b.Len())
 
@@ -47,6 +50,7 @@ func TestBuffer_Len(t *testing.T) {
 }
 
 func TestBuffer_Reset(t *testing.T) {
+	t.Parallel()
 	var b Buffer
 	_, _ = b.Write([]byte("hello"))
 
@@ -56,6 +60,7 @@ func TestBuffer_Reset(t *testing.T) {
 }
 
 func TestBuffer_Drain(t *testing.T) {
+	t.Parallel()
 	var b Buffer
 	_, _ = b.Write([]byte("hello"))
 
@@ -66,6 +71,7 @@ func TestBuffer_Drain(t *testing.T) {
 }
 
 func TestBuffer_Concurrent(t *testing.T) {
+	t.Parallel()
 	var b Buffer
 	var wg sync.WaitGroup
 

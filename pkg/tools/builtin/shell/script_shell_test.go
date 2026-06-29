@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewScript_Empty(t *testing.T) {
+	t.Parallel()
 	tool, err := NewScript(nil, nil)
 	require.NoError(t, err)
 
@@ -23,6 +24,7 @@ func TestNewScript_Empty(t *testing.T) {
 }
 
 func TestNewScript_ToolNoArg(t *testing.T) {
+	t.Parallel()
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"get_ip": {
 			Description: "Get public IP",
@@ -45,6 +47,7 @@ func TestNewScript_ToolNoArg(t *testing.T) {
 }
 
 func TestNewScript_Tool(t *testing.T) {
+	t.Parallel()
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"github_user_repos": {
 			Description: "List GitHub repositories of the provided user",
@@ -80,6 +83,7 @@ func TestNewScript_Tool(t *testing.T) {
 }
 
 func TestNewScript_Typo(t *testing.T) {
+	t.Parallel()
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"docker_images": {
 			Description: "List running Docker containers",
@@ -100,6 +104,7 @@ func TestNewScript_Typo(t *testing.T) {
 }
 
 func TestNewScript_MissingRequired(t *testing.T) {
+	t.Parallel()
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"docker_images": {
 			Description: "List running Docker containers",
@@ -120,6 +125,7 @@ func TestNewScript_MissingRequired(t *testing.T) {
 }
 
 func TestNewScript_NumberArg(t *testing.T) {
+	t.Parallel()
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"repeat": {
 			Description: "Repeat a message N times",
@@ -157,6 +163,7 @@ func TestNewScript_NumberArg(t *testing.T) {
 }
 
 func TestScriptShellTool_DropsUndeclaredArgs(t *testing.T) {
+	t.Parallel()
 	// `env` lists the spawned process's full environment. With base env
 	// set to an empty slice, the only entries should be those forwarded
 	// from declared args.
@@ -194,6 +201,7 @@ func TestScriptShellTool_DropsUndeclaredArgs(t *testing.T) {
 }
 
 func TestScriptShellTool_RejectsNULInValue(t *testing.T) {
+	t.Parallel()
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"echo_name": {
 			Cmd: "echo $name",
@@ -225,6 +233,7 @@ func TestScriptShellTool_RejectsNULInValue(t *testing.T) {
 }
 
 func TestScriptToolSet_InstructionsNoDescription(t *testing.T) {
+	t.Parallel()
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"greet": {
 			Cmd: "echo hello ${name}",
@@ -251,6 +260,7 @@ func TestScriptToolSet_InstructionsNoDescription(t *testing.T) {
 }
 
 func TestScriptToolSet_InstructionsNilArgDef(t *testing.T) {
+	t.Parallel()
 	// argDef is nil — must not panic.
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"greet": {
@@ -268,6 +278,7 @@ func TestScriptToolSet_InstructionsNilArgDef(t *testing.T) {
 }
 
 func TestScriptToolSet_InstructionsNonMapArgDef(t *testing.T) {
+	t.Parallel()
 	// argDef is a bare string (not a map) — must not panic.
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"greet": {
@@ -285,6 +296,7 @@ func TestScriptToolSet_InstructionsNonMapArgDef(t *testing.T) {
 }
 
 func TestScriptToolSet_DeterministicOrdering(t *testing.T) {
+	t.Parallel()
 	// Three tools whose names sort as: alpha < beta < gamma.
 	// Each tool has multiple args to also exercise arg-level sorting in Instructions().
 	// Because Go map iteration is random, without explicit sorting the
@@ -352,6 +364,7 @@ func TestScriptToolSet_DeterministicOrdering(t *testing.T) {
 }
 
 func TestNewScript_ArgWithoutType(t *testing.T) {
+	t.Parallel()
 	shellTools := map[string]latest.ScriptShellToolConfig{
 		"greet": {
 			Description: "Greet someone",

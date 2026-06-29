@@ -127,6 +127,7 @@ func TestHistory_MoveDuplicateLast(t *testing.T) {
 }
 
 func TestHistory_MultilineMessage(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	h, err := New(tmpDir)
@@ -143,6 +144,7 @@ func TestHistory_MultilineMessage(t *testing.T) {
 }
 
 func TestHistory_MigrateOldFormat(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	err := os.MkdirAll(filepath.Join(tmpDir, ".cagent"), 0o755)
 	require.NoError(t, err)
@@ -163,6 +165,7 @@ func TestHistory_MigrateOldFormat(t *testing.T) {
 }
 
 func TestHistory_LatestMatch(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	h, err := New(tmpDir)
@@ -452,6 +455,7 @@ func TestHistory_SetCurrentOutOfRange(t *testing.T) {
 }
 
 func TestHistory_VeryLongMessage(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	h, err := New(tmpDir)
@@ -477,6 +481,7 @@ func TestHistory_VeryLongMessage(t *testing.T) {
 }
 
 func TestHistory_RedactsOnAdd(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	h, err := New(tmpDir)
@@ -499,6 +504,7 @@ func TestHistory_RedactsOnAdd(t *testing.T) {
 }
 
 func TestHistory_RedactsOnLoad(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, ".cagent"), 0o700))
 	histFile := filepath.Join(tmpDir, ".cagent", "history")
@@ -516,6 +522,7 @@ func TestHistory_RedactsOnLoad(t *testing.T) {
 }
 
 func TestHistory_RedactsOnMigrate(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, ".cagent"), 0o700))
 	oldHistFile := filepath.Join(tmpDir, ".cagent", "history.json")

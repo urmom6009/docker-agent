@@ -16,6 +16,7 @@ func singleKey(t *testing.T, b string) key {
 }
 
 func TestParseSimpleKeys(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, keyEnter, singleKey(t, "\r").typ)
 	assert.Equal(t, keyEnter, singleKey(t, "\n").typ)
 	assert.Equal(t, keyTab, singleKey(t, "\t").typ)
@@ -29,6 +30,7 @@ func TestParseSimpleKeys(t *testing.T) {
 }
 
 func TestParseRunes(t *testing.T) {
+	t.Parallel()
 	k := singleKey(t, "a")
 	assert.Equal(t, keyRune, k.typ)
 	assert.Equal(t, []rune{'a'}, k.runes)
@@ -39,6 +41,7 @@ func TestParseRunes(t *testing.T) {
 }
 
 func TestParseEscapeSequences(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, keyUp, singleKey(t, "\x1b[A").typ)
 	assert.Equal(t, keyDown, singleKey(t, "\x1b[B").typ)
 	assert.Equal(t, keyRight, singleKey(t, "\x1b[C").typ)
@@ -56,16 +59,19 @@ func TestParseEscapeSequences(t *testing.T) {
 }
 
 func TestParseLoneEscape(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, keyEsc, singleKey(t, "\x1b").typ)
 }
 
 func TestParseBracketedPaste(t *testing.T) {
+	t.Parallel()
 	k := singleKey(t, "\x1b[200~hello world\x1b[201~")
 	assert.Equal(t, keyPaste, k.typ)
 	assert.Equal(t, "hello world", string(k.runes))
 }
 
 func TestParseBracketedPasteAcrossReads(t *testing.T) {
+	t.Parallel()
 	p := &inputParser{}
 	assert.Empty(t, p.feed([]byte("\x1b[200~hel")))
 	assert.Empty(t, p.feed([]byte("lo")))
@@ -76,6 +82,7 @@ func TestParseBracketedPasteAcrossReads(t *testing.T) {
 }
 
 func TestParseMixedRun(t *testing.T) {
+	t.Parallel()
 	p := &inputParser{}
 	keys := p.feed([]byte("hi\r"))
 	require.Len(t, keys, 3)

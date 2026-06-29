@@ -77,6 +77,7 @@ func makeToolCall(t *testing.T, args any) tools.ToolCall {
 // --- newTaskID ---
 
 func TestNewTaskID_IsUnique(t *testing.T) {
+	t.Parallel()
 	ids := make(map[string]struct{})
 	for range 100 {
 		id := newTaskID()
@@ -88,6 +89,7 @@ func TestNewTaskID_IsUnique(t *testing.T) {
 }
 
 func TestNewTaskID_HasPrefix(t *testing.T) {
+	t.Parallel()
 	id := newTaskID()
 	assert.True(t, strings.HasPrefix(id, "agent_task_"), "ID should start with agent_task_ prefix, got: %s", id)
 }
@@ -95,6 +97,7 @@ func TestNewTaskID_HasPrefix(t *testing.T) {
 // --- statusToString ---
 
 func TestStatusToString(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		status   taskStatus
 		expected string
@@ -113,6 +116,7 @@ func TestStatusToString(t *testing.T) {
 // --- runningTaskCount / totalTaskCount ---
 
 func TestTaskCounts(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	assert.Equal(t, 0, h.runningTaskCount())
 	assert.Equal(t, 0, h.totalTaskCount())
@@ -129,6 +133,7 @@ func TestTaskCounts(t *testing.T) {
 // --- pruneCompleted ---
 
 func TestPruneCompleted(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	insertTask(h, "run1", "a", taskRunning)
 	insertTask(h, "done1", "b", taskCompleted)
@@ -147,6 +152,7 @@ func TestPruneCompleted(t *testing.T) {
 // --- HandleList ---
 
 func TestHandleList_Empty(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	result, err := h.HandleList(t.Context(), nil, tools.ToolCall{})
 	require.NoError(t, err)
@@ -154,6 +160,7 @@ func TestHandleList_Empty(t *testing.T) {
 }
 
 func TestHandleList_ShowsTasks(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	insertTask(h, "t1", "researcher", taskRunning)
 	insertTask(h, "t2", "writer", taskCompleted)
@@ -169,6 +176,7 @@ func TestHandleList_ShowsTasks(t *testing.T) {
 // --- HandleView ---
 
 func TestHandleView_NotFound(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	tc := makeToolCall(t, ViewBackgroundAgentArgs{TaskID: "nonexistent"})
 	result, err := h.HandleView(t.Context(), nil, tc)
@@ -178,6 +186,7 @@ func TestHandleView_NotFound(t *testing.T) {
 }
 
 func TestHandleView_Completed(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	tk := insertTask(h, "t1", "researcher", taskCompleted)
 	tk.result = "Here is my research."
@@ -191,6 +200,7 @@ func TestHandleView_Completed(t *testing.T) {
 }
 
 func TestHandleView_Failed(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	tk := insertTask(h, "t1", "researcher", taskFailed)
 	tk.errMsg = "model unavailable"
@@ -203,6 +213,7 @@ func TestHandleView_Failed(t *testing.T) {
 }
 
 func TestHandleView_Running_NoOutputYet(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	insertTask(h, "t1", "researcher", taskRunning)
 
@@ -213,6 +224,7 @@ func TestHandleView_Running_NoOutputYet(t *testing.T) {
 }
 
 func TestHandleView_Running_WithProgress(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	tk := insertTask(h, "t1", "researcher", taskRunning)
 	tk.output.WriteString("Partial research so far...")
@@ -225,6 +237,7 @@ func TestHandleView_Running_WithProgress(t *testing.T) {
 }
 
 func TestHandleView_Stopped(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	insertTask(h, "t1", "researcher", taskStopped)
 
@@ -237,6 +250,7 @@ func TestHandleView_Stopped(t *testing.T) {
 }
 
 func TestHandleView_Completed_EmptyResult(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	insertTask(h, "t1", "researcher", taskCompleted)
 
@@ -248,6 +262,7 @@ func TestHandleView_Completed_EmptyResult(t *testing.T) {
 }
 
 func TestHandleView_OutputBufferTruncated(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	tk := insertTask(h, "t1", "researcher", taskRunning)
 	tk.output.WriteString(strings.Repeat("x", maxOutputBytes))
@@ -261,6 +276,7 @@ func TestHandleView_OutputBufferTruncated(t *testing.T) {
 }
 
 func TestHandleView_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	bad := tools.ToolCall{Function: tools.FunctionCall{Arguments: "not-json"}}
 	_, err := h.HandleView(t.Context(), nil, bad)
@@ -268,6 +284,7 @@ func TestHandleView_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleView_RepeatedPolling_NoNewOutput(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	insertTask(h, "t1", "researcher", taskRunning)
 
@@ -293,6 +310,7 @@ func TestHandleView_RepeatedPolling_NoNewOutput(t *testing.T) {
 }
 
 func TestHandleView_RepeatedPolling_OutputGrows(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	tk := insertTask(h, "t1", "researcher", taskRunning)
 
@@ -323,6 +341,7 @@ func TestHandleView_RepeatedPolling_OutputGrows(t *testing.T) {
 // --- HandleStop ---
 
 func TestHandleStop_NotFound(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	tc := makeToolCall(t, StopBackgroundAgentArgs{TaskID: "ghost"})
 	result, err := h.HandleStop(t.Context(), nil, tc)
@@ -332,6 +351,7 @@ func TestHandleStop_NotFound(t *testing.T) {
 }
 
 func TestHandleStop_AlreadyCompleted(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	insertTask(h, "t1", "researcher", taskCompleted)
 
@@ -343,6 +363,7 @@ func TestHandleStop_AlreadyCompleted(t *testing.T) {
 }
 
 func TestHandleStop_Running(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	cancelled := false
 	tk := insertTask(h, "t1", "researcher", taskRunning)
@@ -357,6 +378,7 @@ func TestHandleStop_Running(t *testing.T) {
 }
 
 func TestHandleStop_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 	bad := tools.ToolCall{Function: tools.FunctionCall{Arguments: "not-json"}}
 	_, err := h.HandleStop(t.Context(), nil, bad)
@@ -366,6 +388,7 @@ func TestHandleStop_InvalidJSON(t *testing.T) {
 // --- StopAll waits for goroutines ---
 
 func TestStopAll_WaitsForGoroutines(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 
 	var goroutineExited atomic.Bool
@@ -386,6 +409,7 @@ func TestStopAll_WaitsForGoroutines(t *testing.T) {
 // --- HandleRun: input validation ---
 
 func TestHandleRun_EmptyAgent(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{subAgentNames: []string{"sub"}})
 	tc := makeToolCall(t, RunBackgroundAgentArgs{Agent: "", Task: "do something"})
 	result, err := h.HandleRun(t.Context(), session.New(), tc)
@@ -395,6 +419,7 @@ func TestHandleRun_EmptyAgent(t *testing.T) {
 }
 
 func TestHandleRun_EmptyTask(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{subAgentNames: []string{"sub"}})
 	tc := makeToolCall(t, RunBackgroundAgentArgs{Agent: "sub", Task: ""})
 	result, err := h.HandleRun(t.Context(), session.New(), tc)
@@ -404,6 +429,7 @@ func TestHandleRun_EmptyTask(t *testing.T) {
 }
 
 func TestHandleRun_InvalidSubAgent(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{subAgentNames: []string{"sub"}})
 	tc := makeToolCall(t, RunBackgroundAgentArgs{Agent: "nonexistent", Task: "do something"})
 	result, err := h.HandleRun(t.Context(), session.New(), tc)
@@ -413,6 +439,7 @@ func TestHandleRun_InvalidSubAgent(t *testing.T) {
 }
 
 func TestHandleRun_NoSubAgents(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{subAgentNames: nil})
 	tc := makeToolCall(t, RunBackgroundAgentArgs{Agent: "some-agent", Task: "do something"})
 	result, err := h.HandleRun(t.Context(), session.New(), tc)
@@ -422,6 +449,7 @@ func TestHandleRun_NoSubAgents(t *testing.T) {
 }
 
 func TestHandleRun_ConcurrencyCapEnforced(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{subAgentNames: []string{"sub"}})
 
 	for i := range maxConcurrentTasks {
@@ -436,6 +464,7 @@ func TestHandleRun_ConcurrencyCapEnforced(t *testing.T) {
 }
 
 func TestHandleRun_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{subAgentNames: []string{"sub"}})
 	bad := tools.ToolCall{Function: tools.FunctionCall{Arguments: "not-json"}}
 	_, err := h.HandleRun(t.Context(), session.New(), bad)
@@ -443,6 +472,7 @@ func TestHandleRun_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleRun_StartsTask(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{
 		subAgentNames: []string{"sub"},
 		runResult:     &RunResult{Result: "done"},
@@ -465,6 +495,7 @@ func TestHandleRun_StartsTask(t *testing.T) {
 }
 
 func TestHandleRun_ProviderError_TaskFails(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{
 		subAgentNames: []string{"sub"},
 		runResult:     &RunResult{ErrMsg: "model unavailable"},
@@ -485,6 +516,7 @@ func TestHandleRun_ProviderError_TaskFails(t *testing.T) {
 }
 
 func TestHandleRun_WithExpectedOutput(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{
 		subAgentNames: []string{"sub"},
 		runResult:     &RunResult{Result: "result"},
@@ -508,6 +540,7 @@ func TestHandleRun_WithExpectedOutput(t *testing.T) {
 }
 
 func TestHandleRun_TotalCapAutoPruneAdmits(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{
 		subAgentNames: []string{"sub"},
 		runResult:     &RunResult{Result: "done"},
@@ -527,6 +560,7 @@ func TestHandleRun_TotalCapAutoPruneAdmits(t *testing.T) {
 }
 
 func TestHandleRun_TotalCapExhaustion_ConcurrencyCapFiresFirst(t *testing.T) {
+	t.Parallel()
 	h := newTestHandlerWithRunner(&mockRunner{subAgentNames: []string{"sub"}})
 
 	for i := range maxConcurrentTasks {
@@ -544,6 +578,7 @@ func TestHandleRun_TotalCapExhaustion_ConcurrencyCapFiresFirst(t *testing.T) {
 // --- Concurrent handler access (run with -race) ---
 
 func TestHandler_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler()
 
 	for i := range 10 {
@@ -592,6 +627,7 @@ func TestHandler_ConcurrentAccess(t *testing.T) {
 // --- Tools ---
 
 func TestNewToolSet_ReturnsFourTools(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	toolsList, err := ts.Tools(t.Context())
 	require.NoError(t, err)
@@ -608,6 +644,7 @@ func TestNewToolSet_ReturnsFourTools(t *testing.T) {
 }
 
 func TestNewToolSet_Instructions(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	instructable, ok := ts.(tools.Instructable)
 	require.True(t, ok, "NewToolSet should implement Instructable")

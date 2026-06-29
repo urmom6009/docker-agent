@@ -13,6 +13,7 @@ import (
 const binDir = "../../bin"
 
 func TestHelpInAllExecMode(t *testing.T) {
+	t.Parallel()
 	t.Run("cli plugin help", func(t *testing.T) {
 		res, err := ExecWithContext(t.Context(), "docker", "agent", "help")
 		require.NoError(t, err)
@@ -27,6 +28,7 @@ func TestHelpInAllExecMode(t *testing.T) {
 }
 
 func TestExecMissingKeys(t *testing.T) {
+	t.Parallel()
 	t.Run("cli plugin exec", func(t *testing.T) {
 		res, err := ExecWithContext(t.Context(), "docker", "agent", "run", "--exec", "./test-agent.yaml")
 		require.Error(t, err)
@@ -43,6 +45,7 @@ func TestExecMissingKeys(t *testing.T) {
 }
 
 func TestAutoComplete(t *testing.T) {
+	t.Parallel()
 	t.Run("cli plugin auto-complete docker-agent", func(t *testing.T) {
 		res, err := ExecWithContext(t.Context(), binDir+"/docker-agent", "__complete", "ser")
 		require.NoError(t, err)

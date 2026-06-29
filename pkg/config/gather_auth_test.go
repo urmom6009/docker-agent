@@ -10,6 +10,7 @@ import (
 )
 
 func TestGatherEnvVarsForModels_WIFAuth(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		cfg         *latest.Config

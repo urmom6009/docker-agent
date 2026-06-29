@@ -7,6 +7,7 @@ import (
 )
 
 func TestFormatTokens(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "500", formatTokens(500))
 	assert.Equal(t, "999", formatTokens(999))
 	assert.Equal(t, "1.0k", formatTokens(1000))
@@ -16,6 +17,7 @@ func TestFormatTokens(t *testing.T) {
 }
 
 func TestComposeLineRightAligns(t *testing.T) {
+	t.Parallel()
 	out := composeLine("left", "right", 20)
 	assert.Equal(t, 20, displayWidth(out))
 	assert.GreaterOrEqual(t, len(out), len("left")+len("right"))
@@ -24,12 +26,14 @@ func TestComposeLineRightAligns(t *testing.T) {
 }
 
 func TestComposeLineTruncatesLeft(t *testing.T) {
+	t.Parallel()
 	out := composeLine("a very long left side that does not fit", "right", 15)
 	assert.LessOrEqual(t, displayWidth(out), 15)
 	assert.Contains(t, out, "right")
 }
 
 func TestRenderBarWidth(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, contextBarWidth, displayWidth(renderBar(0.5)))
 	assert.Equal(t, contextBarWidth, displayWidth(renderBar(0)))
 	assert.Equal(t, contextBarWidth, displayWidth(renderBar(1)))
@@ -37,6 +41,7 @@ func TestRenderBarWidth(t *testing.T) {
 }
 
 func TestRenderStatusFitsWidth(t *testing.T) {
+	t.Parallel()
 	d := statusData{
 		workingDir:    "/home/user/project",
 		branch:        "main",

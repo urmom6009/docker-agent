@@ -8,6 +8,7 @@ import (
 )
 
 func TestRunJavascript(t *testing.T) {
+	t.Parallel()
 	tool := &codeModeTool{}
 
 	result, err := tool.runJavascript(t.Context(), `return "HELLO"`)
@@ -19,6 +20,7 @@ func TestRunJavascript(t *testing.T) {
 }
 
 func TestRunJavascript_error(t *testing.T) {
+	t.Parallel()
 	tool := &codeModeTool{}
 
 	result, err := tool.runJavascript(t.Context(), `==`)
@@ -30,6 +32,7 @@ func TestRunJavascript_error(t *testing.T) {
 }
 
 func TestRunJavascript_console(t *testing.T) {
+	t.Parallel()
 	tool := &codeModeTool{}
 
 	result, err := tool.runJavascript(t.Context(), `console.log("to stdout"); console.error("to stderr"); return "RESULT";`)
@@ -41,6 +44,7 @@ func TestRunJavascript_console(t *testing.T) {
 }
 
 func TestRunJavascript_no_result(t *testing.T) {
+	t.Parallel()
 	tool := &codeModeTool{}
 
 	result, err := tool.runJavascript(t.Context(), ``)

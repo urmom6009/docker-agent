@@ -6,6 +6,7 @@ import (
 )
 
 func TestFormatASTContext(t *testing.T) {
+	t.Parallel()
 	metadata := map[string]string{
 		"symbol_name":        "Init",
 		"symbol_kind":        "method",

@@ -32,6 +32,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestShellTool_HandlerEcho(t *testing.T) {
+	t.Parallel()
 	tool := New(nil, &config.RuntimeConfig{Config: config.Config{WorkingDir: t.TempDir()}})
 
 	result, err := tool.handler.RunShell(t.Context(), RunShellArgs{
@@ -43,6 +44,7 @@ func TestShellTool_HandlerEcho(t *testing.T) {
 }
 
 func TestShellTool_HandlerWithCwd(t *testing.T) {
+	t.Parallel()
 	tool := New(nil, &config.RuntimeConfig{Config: config.Config{WorkingDir: t.TempDir()}})
 	tmpDir := t.TempDir()
 
@@ -136,6 +138,7 @@ func TestRunShellBackgroundArgs_UnmarshalJSON_AcceptsCmdAndCommand(t *testing.T)
 // use "command" instead of "cmd" must execute normally rather than return
 // the missing-parameter error.
 func TestShellTool_HandlerAcceptsCommandAlias(t *testing.T) {
+	t.Parallel()
 	tool := New(nil, &config.RuntimeConfig{Config: config.Config{WorkingDir: t.TempDir()}})
 
 	var params RunShellArgs
@@ -147,6 +150,7 @@ func TestShellTool_HandlerAcceptsCommandAlias(t *testing.T) {
 }
 
 func TestShellTool_HandlerMissingCmdReturnsActionableError(t *testing.T) {
+	t.Parallel()
 	tool := New(nil, &config.RuntimeConfig{Config: config.Config{WorkingDir: t.TempDir()}})
 
 	result, err := tool.handler.RunShell(t.Context(), RunShellArgs{})
@@ -156,6 +160,7 @@ func TestShellTool_HandlerMissingCmdReturnsActionableError(t *testing.T) {
 }
 
 func TestShellTool_HandlerError(t *testing.T) {
+	t.Parallel()
 	tool := New(nil, &config.RuntimeConfig{Config: config.Config{WorkingDir: t.TempDir()}})
 
 	result, err := tool.handler.RunShell(t.Context(), RunShellArgs{
@@ -167,6 +172,7 @@ func TestShellTool_HandlerError(t *testing.T) {
 }
 
 func TestShellTool_OutputSchema(t *testing.T) {
+	t.Parallel()
 	tool := New(nil, &config.RuntimeConfig{Config: config.Config{WorkingDir: t.TempDir()}})
 
 	allTools, err := tool.Tools(t.Context())
@@ -179,6 +185,7 @@ func TestShellTool_OutputSchema(t *testing.T) {
 }
 
 func TestShellTool_ParametersAreObjects(t *testing.T) {
+	t.Parallel()
 	tool := New(nil, &config.RuntimeConfig{Config: config.Config{WorkingDir: t.TempDir()}})
 
 	allTools, err := tool.Tools(t.Context())
@@ -194,6 +201,7 @@ func TestShellTool_ParametersAreObjects(t *testing.T) {
 
 // Minimal tests for background job features
 func TestShellTool_RunBackgroundJob(t *testing.T) {
+	t.Parallel()
 	tool := New(nil, &config.RuntimeConfig{Config: config.Config{WorkingDir: t.TempDir()}})
 	err := tool.Start(t.Context())
 	require.NoError(t, err)
@@ -207,6 +215,7 @@ func TestShellTool_RunBackgroundJob(t *testing.T) {
 }
 
 func TestShellTool_ListBackgroundJobs(t *testing.T) {
+	t.Parallel()
 	tool := New(nil, &config.RuntimeConfig{Config: config.Config{WorkingDir: t.TempDir()}})
 	err := tool.Start(t.Context())
 	require.NoError(t, err)
@@ -265,6 +274,7 @@ func TestResolveWorkDir(t *testing.T) {
 }
 
 func TestShellTool_RelativeCwdResolvesAgainstWorkingDir(t *testing.T) {
+	t.Parallel()
 	// Create a directory structure: workingDir/subdir/
 	workingDir := t.TempDir()
 	subdir := workingDir + "/subdir"
@@ -292,6 +302,7 @@ func TestShellTool_RelativeCwdResolvesAgainstWorkingDir(t *testing.T) {
 // With the WaitDelay safeguard the tool must return within a small fraction
 // of the configured timeout.
 func TestShellTool_BackgroundedChildDoesNotBlockReturn(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX shell backgrounding semantics; skipped on Windows")
 	}
@@ -318,6 +329,7 @@ func TestShellTool_BackgroundedChildDoesNotBlockReturn(t *testing.T) {
 // shell tool's process-group kill cannot reach it on timeout), cmd.WaitDelay
 // must still allow the tool call to return.
 func TestShellTool_DetachedBackgroundedChildDoesNotBlockReturn(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX shell backgrounding semantics; skipped on Windows")
 	}
@@ -355,6 +367,7 @@ func TestShellTool_DetachedBackgroundedChildDoesNotBlockReturn(t *testing.T) {
 // the error path we take when cmd.Start() succeeded but a follow-up call
 // (e.g. createProcessGroup) failed.
 func TestReapSpawnedChild(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX-specific: relies on /bin/sh and ProcessState.Exited()")
 	}
@@ -377,6 +390,7 @@ func TestReapSpawnedChild(t *testing.T) {
 // TestReapSpawnedChild_HandlesAlreadyExited verifies that reaping a process
 // that has already exited is a no-op (does not block, does not panic).
 func TestReapSpawnedChild_HandlesAlreadyExited(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX-specific")
 	}

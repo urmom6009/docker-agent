@@ -8,6 +8,7 @@ import (
 )
 
 func TestSpliceLine(t *testing.T) {
+	t.Parallel()
 	t.Run("middle of plain line", func(t *testing.T) {
 		got := spliceLine("hello world", "XY", 6)
 		require.Equal(t, "hello XYrld", got)

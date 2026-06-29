@@ -78,6 +78,7 @@ func writeTempFile(t *testing.T, ext string, data []byte) string {
 // ──────────────────────────────────────────────────────────────────────────────
 
 func TestProcessAttachment_JPEG_Passthrough(t *testing.T) {
+	t.Parallel()
 	data := encodeJPEGBytes(100, 100)
 	path := writeTempFile(t, ".jpg", data)
 
@@ -93,6 +94,7 @@ func TestProcessAttachment_JPEG_Passthrough(t *testing.T) {
 }
 
 func TestProcessAttachment_PNG_Passthrough(t *testing.T) {
+	t.Parallel()
 	data := encodePNGBytes(100, 100, false)
 	path := writeTempFile(t, ".png", data)
 
@@ -106,6 +108,7 @@ func TestProcessAttachment_PNG_Passthrough(t *testing.T) {
 }
 
 func TestProcessAttachment_PNG_WithAlpha_StaysPNG(t *testing.T) {
+	t.Parallel()
 	data := encodePNGBytes(100, 100, true)
 	path := writeTempFile(t, ".png", data)
 
@@ -120,6 +123,7 @@ func TestProcessAttachment_PNG_WithAlpha_StaysPNG(t *testing.T) {
 }
 
 func TestProcessAttachment_ImageTooLarge_Resized(t *testing.T) {
+	t.Parallel()
 	bigData := encodeJPEGBytes(chat.MaxImageDimension+200, chat.MaxImageDimension+200)
 	path := writeTempFile(t, ".jpg", bigData)
 
@@ -138,6 +142,7 @@ func TestProcessAttachment_ImageTooLarge_Resized(t *testing.T) {
 }
 
 func TestProcessAttachment_PDF_Passthrough(t *testing.T) {
+	t.Parallel()
 	pdfBytes := []byte("%PDF-1.4 fake pdf content for testing")
 	path := writeTempFile(t, ".pdf", pdfBytes)
 
@@ -152,6 +157,7 @@ func TestProcessAttachment_PDF_Passthrough(t *testing.T) {
 }
 
 func TestProcessAttachment_BinaryFileTooLarge_Error(t *testing.T) {
+	t.Parallel()
 	// Sparse file: Stat.Size > MaxInlineBinarySize without allocating memory.
 	path := writeTempFile(t, ".pdf", nil)
 	f, err := os.OpenFile(path, os.O_WRONLY, 0o600)
@@ -168,6 +174,7 @@ func TestProcessAttachment_BinaryFileTooLarge_Error(t *testing.T) {
 }
 
 func TestProcessAttachment_TextFile_InlineText(t *testing.T) {
+	t.Parallel()
 	content := "Hello, this is a text file.\nLine 2."
 	path := writeTempFile(t, ".txt", []byte(content))
 
@@ -181,6 +188,7 @@ func TestProcessAttachment_TextFile_InlineText(t *testing.T) {
 }
 
 func TestProcessAttachment_MarkdownFile_InlineText(t *testing.T) {
+	t.Parallel()
 	content := "# Title\n\nBody paragraph."
 	path := writeTempFile(t, ".md", []byte(content))
 
@@ -194,6 +202,7 @@ func TestProcessAttachment_MarkdownFile_InlineText(t *testing.T) {
 }
 
 func TestProcessAttachment_MissingFile_Error(t *testing.T) {
+	t.Parallel()
 	_, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type: chat.MessagePartTypeFile,
 		File: &chat.MessageFile{Path: "/nonexistent/path/file.jpg"},
@@ -203,6 +212,7 @@ func TestProcessAttachment_MissingFile_Error(t *testing.T) {
 }
 
 func TestProcessAttachment_NilFile_Error(t *testing.T) {
+	t.Parallel()
 	_, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type: chat.MessagePartTypeFile,
 		File: nil,
@@ -215,6 +225,7 @@ func TestProcessAttachment_NilFile_Error(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 func TestProcessAttachment_DataURI_JPEG(t *testing.T) {
+	t.Parallel()
 	jpegData := encodeJPEGBytes(50, 50)
 	dataURI := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(jpegData)
 
@@ -228,6 +239,7 @@ func TestProcessAttachment_DataURI_JPEG(t *testing.T) {
 }
 
 func TestProcessAttachment_DataURI_PNG(t *testing.T) {
+	t.Parallel()
 	pngData := encodePNGBytes(50, 50, false)
 	dataURI := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngData)
 
@@ -240,6 +252,7 @@ func TestProcessAttachment_DataURI_PNG(t *testing.T) {
 }
 
 func TestProcessAttachment_DataURI_NonBase64_Error(t *testing.T) {
+	t.Parallel()
 	_, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type:     chat.MessagePartTypeImageURL,
 		ImageURL: &chat.MessageImageURL{URL: "data:text/plain,hello"},
@@ -249,6 +262,7 @@ func TestProcessAttachment_DataURI_NonBase64_Error(t *testing.T) {
 }
 
 func TestProcessAttachment_RemoteURL_Error(t *testing.T) {
+	t.Parallel()
 	// Remote http(s):// URLs are not supported; callers must download locally.
 	for _, scheme := range []string{"http://", "https://"} {
 		_, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
@@ -261,6 +275,7 @@ func TestProcessAttachment_RemoteURL_Error(t *testing.T) {
 }
 
 func TestProcessAttachment_UnsupportedScheme_Error(t *testing.T) {
+	t.Parallel()
 	_, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type:     chat.MessagePartTypeImageURL,
 		ImageURL: &chat.MessageImageURL{URL: "ftp://example.com/image.jpg"},
@@ -270,6 +285,7 @@ func TestProcessAttachment_UnsupportedScheme_Error(t *testing.T) {
 }
 
 func TestProcessAttachment_NilImageURL_Error(t *testing.T) {
+	t.Parallel()
 	_, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type:     chat.MessagePartTypeImageURL,
 		ImageURL: nil,
@@ -282,6 +298,7 @@ func TestProcessAttachment_NilImageURL_Error(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 func TestProcessAttachment_Document_WithInlineData_Passthrough(t *testing.T) {
+	t.Parallel()
 	pdfBytes := []byte("%PDF-1.4 test")
 	doc, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type: chat.MessagePartTypeDocument,
@@ -297,6 +314,7 @@ func TestProcessAttachment_Document_WithInlineData_Passthrough(t *testing.T) {
 }
 
 func TestProcessAttachment_Document_WithInlineText_Passthrough(t *testing.T) {
+	t.Parallel()
 	text := "# Markdown content"
 	doc, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type: chat.MessagePartTypeDocument,
@@ -312,6 +330,7 @@ func TestProcessAttachment_Document_WithInlineText_Passthrough(t *testing.T) {
 }
 
 func TestProcessAttachment_Document_ImageInlineData_Transcoded(t *testing.T) {
+	t.Parallel()
 	jpegData := encodeJPEGBytes(40, 40)
 	doc, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type: chat.MessagePartTypeDocument,
@@ -327,6 +346,7 @@ func TestProcessAttachment_Document_ImageInlineData_Transcoded(t *testing.T) {
 }
 
 func TestProcessAttachment_Document_NoContent_Error(t *testing.T) {
+	t.Parallel()
 	_, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type: chat.MessagePartTypeDocument,
 		Document: &chat.Document{
@@ -340,6 +360,7 @@ func TestProcessAttachment_Document_NoContent_Error(t *testing.T) {
 }
 
 func TestProcessAttachment_Document_NilDocument_Error(t *testing.T) {
+	t.Parallel()
 	_, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type:     chat.MessagePartTypeDocument,
 		Document: nil,
@@ -352,6 +373,7 @@ func TestProcessAttachment_Document_NilDocument_Error(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 func TestProcessAttachment_UnsupportedType_Error(t *testing.T) {
+	t.Parallel()
 	_, err := chat.ProcessAttachment(t.Context(), chat.MessagePart{
 		Type: chat.MessagePartTypeText,
 		Text: "hello",

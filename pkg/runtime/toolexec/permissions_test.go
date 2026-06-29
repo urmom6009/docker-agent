@@ -19,6 +19,7 @@ func newChecker(t *testing.T, allow, ask, deny []string) *permissions.Checker {
 }
 
 func TestDecide_YoloShortCircuits(t *testing.T) {
+	t.Parallel()
 	d := Decide(true, []NamedChecker{
 		{Checker: newChecker(t, nil, nil, []string{"shell"}), Source: "team"},
 	}, "shell", nil, false)
@@ -27,6 +28,7 @@ func TestDecide_YoloShortCircuits(t *testing.T) {
 }
 
 func TestDecide_DenyFromCheckerWins(t *testing.T) {
+	t.Parallel()
 	d := Decide(false, []NamedChecker{
 		{Checker: newChecker(t, nil, nil, []string{"shell"}), Source: "session"},
 	}, "shell", nil, true /* read-only doesn't bypass deny */)
@@ -35,6 +37,7 @@ func TestDecide_DenyFromCheckerWins(t *testing.T) {
 }
 
 func TestDecide_AllowFromChecker(t *testing.T) {
+	t.Parallel()
 	d := Decide(false, []NamedChecker{
 		{Checker: newChecker(t, []string{"read_*"}, nil, nil), Source: "session"},
 	}, "read_file", nil, false)
@@ -43,6 +46,7 @@ func TestDecide_AllowFromChecker(t *testing.T) {
 }
 
 func TestDecide_ForceAskFromCheckerOverridesReadOnly(t *testing.T) {
+	t.Parallel()
 	d := Decide(false, []NamedChecker{
 		{Checker: newChecker(t, nil, []string{"read_file"}, nil), Source: "team"},
 	}, "read_file", nil, true /* read-only would normally bypass ask */)
@@ -51,6 +55,7 @@ func TestDecide_ForceAskFromCheckerOverridesReadOnly(t *testing.T) {
 }
 
 func TestDecide_FirstCheckerWins_SessionBeforeTeam(t *testing.T) {
+	t.Parallel()
 	// Session allows; team denies. Session is checked first → Allow.
 	d := Decide(false, []NamedChecker{
 		{Checker: newChecker(t, []string{"shell"}, nil, nil), Source: "session permissions"},
@@ -61,6 +66,7 @@ func TestDecide_FirstCheckerWins_SessionBeforeTeam(t *testing.T) {
 }
 
 func TestDecide_FallsThroughWhenNoCheckerMatches(t *testing.T) {
+	t.Parallel()
 	// First checker doesn't match anything (no patterns) → falls through to second.
 	d := Decide(false, []NamedChecker{
 		{Checker: newChecker(t, nil, nil, nil), Source: "session permissions"},
@@ -71,21 +77,25 @@ func TestDecide_FallsThroughWhenNoCheckerMatches(t *testing.T) {
 }
 
 func TestDecide_ReadOnlyHintAutoApproves(t *testing.T) {
+	t.Parallel()
 	d := Decide(false, nil, "read_file", nil, true)
 	assert.Equal(t, PermissionDecision{Outcome: OutcomeAllow, Reason: ReasonReadOnlyHint}, d)
 }
 
 func TestDecide_DefaultAsk(t *testing.T) {
+	t.Parallel()
 	d := Decide(false, nil, "shell", nil, false)
 	assert.Equal(t, PermissionDecision{Outcome: OutcomeAsk, Reason: ReasonDefault}, d)
 }
 
 func TestDecide_NoCheckersWithReadOnly(t *testing.T) {
+	t.Parallel()
 	d := Decide(false, []NamedChecker{}, "read_file", nil, true)
 	assert.Equal(t, PermissionDecision{Outcome: OutcomeAllow, Reason: ReasonReadOnlyHint}, d)
 }
 
 func TestDecide_ArgPatternMatching(t *testing.T) {
+	t.Parallel()
 	// A checker that only allows shell when cmd starts with "ls".
 	d := Decide(false, []NamedChecker{
 		{Checker: newChecker(t, []string{"shell:cmd=ls*"}, nil, nil), Source: "session"},
@@ -95,6 +105,7 @@ func TestDecide_ArgPatternMatching(t *testing.T) {
 }
 
 func TestDecide_ArgPatternNoMatchFallsToDefault(t *testing.T) {
+	t.Parallel()
 	d := Decide(false, []NamedChecker{
 		{Checker: newChecker(t, []string{"shell:cmd=ls*"}, nil, nil), Source: "session"},
 	}, "shell", map[string]any{"cmd": "rm -rf /"}, false)

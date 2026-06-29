@@ -50,6 +50,7 @@ func (m *MockDB) UpdateMemory(ctx context.Context, memory database.UserMemory) e
 }
 
 func TestMemoryTool_Instructions(t *testing.T) {
+	t.Parallel()
 	manager := new(MockDB)
 	tool := New(manager)
 
@@ -61,6 +62,7 @@ func TestMemoryTool_Instructions(t *testing.T) {
 }
 
 func TestMemoryTool_DisplayNames(t *testing.T) {
+	t.Parallel()
 	manager := new(MockDB)
 	tool := New(manager)
 
@@ -74,6 +76,7 @@ func TestMemoryTool_DisplayNames(t *testing.T) {
 }
 
 func TestMemoryTool_HandleAddMemory(t *testing.T) {
+	t.Parallel()
 	manager := new(MockDB)
 	tool := New(manager)
 
@@ -90,6 +93,7 @@ func TestMemoryTool_HandleAddMemory(t *testing.T) {
 }
 
 func TestMemoryTool_HandleAddMemoryWithCategory(t *testing.T) {
+	t.Parallel()
 	manager := new(MockDB)
 	tool := New(manager)
 
@@ -107,6 +111,7 @@ func TestMemoryTool_HandleAddMemoryWithCategory(t *testing.T) {
 }
 
 func TestMemoryTool_HandleGetMemories(t *testing.T) {
+	t.Parallel()
 	manager := new(MockDB)
 	tool := New(manager)
 
@@ -137,6 +142,7 @@ func TestMemoryTool_HandleGetMemories(t *testing.T) {
 }
 
 func TestMemoryTool_HandleDeleteMemory(t *testing.T) {
+	t.Parallel()
 	manager := new(MockDB)
 	tool := New(manager)
 
@@ -154,6 +160,7 @@ func TestMemoryTool_HandleDeleteMemory(t *testing.T) {
 }
 
 func TestMemoryTool_HandleSearchMemories(t *testing.T) {
+	t.Parallel()
 	manager := new(MockDB)
 	tool := New(manager)
 
@@ -183,6 +190,7 @@ func TestMemoryTool_HandleSearchMemories(t *testing.T) {
 }
 
 func TestMemoryTool_HandleUpdateMemory(t *testing.T) {
+	t.Parallel()
 	manager := new(MockDB)
 	tool := New(manager)
 
@@ -201,6 +209,7 @@ func TestMemoryTool_HandleUpdateMemory(t *testing.T) {
 }
 
 func TestMemoryTool_ToolCount(t *testing.T) {
+	t.Parallel()
 	tool := New(nil)
 
 	allTools, err := tool.Tools(t.Context())
@@ -209,6 +218,7 @@ func TestMemoryTool_ToolCount(t *testing.T) {
 }
 
 func TestMemoryTool_OutputSchema(t *testing.T) {
+	t.Parallel()
 	tool := New(nil)
 
 	allTools, err := tool.Tools(t.Context())
@@ -221,6 +231,7 @@ func TestMemoryTool_OutputSchema(t *testing.T) {
 }
 
 func TestMemoryTool_ParametersAreObjects(t *testing.T) {
+	t.Parallel()
 	tool := New(nil)
 
 	allTools, err := tool.Tools(t.Context())
@@ -243,6 +254,7 @@ func TestMemoryTool_ParametersAreObjects(t *testing.T) {
 // The test runs the same assertions on every OS so the behaviour is
 // pinned regardless of where the suite executes.
 func TestCreateToolSet_DefaultPath_SanitisesReservedChars(t *testing.T) {
+	t.Parallel()
 	dataDir := t.TempDir()
 	paths.SetDataDir(dataDir)
 	t.Cleanup(func() { paths.SetDataDir("") })

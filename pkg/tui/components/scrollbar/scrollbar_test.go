@@ -7,6 +7,7 @@ import (
 )
 
 func TestCalculateThumbPosition(t *testing.T) {
+	t.Parallel()
 	sb := New()
 	sb.SetDimensions(10, 100)
 
@@ -29,6 +30,7 @@ func TestCalculateThumbPosition(t *testing.T) {
 }
 
 func TestScrollMethods(t *testing.T) {
+	t.Parallel()
 	sb := New()
 	sb.SetDimensions(10, 100)
 

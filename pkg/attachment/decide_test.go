@@ -23,6 +23,7 @@ func imageNoPDFCaps() modelinfo.ModelCapabilities {
 }
 
 func TestDecide(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		doc           chat.Document
@@ -132,6 +133,7 @@ func TestDecide(t *testing.T) {
 }
 
 func TestTXTEnvelope(t *testing.T) {
+	t.Parallel()
 	got := attachment.TXTEnvelope("readme.md", "text/markdown", "# Hello")
 	// Tag must start with "document-" followed by a slug of name+mimeType.
 	if !strings.HasPrefix(got, "<document-") {
@@ -148,6 +150,7 @@ func TestTXTEnvelope(t *testing.T) {
 }
 
 func TestTXTEnvelope_UniqueTag(t *testing.T) {
+	t.Parallel()
 	// The tag should contain slugged name and MIME type, making collisions
 	// between different documents practically impossible.
 	got1 := attachment.TXTEnvelope("report.md", "text/markdown", "body")

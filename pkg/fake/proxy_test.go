@@ -72,6 +72,7 @@ func TestAPIKeyHeaderUpdater(t *testing.T) {
 }
 
 func TestAPIKeyHeaderUpdater_UnknownHost(t *testing.T) {
+	t.Parallel()
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com", http.NoBody)
 	require.NoError(t, err)
 
@@ -146,6 +147,7 @@ func (r *readerFromRecorder) ReadFrom(src io.Reader) (n int64, err error) {
 }
 
 func TestIsStreamResponse(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		contentType string
@@ -212,6 +214,7 @@ func TestIsStreamResponse(t *testing.T) {
 }
 
 func TestStreamCopy_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	// Create a slow reader that blocks until closed
 	slowBody := newSlowReader()
 
@@ -250,6 +253,7 @@ func TestStreamCopy_ContextCancellation(t *testing.T) {
 }
 
 func TestStreamCopy_NormalCompletion(t *testing.T) {
+	t.Parallel()
 	// Create a response with a normal body
 	body := bytes.NewReader([]byte("test data"))
 	resp := &http.Response{
@@ -271,6 +275,7 @@ func TestStreamCopy_NormalCompletion(t *testing.T) {
 }
 
 func TestSimulatedStreamCopy_SSEEvents(t *testing.T) {
+	t.Parallel()
 	// Create a response with SSE-formatted data
 	sseData := "data: {\"chunk\": 1}\n\ndata: {\"chunk\": 2}\n\ndata: [DONE]\n\n"
 	resp := &http.Response{
@@ -324,6 +329,7 @@ func (w *notifyWriter) Flush() {
 }
 
 func TestSimulatedStreamCopy_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	// Create a reader that provides some data then blocks
 	// to allow context cancellation to be tested
 	sseData := "data: first\n"

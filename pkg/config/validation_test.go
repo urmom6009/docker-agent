@@ -11,6 +11,7 @@ import (
 )
 
 func TestLoadConfig_InvalidPath(t *testing.T) {
+	t.Parallel()
 	tmp := t.TempDir()
 	tmpRoot := openRoot(t, tmp)
 

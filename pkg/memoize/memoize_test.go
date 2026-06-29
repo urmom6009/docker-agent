@@ -13,6 +13,7 @@ import (
 )
 
 func TestMemoizeCachesValue(t *testing.T) {
+	t.Parallel()
 	m := New[int](NoExpiration)
 
 	var calls atomic.Int32
@@ -30,6 +31,7 @@ func TestMemoizeCachesValue(t *testing.T) {
 }
 
 func TestMemoizeCachesZeroValue(t *testing.T) {
+	t.Parallel()
 	m := New[int](NoExpiration)
 
 	var calls atomic.Int32
@@ -47,6 +49,7 @@ func TestMemoizeCachesZeroValue(t *testing.T) {
 }
 
 func TestMemoizeIsolatesKeys(t *testing.T) {
+	t.Parallel()
 	m := New[string](NoExpiration)
 
 	a, err := m.Memoize("a", func() (string, error) { return "value-a", nil })
@@ -59,6 +62,7 @@ func TestMemoizeIsolatesKeys(t *testing.T) {
 }
 
 func TestMemoizeDoesNotCacheErrors(t *testing.T) {
+	t.Parallel()
 	m := New[int](NoExpiration)
 
 	var calls atomic.Int32
@@ -76,6 +80,7 @@ func TestMemoizeDoesNotCacheErrors(t *testing.T) {
 }
 
 func TestMemoizeRetriesAfterErrorThenCaches(t *testing.T) {
+	t.Parallel()
 	m := New[int](NoExpiration)
 
 	var calls atomic.Int32
@@ -100,6 +105,7 @@ func TestMemoizeRetriesAfterErrorThenCaches(t *testing.T) {
 }
 
 func TestMemoizeExpires(t *testing.T) {
+	t.Parallel()
 	m := New[int](10 * time.Millisecond)
 
 	var calls atomic.Int32
@@ -122,6 +128,7 @@ func TestMemoizeExpires(t *testing.T) {
 // TestMemoizeZeroTTLNeverExpires verifies the go-cache compatible behavior that
 // a non-positive ttl caches forever rather than expiring immediately.
 func TestMemoizeZeroTTLNeverExpires(t *testing.T) {
+	t.Parallel()
 	for _, ttl := range []time.Duration{0, NoExpiration, -time.Hour} {
 		m := New[int](ttl)
 
@@ -147,6 +154,7 @@ func TestMemoizeZeroTTLNeverExpires(t *testing.T) {
 // TestMemoizeEvictsExpiredEntry ensures expired entries are removed on access,
 // so memory does not grow without bound for keys that stop being requested.
 func TestMemoizeEvictsExpiredEntry(t *testing.T) {
+	t.Parallel()
 	m := New[int](5 * time.Millisecond)
 
 	_, err := m.Memoize("key", func() (int, error) { return 1, nil })
@@ -161,6 +169,7 @@ func TestMemoizeEvictsExpiredEntry(t *testing.T) {
 }
 
 func TestMemoizePanicPropagates(t *testing.T) {
+	t.Parallel()
 	m := New[int](NoExpiration)
 
 	// singleflight wraps the panic value and re-raises it, so we assert that a
@@ -181,6 +190,7 @@ func TestMemoizePanicPropagates(t *testing.T) {
 // TestMemoizeNilInterfaceValue guards the type assertion: when T is an
 // interface and fn returns nil, Memoize must return nil without panicking.
 func TestMemoizeNilInterfaceValue(t *testing.T) {
+	t.Parallel()
 	m := New[fmt.Stringer](NoExpiration)
 
 	v, err := m.Memoize("key", func() (fmt.Stringer, error) {
@@ -191,6 +201,7 @@ func TestMemoizeNilInterfaceValue(t *testing.T) {
 }
 
 func TestMemoizeConcurrentSingleFlight(t *testing.T) {
+	t.Parallel()
 	m := New[int](NoExpiration)
 
 	var calls atomic.Int32
@@ -215,6 +226,7 @@ func TestMemoizeConcurrentSingleFlight(t *testing.T) {
 // TestMemoizeConcurrentDistinctKeys exercises the lock under contention across
 // many keys to catch data races (run with -race).
 func TestMemoizeConcurrentDistinctKeys(t *testing.T) {
+	t.Parallel()
 	m := New[int](time.Millisecond)
 
 	var wg sync.WaitGroup

@@ -9,6 +9,7 @@ import (
 )
 
 func TestClone_DefaultModelDeepCopy(t *testing.T) {
+	t.Parallel()
 	temp := 0.7
 	original := &RuntimeConfig{
 		Config: Config{
@@ -33,6 +34,7 @@ func TestClone_DefaultModelDeepCopy(t *testing.T) {
 }
 
 func TestClone_NilDefaultModel(t *testing.T) {
+	t.Parallel()
 	original := &RuntimeConfig{
 		Config: Config{
 			DefaultModel: nil,
@@ -47,6 +49,7 @@ func TestClone_NilDefaultModel(t *testing.T) {
 }
 
 func TestClone_EnvFilesIsolated(t *testing.T) {
+	t.Parallel()
 	original := &RuntimeConfig{
 		Config: Config{
 			EnvFiles: []string{"a.env", "b.env"},
@@ -61,6 +64,7 @@ func TestClone_EnvFilesIsolated(t *testing.T) {
 }
 
 func TestClone_ModelsIsolated(t *testing.T) {
+	t.Parallel()
 	temp := 0.7
 	original := &RuntimeConfig{
 		Config: Config{
@@ -102,6 +106,7 @@ func TestClone_ModelsIsolated(t *testing.T) {
 }
 
 func TestClone_NilModels(t *testing.T) {
+	t.Parallel()
 	original := &RuntimeConfig{
 		Config: Config{
 			Models: nil,

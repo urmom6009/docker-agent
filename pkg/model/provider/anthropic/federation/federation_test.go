@@ -18,6 +18,7 @@ import (
 )
 
 func TestFileSource(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "token")
 	require.NoError(t, os.WriteFile(path, []byte("  abc.def.ghi\n"), 0o600))
@@ -28,12 +29,14 @@ func TestFileSource(t *testing.T) {
 }
 
 func TestFileSource_Missing(t *testing.T) {
+	t.Parallel()
 	_, err := fileSource(filepath.Join(t.TempDir(), "missing"))(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "read token file")
 }
 
 func TestFileSource_Empty(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "empty")
 	require.NoError(t, os.WriteFile(path, []byte("   \n"), 0o600))
@@ -44,6 +47,7 @@ func TestFileSource_Empty(t *testing.T) {
 }
 
 func TestEnvSource(t *testing.T) {
+	t.Parallel()
 	env := environment.NewMapEnvProvider(map[string]string{"MY_TOKEN": " jwt-payload\n"})
 	got, err := envSource("MY_TOKEN", env)(t.Context())
 	require.NoError(t, err)
@@ -51,12 +55,14 @@ func TestEnvSource(t *testing.T) {
 }
 
 func TestEnvSource_Missing(t *testing.T) {
+	t.Parallel()
 	_, err := envSource("MY_TOKEN", environment.NewMapEnvProvider(nil))(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "is not set or empty")
 }
 
 func TestCommandSource(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX shell command")
 	}
@@ -66,6 +72,7 @@ func TestCommandSource(t *testing.T) {
 }
 
 func TestCommandSource_Failure(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX shell command")
 	}
@@ -75,6 +82,7 @@ func TestCommandSource_Failure(t *testing.T) {
 }
 
 func TestCommandSource_EmptyOutput(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX shell command")
 	}
@@ -84,6 +92,7 @@ func TestCommandSource_EmptyOutput(t *testing.T) {
 }
 
 func TestURLSource_PlainText(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("the.jwt.token\n"))
 	}))
@@ -95,6 +104,7 @@ func TestURLSource_PlainText(t *testing.T) {
 }
 
 func TestURLSource_JSONField_WithExpansion(t *testing.T) {
+	t.Parallel()
 	var gotAuth string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
@@ -116,6 +126,7 @@ func TestURLSource_JSONField_WithExpansion(t *testing.T) {
 }
 
 func TestURLSource_NonOK(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`unauthorized`))
@@ -128,6 +139,7 @@ func TestURLSource_NonOK(t *testing.T) {
 }
 
 func TestURLSource_MissingField(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"other":"x"}`))
 	}))
@@ -142,6 +154,7 @@ func TestURLSource_MissingField(t *testing.T) {
 // the unexpanded URL template rather than the expanded form, so any ${VAR}
 // substitutions carrying secret values do not flow into logs / TUI events.
 func TestURLSource_DoesNotLeakExpandedURL(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`nope`))
@@ -161,6 +174,7 @@ func TestURLSource_DoesNotLeakExpandedURL(t *testing.T) {
 // silently followed. Following redirects could leak sensitive headers
 // (e.g. X-OIDC-Token) to attacker-controlled hosts.
 func TestURLSource_DoesNotFollowRedirects(t *testing.T) {
+	t.Parallel()
 	var calls int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls++
@@ -180,6 +194,7 @@ func TestURLSource_DoesNotFollowRedirects(t *testing.T) {
 // maxTokenResponseBytes (plus one sentinel byte for overflow detection)
 // and surface a clear error rather than silently truncate.
 func TestURLSource_LimitsResponseBody(t *testing.T) {
+	t.Parallel()
 	huge := strings.Repeat("A", int(maxTokenResponseBytes)+1024)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(huge))
@@ -192,6 +207,7 @@ func TestURLSource_LimitsResponseBody(t *testing.T) {
 }
 
 func TestTruncateForError(t *testing.T) {
+	t.Parallel()
 	// Short input passes through verbatim, with surrounding whitespace trimmed.
 	assert.Equal(t, "hello", truncateForError([]byte("  hello\n")))
 
@@ -208,11 +224,13 @@ func TestTruncateForError(t *testing.T) {
 }
 
 func TestRequestOptions_RejectsNilConfig(t *testing.T) {
+	t.Parallel()
 	_, err := RequestOptions(nil, environment.NewMapEnvProvider(nil))
 	require.Error(t, err)
 }
 
 func TestRequestOptions_BuildsForFileSource(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "tok")
 	require.NoError(t, os.WriteFile(path, []byte("jwt"), 0o600))
@@ -230,6 +248,7 @@ func TestRequestOptions_BuildsForFileSource(t *testing.T) {
 // surfaces refresh errors in the TUI: a failing source must produce a
 // message that names the source kind and federation rule.
 func TestTokenSource_WrapsFailureMessage(t *testing.T) {
+	t.Parallel()
 	missing := filepath.Join(t.TempDir(), "missing")
 	cfg := &latest.FederationAuthConfig{
 		FederationRuleID: "fdrl_x",

@@ -10,6 +10,7 @@ import (
 )
 
 func TestParseFrontmatter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		content string
@@ -274,6 +275,7 @@ Body`,
 }
 
 func TestLoadSkillsFromDir_Flat(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	skillDir := filepath.Join(tmpDir, "pdf-extractor")
@@ -300,6 +302,7 @@ Use pdftotext to extract content.
 }
 
 func TestLoadSkillsFromDir_Recursive(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	nestedDir := filepath.Join(tmpDir, "db", "migrate")
@@ -326,6 +329,7 @@ Run migrations with care.
 }
 
 func TestLoadSkillsFromDir_NameFromDirectory(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	skillDir := filepath.Join(tmpDir, "hola")
@@ -348,6 +352,7 @@ Run the hola command.
 }
 
 func TestLoadSkillsFromDir_SkipHiddenAndSymlinks(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	hiddenDir := filepath.Join(tmpDir, ".hidden-skill")
@@ -359,6 +364,7 @@ func TestLoadSkillsFromDir_SkipHiddenAndSymlinks(t *testing.T) {
 }
 
 func TestLoadSkillsFromDir_SkipNoDescription(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	skillDir := filepath.Join(tmpDir, "no-desc")
@@ -379,6 +385,7 @@ This skill has no description field.
 }
 
 func TestLoadSkillsFromDir_AllOptionalFields(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	skillDir := filepath.Join(tmpDir, "full-skill")
@@ -413,6 +420,7 @@ allowed-tools:
 }
 
 func TestLoadSkillsFromDir_NonExistentDir(t *testing.T) {
+	t.Parallel()
 	skills := loadSkillsFromDir("/nonexistent/path/12345", false)
 	assert.Empty(t, skills)
 }
@@ -538,6 +546,7 @@ description: A flat global agents skill
 }
 
 func TestLoadSkillsFromDir_RecursiveSymlinkCycle(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	// Create a skill in a subdirectory.
@@ -565,6 +574,7 @@ description: A real skill
 }
 
 func TestLoadSkillsFromDir_RecursiveSymlinkSelfReference(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	// Create a directory that symlinks to itself.
@@ -817,6 +827,7 @@ description: Subproject version
 }
 
 func TestFindGitRoot(t *testing.T) {
+	t.Parallel()
 	t.Run("git directory at current", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		require.NoError(t, os.Mkdir(filepath.Join(tmpDir, ".git"), 0o755))
@@ -895,6 +906,7 @@ func TestIsHomeSkillPath(t *testing.T) {
 }
 
 func TestSkill_IsFork(t *testing.T) {
+	t.Parallel()
 	assert.True(t, (&Skill{Context: "fork"}).IsFork())
 	assert.False(t, (&Skill{Context: ""}).IsFork())
 	assert.False(t, (&Skill{Context: "inline"}).IsFork())

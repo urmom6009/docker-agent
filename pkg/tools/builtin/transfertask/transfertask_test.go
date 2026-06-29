@@ -11,11 +11,13 @@ import (
 )
 
 func TestNewTaskTool(t *testing.T) {
+	t.Parallel()
 	tool := New()
 	assert.NotNil(t, tool)
 }
 
 func TestTaskTool_Instructions(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	// Tool doesn't implement Instructable
@@ -24,6 +26,7 @@ func TestTaskTool_Instructions(t *testing.T) {
 }
 
 func TestTaskTool_Tools(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	allTools, err := tool.Tools(t.Context())
@@ -65,6 +68,7 @@ func TestTaskTool_Tools(t *testing.T) {
 }
 
 func TestTaskTool_DisplayNames(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	all, err := tool.Tools(t.Context())
@@ -78,6 +82,7 @@ func TestTaskTool_DisplayNames(t *testing.T) {
 }
 
 func TestTaskTool_StartStop(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	// Tool doesn't need to implement Startable -

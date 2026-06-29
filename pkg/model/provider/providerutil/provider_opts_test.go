@@ -7,6 +7,7 @@ import (
 )
 
 func TestGetProviderOptFloat64(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		opts   map[string]any
@@ -34,6 +35,7 @@ func TestGetProviderOptFloat64(t *testing.T) {
 }
 
 func TestGetProviderOptBool(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		opts   map[string]any
@@ -60,6 +62,7 @@ func TestGetProviderOptBool(t *testing.T) {
 }
 
 func TestGetProviderOptStringSlice(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		opts   map[string]any
@@ -88,6 +91,7 @@ func TestGetProviderOptStringSlice(t *testing.T) {
 }
 
 func TestGetProviderOptInt64(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		opts   map[string]any

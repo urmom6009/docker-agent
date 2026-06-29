@@ -19,6 +19,7 @@ func (m *mockToolSet) Tools(_ context.Context) ([]tools.Tool, error) {
 }
 
 func TestDeferredToolset_SearchTool(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	mockTools := &mockToolSet{
 		toolList: []tools.Tool{
@@ -57,6 +58,7 @@ func TestDeferredToolset_SearchTool(t *testing.T) {
 }
 
 func TestDeferredToolset_AddTool(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	mockTools := &mockToolSet{
 		toolList: []tools.Tool{

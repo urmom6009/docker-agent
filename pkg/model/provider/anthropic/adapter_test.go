@@ -17,6 +17,7 @@ import (
 // provider (OpenAI, Gemini) reported it. The SDK exposes the breakdown via
 // OutputTokensDetails.ThinkingTokens; this asserts we map it through.
 func TestUsageFromDelta_RecordsReasoningTokens(t *testing.T) {
+	t.Parallel()
 	u := anthropic.MessageDeltaUsage{
 		InputTokens:              100,
 		OutputTokens:             80,
@@ -40,6 +41,7 @@ func TestUsageFromDelta_RecordsReasoningTokens(t *testing.T) {
 // above. Interleaved thinking (the common case for extended-thinking agents)
 // routes through the Beta stream, so the breakdown must be mapped there too.
 func TestBetaUsageFromDelta_RecordsReasoningTokens(t *testing.T) {
+	t.Parallel()
 	u := anthropic.BetaMessageDeltaUsage{
 		InputTokens:              200,
 		OutputTokens:             150,
@@ -60,6 +62,7 @@ func TestBetaUsageFromDelta_RecordsReasoningTokens(t *testing.T) {
 }
 
 func TestFinishReason(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		stopReason anthropic.StopReason

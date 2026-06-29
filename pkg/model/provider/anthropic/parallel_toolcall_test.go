@@ -51,6 +51,7 @@ func sseEvent(t string, payload any) ssestream.Event {
 // into the same buffer, producing malformed JSON. This test guards the fix:
 // routing by block index keeps each tool call's arguments in its own buffer.
 func TestParallelToolCallIDsAreNotCrossWired(t *testing.T) {
+	t.Parallel()
 	// Event sequence: two parallel tool_use blocks with interleaved
 	// input_json_delta events. This mirrors what Anthropic emits when the
 	// model issues parallel tool calls.
@@ -181,6 +182,7 @@ func TestParallelToolCallIDsAreNotCrossWired(t *testing.T) {
 // TestBetaParallelToolCallIDsAreNotCrossWired is the same scenario but for
 // the Beta stream adapter. The bug and fix are identical.
 func TestBetaParallelToolCallIDsAreNotCrossWired(t *testing.T) {
+	t.Parallel()
 	events := []ssestream.Event{
 		sseEvent("message_start", map[string]any{
 			"type":    "message_start",

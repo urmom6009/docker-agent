@@ -18,6 +18,7 @@ import (
 // would stream unbounded data, so the implementation must refuse it up front.
 // The timeout guards against a regression that opens the file and hangs.
 func TestPlanTool_UpdateFromFileRejectsNamedPipe(t *testing.T) {
+	t.Parallel()
 	tool := newTestPlanTool(t)
 
 	fifo := filepath.Join(t.TempDir(), "pipe")

@@ -11,12 +11,14 @@ import (
 )
 
 func TestSimple(t *testing.T) {
+	t.Parallel()
 	sess := session.New(session.WithUserMessage("Hello"))
 	content := PlainText(sess)
 	golden.Assert(t, content, "simple.golden")
 }
 
 func TestAssistantMessage(t *testing.T) {
+	t.Parallel()
 	sess := session.New(
 		session.WithUserMessage("Hello"),
 	)
@@ -32,6 +34,7 @@ func TestAssistantMessage(t *testing.T) {
 }
 
 func TestAssistantMessageWithReasoning(t *testing.T) {
+	t.Parallel()
 	sess := session.New(
 		session.WithUserMessage("Hello"),
 	)
@@ -48,6 +51,7 @@ func TestAssistantMessageWithReasoning(t *testing.T) {
 }
 
 func TestToolCalls(t *testing.T) {
+	t.Parallel()
 	sess := session.New(
 		session.WithUserMessage("Hello"),
 	)
@@ -79,6 +83,7 @@ func TestToolCalls(t *testing.T) {
 // ─── Document attachment rendering ───────────────────────────────────────────
 
 func TestUserMessageWithImageDocument(t *testing.T) {
+	t.Parallel()
 	msg := session.UserMessage(
 		"Check this image",
 		chat.MessagePart{Type: chat.MessagePartTypeText, Text: "Check this image"},
@@ -99,6 +104,7 @@ func TestUserMessageWithImageDocument(t *testing.T) {
 }
 
 func TestUserMessageWithPDFDocument(t *testing.T) {
+	t.Parallel()
 	msg := session.UserMessage(
 		"Summarise this PDF",
 		chat.MessagePart{Type: chat.MessagePartTypeText, Text: "Summarise this PDF"},
@@ -119,6 +125,7 @@ func TestUserMessageWithPDFDocument(t *testing.T) {
 }
 
 func TestUserMessageWithTextDocument(t *testing.T) {
+	t.Parallel()
 	msg := session.UserMessage(
 		"Review this file",
 		chat.MessagePart{Type: chat.MessagePartTypeText, Text: "Review this file"},
@@ -138,6 +145,7 @@ func TestUserMessageWithTextDocument(t *testing.T) {
 }
 
 func TestFormatBytes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input int64
 		want  string

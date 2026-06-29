@@ -10,6 +10,7 @@ import (
 )
 
 func TestThinkTool_Handler(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	result, err := tool.callTool(t.Context(), Args{Thought: "This is a test thought"})
@@ -24,6 +25,7 @@ func TestThinkTool_Handler(t *testing.T) {
 }
 
 func TestThinkTool_OutputSchema(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	allTools, err := tool.Tools(t.Context())
@@ -36,6 +38,7 @@ func TestThinkTool_OutputSchema(t *testing.T) {
 }
 
 func TestThinkTool_ParametersAreObjects(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	allTools, err := tool.Tools(t.Context())

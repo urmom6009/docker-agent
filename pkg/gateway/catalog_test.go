@@ -42,6 +42,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestRequiredEnvVars_local(t *testing.T) {
+	t.Parallel()
 	secrets, err := RequiredEnvVars(t.Context(), "github-official")
 	require.NoError(t, err)
 
@@ -51,6 +52,7 @@ func TestRequiredEnvVars_local(t *testing.T) {
 }
 
 func TestRequiredEnvVars_remote(t *testing.T) {
+	t.Parallel()
 	secrets, err := RequiredEnvVars(t.Context(), "apify")
 	require.NoError(t, err)
 
@@ -58,6 +60,7 @@ func TestRequiredEnvVars_remote(t *testing.T) {
 }
 
 func TestServerSpec_local(t *testing.T) {
+	t.Parallel()
 	server, err := ServerSpec(t.Context(), "fetch")
 	require.NoError(t, err)
 
@@ -65,6 +68,7 @@ func TestServerSpec_local(t *testing.T) {
 }
 
 func TestServerSpec_remote(t *testing.T) {
+	t.Parallel()
 	server, err := ServerSpec(t.Context(), "apify")
 	require.NoError(t, err)
 
@@ -74,6 +78,7 @@ func TestServerSpec_remote(t *testing.T) {
 }
 
 func TestServerSpec_notFound(t *testing.T) {
+	t.Parallel()
 	_, err := ServerSpec(t.Context(), "nonexistent")
 	require.Error(t, err)
 
@@ -81,6 +86,7 @@ func TestServerSpec_notFound(t *testing.T) {
 }
 
 func TestParseServerRef(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "github-official", ParseServerRef("docker:github-official"))
 	assert.Equal(t, "github-official", ParseServerRef("github-official"))
 }

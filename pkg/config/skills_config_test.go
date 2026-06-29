@@ -12,6 +12,7 @@ import (
 )
 
 func TestSkillsConfig_UnmarshalYAML(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -90,6 +91,7 @@ func TestSkillsConfig_UnmarshalYAML(t *testing.T) {
 }
 
 func TestSkillsConfig_MarshalYAML(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    latest.SkillsConfig
@@ -137,6 +139,7 @@ func TestSkillsConfig_MarshalYAML(t *testing.T) {
 }
 
 func TestSkillsConfig_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -200,6 +203,7 @@ func TestSkillsConfig_UnmarshalJSON(t *testing.T) {
 }
 
 func TestSkillsConfig_MarshalJSON(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    latest.SkillsConfig
@@ -242,6 +246,7 @@ func TestSkillsConfig_MarshalJSON(t *testing.T) {
 }
 
 func TestSkillsConfig_Enabled(t *testing.T) {
+	t.Parallel()
 	assert.False(t, latest.SkillsConfig{}.Enabled())
 	assert.True(t, latest.SkillsConfig{Sources: []string{"local"}}.Enabled())
 	assert.True(t, latest.SkillsConfig{Sources: []string{"https://example.com"}}.Enabled())
@@ -249,6 +254,7 @@ func TestSkillsConfig_Enabled(t *testing.T) {
 }
 
 func TestSkillsConfig_HasLocal(t *testing.T) {
+	t.Parallel()
 	assert.False(t, latest.SkillsConfig{}.HasLocal())
 	assert.True(t, latest.SkillsConfig{Sources: []string{"local"}}.HasLocal())
 	assert.False(t, latest.SkillsConfig{Sources: []string{"https://example.com"}}.HasLocal())
@@ -256,6 +262,7 @@ func TestSkillsConfig_HasLocal(t *testing.T) {
 }
 
 func TestSkillsConfig_RemoteURLs(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, latest.SkillsConfig{}.RemoteURLs())
 	assert.Nil(t, latest.SkillsConfig{Sources: []string{"local"}}.RemoteURLs())
 	assert.Equal(t, []string{"https://example.com"}, latest.SkillsConfig{Sources: []string{"https://example.com"}}.RemoteURLs())
@@ -263,6 +270,7 @@ func TestSkillsConfig_RemoteURLs(t *testing.T) {
 }
 
 func TestSkillsConfig_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input latest.SkillsConfig
@@ -303,6 +311,7 @@ func TestSkillsConfig_JSONRoundTrip(t *testing.T) {
 }
 
 func TestSkillsConfig_InAgentConfig(t *testing.T) {
+	t.Parallel()
 	yamlInput := `
 model: openai/gpt-4o
 instruction: test
@@ -319,6 +328,7 @@ skills:
 }
 
 func TestSkillsConfig_InAgentConfigBool(t *testing.T) {
+	t.Parallel()
 	yamlInput := `
 model: openai/gpt-4o
 instruction: test
@@ -333,6 +343,7 @@ skills: true
 }
 
 func TestSkillsConfig_InAgentConfigIncludeOnly(t *testing.T) {
+	t.Parallel()
 	yamlInput := `
 model: openai/gpt-4o
 instruction: test
@@ -350,6 +361,7 @@ skills:
 }
 
 func TestSkillsConfig_InAgentConfigMixedSourcesAndIncludes(t *testing.T) {
+	t.Parallel()
 	yamlInput := `
 model: openai/gpt-4o
 instruction: test
@@ -366,6 +378,7 @@ skills:
 }
 
 func TestSkillsConfig_EmptyListIsDisabled(t *testing.T) {
+	t.Parallel()
 	yamlInput := `
 model: openai/gpt-4o
 instruction: test
@@ -379,6 +392,7 @@ skills: []
 }
 
 func TestSkillsConfig_InlineSkills(t *testing.T) {
+	t.Parallel()
 	yamlInput := `
 model: openai/gpt-4o
 instruction: test
@@ -417,6 +431,7 @@ skills:
 }
 
 func TestSkillsConfig_InlineOnlyEnabledWithoutSources(t *testing.T) {
+	t.Parallel()
 	yamlInput := `
 model: openai/gpt-4o
 instruction: test
@@ -437,6 +452,7 @@ skills:
 }
 
 func TestSkillsConfig_InlineJSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	input := latest.SkillsConfig{
 		Sources: []string{"local"},
 		Include: []string{"changelog"},
@@ -454,6 +470,7 @@ func TestSkillsConfig_InlineJSONRoundTrip(t *testing.T) {
 }
 
 func TestSkillsConfig_InlineInvalidFieldError(t *testing.T) {
+	t.Parallel()
 	// A misspelled inline-skill field should surface the specific decode
 	// error (which names the unknown field) rather than the generic
 	// "must be a boolean or a list" hint. Strict unknown-field checking
@@ -474,6 +491,7 @@ agents:
 }
 
 func TestSkillsConfig_UnmarshalResetsReceiver(t *testing.T) {
+	t.Parallel()
 	skills := latest.SkillsConfig{Sources: []string{"local", "https://old.example.com"}}
 
 	err := yaml.Unmarshal([]byte("false"), &skills)

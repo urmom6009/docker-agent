@@ -10,6 +10,7 @@ import (
 )
 
 func TestModelConfig_Clone_DeepCopiesPointerFields(t *testing.T) {
+	t.Parallel()
 	temperature := 0.7
 	maxTokens := int64(2048)
 	topP := 0.9
@@ -60,12 +61,14 @@ func TestModelConfig_Clone_DeepCopiesPointerFields(t *testing.T) {
 }
 
 func TestModelConfig_Clone_Nil(t *testing.T) {
+	t.Parallel()
 	var nilConfig *latest.ModelConfig
 	clone := nilConfig.Clone()
 	assert.Nil(t, clone)
 }
 
 func TestModelConfig_Clone_MinimalFields(t *testing.T) {
+	t.Parallel()
 	original := &latest.ModelConfig{
 		Provider: "anthropic",
 		Model:    "claude-sonnet-4-5",

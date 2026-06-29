@@ -18,6 +18,7 @@ func readOnlyTool(name string, readOnly bool) tools.Tool {
 }
 
 func TestWithReadOnlyFilter_Disabled(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{}
 
 	wrapped := WithReadOnlyFilter(inner, false)
@@ -26,6 +27,7 @@ func TestWithReadOnlyFilter_Disabled(t *testing.T) {
 }
 
 func TestWithReadOnlyFilter_KeepsOnlyReadOnly(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{
@@ -46,6 +48,7 @@ func TestWithReadOnlyFilter_KeepsOnlyReadOnly(t *testing.T) {
 }
 
 func TestWithReadOnlyFilter_NoReadOnlyTools(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{
@@ -63,6 +66,7 @@ func TestWithReadOnlyFilter_NoReadOnlyTools(t *testing.T) {
 }
 
 func TestWithReadOnlyFilter_InstructablePassthrough(t *testing.T) {
+	t.Parallel()
 	inner := &instructableToolSet{
 		mockToolSet: mockToolSet{
 			toolsFunc: func(context.Context) ([]tools.Tool, error) {

@@ -15,6 +15,7 @@ import (
 )
 
 func TestConvertToolResultBlockUsesClaudeCapabilityFallback(t *testing.T) {
+	t.Parallel()
 	client := testAttachmentClientWithStore(nil)
 	pdf := []byte("%PDF")
 	msg := &chat.Message{
@@ -42,6 +43,7 @@ func TestConvertToolResultBlockUsesClaudeCapabilityFallback(t *testing.T) {
 }
 
 func TestConvertToolResultBlockIncludesDocumentAttachments(t *testing.T) {
+	t.Parallel()
 	client := testAttachmentClient()
 	pdf := []byte("%PDF")
 	msg := &chat.Message{
@@ -72,6 +74,7 @@ func TestConvertToolResultBlockIncludesDocumentAttachments(t *testing.T) {
 }
 
 func TestConvertToolResultBlockNeverSendsEmptyContent(t *testing.T) {
+	t.Parallel()
 	client := testAttachmentClient()
 	msg := &chat.Message{
 		Role:       chat.MessageRoleTool,
@@ -88,6 +91,7 @@ func TestConvertToolResultBlockNeverSendsEmptyContent(t *testing.T) {
 }
 
 func TestConvertToolResultBlockIncludesImageDocumentAttachments(t *testing.T) {
+	t.Parallel()
 	client := testAttachmentClient()
 	image := []byte("PNG")
 	msg := &chat.Message{

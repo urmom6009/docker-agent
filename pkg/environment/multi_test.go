@@ -8,6 +8,7 @@ import (
 )
 
 func TestMultiProviderNone(t *testing.T) {
+	t.Parallel()
 	provider := NewMultiProvider()
 	value, found := provider.Get(t.Context(), "TEST1")
 
@@ -16,6 +17,7 @@ func TestMultiProviderNone(t *testing.T) {
 }
 
 func TestMultiProviderDelegate(t *testing.T) {
+	t.Parallel()
 	provider := NewMultiProvider(&alwaysFound{}, &neverFound{})
 	value, found := provider.Get(t.Context(), "TEST2")
 
@@ -24,6 +26,7 @@ func TestMultiProviderDelegate(t *testing.T) {
 }
 
 func TestMultiProviderTryInOrder(t *testing.T) {
+	t.Parallel()
 	provider := NewMultiProvider(&neverFound{}, &alwaysFound{})
 	value, found := provider.Get(t.Context(), "TEST3")
 
@@ -32,6 +35,7 @@ func TestMultiProviderTryInOrder(t *testing.T) {
 }
 
 func TestMultiProviderEmptyValue(t *testing.T) {
+	t.Parallel()
 	firstProvider := NewEnvListProvider([]string{"MY_VAR="})
 	secondProvider := NewEnvListProvider([]string{"MY_VAR=fallback"})
 

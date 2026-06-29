@@ -7,6 +7,7 @@ import (
 )
 
 func TestClone_ChangeWorkingDir(t *testing.T) {
+	t.Parallel()
 	original := &RuntimeConfig{
 		Config: Config{
 			EnvFiles:       []string{"file1.env", "file2.env"},

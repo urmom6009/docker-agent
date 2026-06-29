@@ -11,6 +11,7 @@ import (
 )
 
 func TestEmbeddedMCPExposesPrefixedTool(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	srv := startMCPServer()
 	defer srv.Close()

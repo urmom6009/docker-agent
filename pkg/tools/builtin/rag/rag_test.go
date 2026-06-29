@@ -10,6 +10,7 @@ import (
 )
 
 func TestRAGTool_ToolName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		toolName     string
@@ -44,6 +45,7 @@ func TestRAGTool_ToolName(t *testing.T) {
 }
 
 func TestRAGTool_DefaultDescription(t *testing.T) {
+	t.Parallel()
 	tool := &ToolSet{
 		toolName: "test_docs",
 		manager:  nil,
@@ -56,6 +58,7 @@ func TestRAGTool_DefaultDescription(t *testing.T) {
 }
 
 func TestRAGTool_SortResults(t *testing.T) {
+	t.Parallel()
 	results := []queryResult{
 		{SourcePath: "a.txt", Similarity: 0.5},
 		{SourcePath: "b.txt", Similarity: 0.9},

@@ -10,6 +10,7 @@ import (
 )
 
 func TestAuthConfig_Validate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		auth        *latest.AuthConfig
@@ -235,6 +236,7 @@ func TestAuthConfig_Validate(t *testing.T) {
 // from providers and models are surfaced with a scoping prefix that points the
 // user at the offending block.
 func TestConfigValidate_AuthErrorsAreScoped(t *testing.T) {
+	t.Parallel()
 	t.Run("provider auth", func(t *testing.T) {
 		cfg := latest.Config{
 			Providers: map[string]latest.ProviderConfig{

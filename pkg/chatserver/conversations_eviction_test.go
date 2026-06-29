@@ -13,6 +13,7 @@ import (
 // TestConversationStore_RestoreAfterEviction tests that a conversation
 // can be stored back after it's been evicted from the cache.
 func TestConversationStore_RestoreAfterEviction(t *testing.T) {
+	t.Parallel()
 	now := time.Unix(1_000_000, 0)
 	c := newConversationStore(2, time.Hour)
 	c.now = func() time.Time { return now }

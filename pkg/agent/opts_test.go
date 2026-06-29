@@ -56,6 +56,7 @@ func (t *trackingStartToolset) Stop(context.Context) error {
 func (t *trackingStartToolset) Tools(context.Context) ([]tools.Tool, error) { return nil, nil }
 
 func TestStartableToolSet_RetriesAfterFailure(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	inner := &flakyStartToolset{}
 	ts := tools.NewStartable(inner)
@@ -75,6 +76,7 @@ func TestStartableToolSet_RetriesAfterFailure(t *testing.T) {
 }
 
 func TestStartableToolSet_RestartAfterStop(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	inner := &trackingStartToolset{}
 	ts := tools.NewStartable(inner)

@@ -9,6 +9,7 @@ import (
 )
 
 func TestToolToJsDoc(t *testing.T) {
+	t.Parallel()
 	type CreateTodoArgs struct {
 		Description string `json:"description" jsonschema:"Description of the todo item"`
 	}

@@ -10,17 +10,20 @@ import (
 )
 
 func TestHooksFromCLI_Empty(t *testing.T) {
+	t.Parallel()
 	hooks := HooksFromCLI(nil, nil, nil, nil, nil, nil)
 	assert.Nil(t, hooks)
 }
 
 func TestHooksFromCLI_SkipsEmptyCommands(t *testing.T) {
+	t.Parallel()
 	// All empty/whitespace-only commands should be filtered out
 	hooks := HooksFromCLI([]string{""}, []string{"  "}, []string{""}, []string{"  \t"}, nil, []string{"  "})
 	assert.Nil(t, hooks)
 }
 
 func TestHooksFromCLI_MixedEmptyAndValid(t *testing.T) {
+	t.Parallel()
 	hooks := HooksFromCLI([]string{"", "echo pre", "  "}, nil, []string{"echo start", ""}, nil, nil, nil)
 	require.NotNil(t, hooks)
 
@@ -33,6 +36,7 @@ func TestHooksFromCLI_MixedEmptyAndValid(t *testing.T) {
 }
 
 func TestHooksFromCLI_PreToolUse(t *testing.T) {
+	t.Parallel()
 	hooks := HooksFromCLI([]string{"echo pre1", "echo pre2"}, nil, nil, nil, nil, nil)
 	require.NotNil(t, hooks)
 
@@ -46,6 +50,7 @@ func TestHooksFromCLI_PreToolUse(t *testing.T) {
 }
 
 func TestHooksFromCLI_AllTypes(t *testing.T) {
+	t.Parallel()
 	hooks := HooksFromCLI(
 		[]string{"pre-cmd"},
 		[]string{"post-cmd"},
@@ -72,10 +77,12 @@ func TestHooksFromCLI_AllTypes(t *testing.T) {
 }
 
 func TestMergeHooks_BothNil(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, MergeHooks(nil, nil))
 }
 
 func TestMergeHooks_CLINil(t *testing.T) {
+	t.Parallel()
 	base := &latest.HooksConfig{
 		SessionStart: []latest.HookDefinition{{Type: "command", Command: "echo base"}},
 	}
@@ -84,6 +91,7 @@ func TestMergeHooks_CLINil(t *testing.T) {
 }
 
 func TestMergeHooks_BaseNil(t *testing.T) {
+	t.Parallel()
 	cli := &latest.HooksConfig{
 		SessionStart: []latest.HookDefinition{{Type: "command", Command: "echo cli"}},
 	}
@@ -92,6 +100,7 @@ func TestMergeHooks_BaseNil(t *testing.T) {
 }
 
 func TestMergeHooks_BothNonNil(t *testing.T) {
+	t.Parallel()
 	base := &latest.HooksConfig{
 		SessionStart: []latest.HookDefinition{{Type: "command", Command: "echo base"}},
 		PreToolUse: []latest.HookMatcherConfig{{
@@ -123,6 +132,7 @@ func TestMergeHooks_BothNonNil(t *testing.T) {
 }
 
 func TestMergeHooks_DoesNotMutateOriginals(t *testing.T) {
+	t.Parallel()
 	base := &latest.HooksConfig{
 		SessionStart: []latest.HookDefinition{{Type: "command", Command: "echo base"}},
 	}
@@ -139,6 +149,7 @@ func TestMergeHooks_DoesNotMutateOriginals(t *testing.T) {
 }
 
 func TestRuntimeConfig_CLIHooks(t *testing.T) {
+	t.Parallel()
 	rc := &RuntimeConfig{}
 	assert.Nil(t, rc.CLIHooks())
 
@@ -150,6 +161,7 @@ func TestRuntimeConfig_CLIHooks(t *testing.T) {
 }
 
 func TestRuntimeConfig_Clone_CopiesHooks(t *testing.T) {
+	t.Parallel()
 	rc := &RuntimeConfig{}
 	rc.HookPreToolUse = []string{"pre"}
 	rc.HookPostToolUse = []string{"post"}

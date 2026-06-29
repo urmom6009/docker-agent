@@ -11,24 +11,29 @@ import (
 )
 
 func TestParseToolInput_EmptyString(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, ParseToolInput(""))
 }
 
 func TestParseToolInput_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, ParseToolInput("{not json"))
 }
 
 func TestParseToolInput_ValidJSON(t *testing.T) {
+	t.Parallel()
 	got := ParseToolInput(`{"path":"a.txt","mode":"r"}`)
 	assert.Equal(t, map[string]any{"path": "a.txt", "mode": "r"}, got)
 }
 
 func TestParseToolInput_EmptyObject(t *testing.T) {
+	t.Parallel()
 	got := ParseToolInput(`{}`)
 	assert.Equal(t, map[string]any{}, got)
 }
 
 func TestNewHooksInput_PopulatesFields(t *testing.T) {
+	t.Parallel()
 	sess := session.New()
 	tc := tools.ToolCall{
 		ID: "call_42",
@@ -47,6 +52,7 @@ func TestNewHooksInput_PopulatesFields(t *testing.T) {
 }
 
 func TestNewHooksInput_InvalidArgumentsYieldsNilToolInput(t *testing.T) {
+	t.Parallel()
 	sess := session.New()
 	tc := tools.ToolCall{
 		ID: "call_43",

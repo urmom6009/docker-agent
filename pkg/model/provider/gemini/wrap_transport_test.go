@@ -40,6 +40,7 @@ func writeGeminiSSEResponse(w http.ResponseWriter) {
 }
 
 func TestNewClient_TransportWrapperInvokedDirectPath(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeGeminiSSEResponse(w)
 	}))
@@ -81,6 +82,7 @@ func TestNewClient_TransportWrapperInvokedDirectPath(t *testing.T) {
 }
 
 func TestNewClient_TransportWrapperInvokedGatewayPath(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeGeminiSSEResponse(w)
 	}))
@@ -128,6 +130,7 @@ func TestNewClient_TransportWrapperInvokedGatewayPath(t *testing.T) {
 // set, the client automatically falls back to BackendGeminiAPI so the wrapper
 // can be applied. This mirrors the WebSocket→SSE fallback in the OpenAI provider.
 func TestNewClient_TransportWrapperVertexAIFallsBackToGeminiAPI(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeGeminiSSEResponse(w)
 	}))

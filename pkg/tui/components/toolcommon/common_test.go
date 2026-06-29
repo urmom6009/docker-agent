@@ -11,6 +11,7 @@ import (
 )
 
 func TestTryFixPartialJSON(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		input     string
@@ -101,6 +102,7 @@ func TestTryFixPartialJSON(t *testing.T) {
 }
 
 func TestParsePartialArgs(t *testing.T) {
+	t.Parallel()
 	type testArgs struct {
 		Path string `json:"path"`
 		Cmd  string `json:"cmd"`
@@ -718,6 +720,7 @@ func BenchmarkRuneWidth(b *testing.B) {
 }
 
 func TestFormatDuration(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		d    time.Duration
 		want string
@@ -742,6 +745,7 @@ func TestFormatDuration(t *testing.T) {
 }
 
 func TestLongRunningWarning(t *testing.T) {
+	t.Parallel()
 	t.Run("no StartedAt", func(t *testing.T) {
 		msg := &types.Message{ToolStatus: types.ToolStatusRunning}
 		if w := LongRunningWarning(msg); w != "" {

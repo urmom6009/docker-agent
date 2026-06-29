@@ -34,6 +34,7 @@ func (m *mockQueue) Close() error {
 }
 
 func TestFixingQueue_NilParts(t *testing.T) {
+	t.Parallel()
 	mock := &mockQueue{}
 	fq := &fixingQueue{queue: mock}
 
@@ -62,6 +63,7 @@ func TestFixingQueue_NilParts(t *testing.T) {
 }
 
 func TestFixingQueue_WithParts(t *testing.T) {
+	t.Parallel()
 	mock := &mockQueue{}
 	fq := &fixingQueue{queue: mock}
 
@@ -90,6 +92,7 @@ func TestFixingQueue_WithParts(t *testing.T) {
 }
 
 func TestFixingQueue_NonArtifactEvent(t *testing.T) {
+	t.Parallel()
 	mock := &mockQueue{}
 	fq := &fixingQueue{queue: mock}
 

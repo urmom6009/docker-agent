@@ -24,6 +24,7 @@ func newTestSupervisor(ids []string, activeID string) *Supervisor {
 }
 
 func TestCloseSession_FocusesPreviousTab(t *testing.T) {
+	t.Parallel()
 	// Tabs: [A, B, C], active=C. Close C → expect B.
 	s := newTestSupervisor([]string{"A", "B", "C"}, "C")
 
@@ -35,6 +36,7 @@ func TestCloseSession_FocusesPreviousTab(t *testing.T) {
 }
 
 func TestCloseSession_FocusesPreviousTab_Middle(t *testing.T) {
+	t.Parallel()
 	// Tabs: [A, B, C], active=B. Close B → expect A.
 	s := newTestSupervisor([]string{"A", "B", "C"}, "B")
 
@@ -46,6 +48,7 @@ func TestCloseSession_FocusesPreviousTab_Middle(t *testing.T) {
 }
 
 func TestCloseSession_FirstTab_FocusesNewFirst(t *testing.T) {
+	t.Parallel()
 	// Tabs: [A, B, C], active=A. Close A → expect B (new first).
 	s := newTestSupervisor([]string{"A", "B", "C"}, "A")
 
@@ -57,6 +60,7 @@ func TestCloseSession_FirstTab_FocusesNewFirst(t *testing.T) {
 }
 
 func TestCloseSession_LastRemaining(t *testing.T) {
+	t.Parallel()
 	// Tabs: [A], active=A. Close A → expect "".
 	s := newTestSupervisor([]string{"A"}, "A")
 
@@ -68,6 +72,7 @@ func TestCloseSession_LastRemaining(t *testing.T) {
 }
 
 func TestCloseSession_InactiveTab(t *testing.T) {
+	t.Parallel()
 	// Tabs: [A, B, C], active=A. Close C → active stays A.
 	s := newTestSupervisor([]string{"A", "B", "C"}, "A")
 
@@ -79,6 +84,7 @@ func TestCloseSession_InactiveTab(t *testing.T) {
 }
 
 func TestCloseSession_NonExistent(t *testing.T) {
+	t.Parallel()
 	s := newTestSupervisor([]string{"A", "B"}, "A")
 
 	next := s.CloseSession("Z")
@@ -88,6 +94,7 @@ func TestCloseSession_NonExistent(t *testing.T) {
 }
 
 func TestCloseSession_TwoTabs_CloseSecond(t *testing.T) {
+	t.Parallel()
 	// Tabs: [A, B], active=B. Close B → expect A.
 	s := newTestSupervisor([]string{"A", "B"}, "B")
 
@@ -103,6 +110,7 @@ func TestCloseSession_TwoTabs_CloseSecond(t *testing.T) {
 // is the path used to re-stash a background dialog's originating event when
 // the user switches away from the tab that opened it (see #2626).
 func TestSetPendingEvent_RoundTrip(t *testing.T) {
+	t.Parallel()
 	s := newTestSupervisor([]string{"A", "B"}, "A")
 
 	type fakeEvent struct{ id int }
@@ -120,6 +128,7 @@ func TestSetPendingEvent_RoundTrip(t *testing.T) {
 
 // TestSetPendingEvent_UnknownSession is a no-op (and must not panic).
 func TestSetPendingEvent_UnknownSession(t *testing.T) {
+	t.Parallel()
 	s := newTestSupervisor([]string{"A"}, "A")
 
 	s.SetPendingEvent("does-not-exist", "payload")
@@ -131,6 +140,7 @@ func TestSetPendingEvent_UnknownSession(t *testing.T) {
 
 // TestIsTopLevelStream covers the isTopLevelStream helper directly.
 func TestIsTopLevelStream(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		runnerID    string
 		evSessionID string
@@ -153,6 +163,7 @@ func TestIsTopLevelStream(t *testing.T) {
 // stream forwarded through the parent's event channel) does NOT wipe the
 // parent runner's pending elicitation event. (#3217)
 func TestStreamStarted_SubSessionDoesNotDropPendingEvent(t *testing.T) {
+	t.Parallel()
 	s := newTestSupervisor([]string{"sess-A", "sess-B"}, "sess-B") // sess-A is background
 
 	elicitation := runtime.ElicitationRequest("confirm?", "form", nil, "", "eid-1", nil, "agent")
@@ -178,6 +189,7 @@ func TestStreamStarted_SubSessionDoesNotDropPendingEvent(t *testing.T) {
 // StreamStoppedEvent from a child session does NOT clear the parent's pending
 // event, NeedsAttn, or IsRunning. (#3217)
 func TestStreamStopped_SubSessionDoesNotDropPendingEvent(t *testing.T) {
+	t.Parallel()
 	s := newTestSupervisor([]string{"sess-A", "sess-B"}, "sess-B")
 
 	elicitation := runtime.ElicitationRequest("confirm?", "form", nil, "", "eid-2", nil, "agent")
@@ -203,6 +215,7 @@ func TestStreamStopped_SubSessionDoesNotDropPendingEvent(t *testing.T) {
 // StreamStartedEvent (matching session ID) STILL clears a stale pending event
 // — the original intent must be preserved. (#3217)
 func TestStreamStarted_TopLevelSupersedesStalePending(t *testing.T) {
+	t.Parallel()
 	s := newTestSupervisor([]string{"sess-A"}, "sess-A")
 
 	s.runners["sess-A"].PendingEvent = runtime.ElicitationRequest(
@@ -225,6 +238,7 @@ func TestStreamStarted_TopLevelSupersedesStalePending(t *testing.T) {
 // TestStreamStopped_TopLevelClearsPendingAndNeedsAttn verifies that a
 // top-level StreamStoppedEvent correctly clears all three fields. (#3217)
 func TestStreamStopped_TopLevelClearsPendingAndNeedsAttn(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		pending any // tea.Msg
@@ -268,6 +282,7 @@ func TestStreamStopped_TopLevelClearsPendingAndNeedsAttn(t *testing.T) {
 // SessionID is treated as top-level for backward compatibility with emitters
 // that omit it. (#3217)
 func TestStreamStarted_EmptySessionID_TreatedAsTopLevel(t *testing.T) {
+	t.Parallel()
 	s := newTestSupervisor([]string{"sess-A"}, "sess-A")
 
 	s.runners["sess-A"].PendingEvent = runtime.ElicitationRequest(

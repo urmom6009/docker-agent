@@ -15,6 +15,7 @@ import (
 )
 
 func TestStoreBasicOperations(t *testing.T) {
+	t.Parallel()
 	store, err := NewStore(WithBaseDir(t.TempDir()))
 	require.NoError(t, err)
 
@@ -53,6 +54,7 @@ func TestStoreBasicOperations(t *testing.T) {
 }
 
 func TestStoreMultipleArtifacts(t *testing.T) {
+	t.Parallel()
 	store, err := NewStore(WithBaseDir(t.TempDir()))
 	require.NoError(t, err)
 
@@ -88,6 +90,7 @@ func TestStoreMultipleArtifacts(t *testing.T) {
 }
 
 func TestStoreResolution(t *testing.T) {
+	t.Parallel()
 	store, err := NewStore(WithBaseDir(t.TempDir()))
 	require.NoError(t, err)
 
@@ -113,6 +116,7 @@ func TestStoreResolution(t *testing.T) {
 }
 
 func TestStoreResolution_DigestReference(t *testing.T) {
+	t.Parallel()
 	store, err := NewStore(WithBaseDir(t.TempDir()))
 	require.NoError(t, err)
 
@@ -147,6 +151,7 @@ func TestStoreResolution_DigestReference(t *testing.T) {
 // shaped like a digest but carrying path-traversal sequences are rejected
 // before they can be joined into a filesystem path.
 func TestStoreResolution_RejectsMalformedDigest(t *testing.T) {
+	t.Parallel()
 	baseDir := t.TempDir()
 	store, err := NewStore(WithBaseDir(baseDir))
 	require.NoError(t, err)

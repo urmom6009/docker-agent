@@ -63,6 +63,7 @@ var multiCategoryCommands = []commands.Category{
 // for the case where typing "session" would surface every Session-category
 // command, defeating the purpose of filtering.
 func TestCommandPaletteFilteringIgnoresCategory(t *testing.T) {
+	t.Parallel()
 	cats := []commands.Category{
 		{
 			Name: "Session",
@@ -87,6 +88,7 @@ func TestCommandPaletteFilteringIgnoresCategory(t *testing.T) {
 }
 
 func TestCommandPaletteFilteringRanksLabelPrefixFirst(t *testing.T) {
+	t.Parallel()
 	cats := []commands.Category{
 		{
 			Name: "Session",
@@ -117,6 +119,7 @@ func TestCommandPaletteFilteringRanksLabelPrefixFirst(t *testing.T) {
 }
 
 func TestCommandPaletteFiltering(t *testing.T) {
+	t.Parallel()
 	dialog := NewCommandPaletteDialog(categories)
 	d := dialog.(*commandPaletteDialog)
 

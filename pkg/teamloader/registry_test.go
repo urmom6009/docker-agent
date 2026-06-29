@@ -37,6 +37,7 @@ func testToolsetRegistry() ToolsetRegistry {
 }
 
 func TestCreateShellTool(t *testing.T) {
+	t.Parallel()
 	toolset := latest.Toolset{
 		Type: "shell",
 	}
@@ -186,6 +187,7 @@ func TestCreateMCPTool_NonexistentWorkingDir_ReturnsError(t *testing.T) {
 // TestCreateLSPTool_WorkingDir_ReachesHandler verifies that working_dir is
 // wired all the way through createLSPTool to the LSP handler (N5).
 func TestCreateLSPTool_WorkingDir_ReachesHandler(t *testing.T) {
+	t.Parallel()
 	// Create a real temporary directory so the existence check passes.
 	customDir := t.TempDir()
 	agentDir := t.TempDir()
@@ -215,6 +217,7 @@ func TestCreateLSPTool_WorkingDir_ReachesHandler(t *testing.T) {
 // ref-based MCP resolves to a remote server at runtime, setting working_dir
 // returns a clear error rather than silently discarding the field.
 func TestCreateMCPTool_RefRemote_WorkingDir_ReturnsError(t *testing.T) {
+	t.Parallel()
 	// The "docker:remote-server" ref is seeded as type "remote" in TestMain.
 	toolset := latest.Toolset{
 		Type:       "mcp",
@@ -238,6 +241,7 @@ func TestCreateMCPTool_RefRemote_WorkingDir_ReturnsError(t *testing.T) {
 // MCP that resolves to a remote server still works fine when working_dir is
 // not set (the common case — regression guard).
 func TestCreateMCPTool_RefRemote_NoWorkingDir_Succeeds(t *testing.T) {
+	t.Parallel()
 	// The "docker:remote-server" ref is seeded as type "remote" in TestMain.
 	toolset := latest.Toolset{
 		Type: "mcp",

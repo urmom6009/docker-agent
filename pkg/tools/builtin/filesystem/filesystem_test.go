@@ -746,6 +746,7 @@ func TestMatchExcludePattern(t *testing.T) {
 }
 
 func TestFilesystemTool_OutputSchema(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	tool := New(tmpDir)
 

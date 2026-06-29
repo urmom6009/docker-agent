@@ -15,6 +15,7 @@ func newAgent(name string) *agent.Agent {
 }
 
 func TestDefaultAgent(t *testing.T) {
+	t.Parallel()
 	t.Run("empty team returns error", func(t *testing.T) {
 		_, err := New().DefaultAgent()
 		require.Error(t, err)
@@ -38,6 +39,7 @@ func TestDefaultAgent(t *testing.T) {
 }
 
 func TestAgentOrDefault(t *testing.T) {
+	t.Parallel()
 	t.Run("empty name resolves to the default agent", func(t *testing.T) {
 		team := New(WithAgents(newAgent("alice"), newAgent("root")))
 

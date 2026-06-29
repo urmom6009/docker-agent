@@ -29,6 +29,7 @@ func toolCall(id string) (tools.ToolCall, tools.Tool) {
 }
 
 func TestAppendAndRender(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 
 	_ = tr.Append(types.User("hello"))
@@ -42,6 +43,7 @@ func TestAppendAndRender(t *testing.T) {
 }
 
 func TestAppendToLastMessageStreamsIntoSameMessage(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 
 	_ = tr.AppendToLastMessage(testAgent, "first")
@@ -54,6 +56,7 @@ func TestAppendToLastMessageStreamsIntoSameMessage(t *testing.T) {
 }
 
 func TestAppendToLastMessageReplacesSpinner(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -65,6 +68,7 @@ func TestAppendToLastMessageReplacesSpinner(t *testing.T) {
 }
 
 func TestAppendToLastMessageNewMessagePerSender(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 
 	_ = tr.AppendToLastMessage("agent-a", "from a")
@@ -76,6 +80,7 @@ func TestAppendToLastMessageNewMessagePerSender(t *testing.T) {
 }
 
 func TestAddOrUpdateToolCall(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -96,6 +101,7 @@ func TestAddOrUpdateToolCall(t *testing.T) {
 }
 
 func TestSetToolStatus(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -111,6 +117,7 @@ func TestSetToolStatus(t *testing.T) {
 }
 
 func TestFinalizeToolCalls(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -127,6 +134,7 @@ func TestFinalizeToolCalls(t *testing.T) {
 }
 
 func TestConsecutiveToolCallsGroupTightly(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -141,6 +149,7 @@ func TestConsecutiveToolCallsGroupTightly(t *testing.T) {
 }
 
 func TestRemoveLast(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -157,6 +166,7 @@ func TestRemoveLast(t *testing.T) {
 }
 
 func TestRebuildPreservesContent(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -171,6 +181,7 @@ func TestRebuildPreservesContent(t *testing.T) {
 }
 
 func TestRenderReflowsOnWidthChange(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 
 	_ = tr.Append(types.Agent(types.MessageTypeAssistant, testAgent,
@@ -185,6 +196,7 @@ func TestRenderReflowsOnWidthChange(t *testing.T) {
 }
 
 func TestAddOrUpdateToolCallArgumentsAndStartedAt(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -206,6 +218,7 @@ func TestAddOrUpdateToolCallArgumentsAndStartedAt(t *testing.T) {
 }
 
 func TestSetToolStatusRunningSetsStartedAt(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -219,6 +232,7 @@ func TestSetToolStatusRunningSetsStartedAt(t *testing.T) {
 }
 
 func TestTransferTaskGetsSeparator(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 	defer tr.StopAnimations()
 
@@ -235,6 +249,7 @@ func TestTransferTaskGetsSeparator(t *testing.T) {
 }
 
 func TestMessages(t *testing.T) {
+	t.Parallel()
 	tr := newTestTranscript()
 
 	assert.Empty(t, tr.Messages())

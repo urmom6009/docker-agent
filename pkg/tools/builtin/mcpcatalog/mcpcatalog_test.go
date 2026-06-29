@@ -42,6 +42,7 @@ func stubStartErr(ts *Toolset, err error) {
 }
 
 func TestLoadCatalog(t *testing.T) {
+	t.Parallel()
 	cat, err := Load()
 	require.NoError(t, err)
 	assert.Equal(t, "Docker MCP Catalog", cat.Source)
@@ -64,6 +65,7 @@ func TestLoadCatalog(t *testing.T) {
 }
 
 func TestSearchTool(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	ctx := t.Context()
 
@@ -92,6 +94,7 @@ func TestSearchTool(t *testing.T) {
 }
 
 func TestEnableDisableLifecycle(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	// Synchronous-Start is short-circuited so the success branch of
 	// handleEnable is exercised without dialling out to the real OAuth
@@ -204,6 +207,7 @@ func TestEnableDisableLifecycle(t *testing.T) {
 // each one returns an independently mutable Servers slice so test
 // helpers (and any future caller that mutates the catalog) stay isolated.
 func TestLoadCatalogIsCachedButReturnsCopies(t *testing.T) {
+	t.Parallel()
 	c1, err := Load()
 	require.NoError(t, err)
 	originalLen := len(c1.Servers)
@@ -219,6 +223,7 @@ func TestLoadCatalogIsCachedButReturnsCopies(t *testing.T) {
 // by id so model-side prompt caches and TUI rendering don't reshuffle on
 // every turn.
 func TestToolsUsesStableIterationOrder(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	// We only care about the order of the t.enabled map after a sequence
 	// of handleEnable calls. Stub out the synchronous Start so we don't
@@ -262,6 +267,7 @@ func TestToolsUsesStableIterationOrder(t *testing.T) {
 // TestServerFilters covers the allow/block-list narrowing applied at
 // construction time via WithAllowedServers / WithBlockedServers.
 func TestServerFilters(t *testing.T) {
+	t.Parallel()
 	full := New()
 	require.GreaterOrEqual(t, len(full.catalog.Servers), 3, "need 3+ servers in fixture")
 	ids := []string{full.catalog.Servers[0].ID, full.catalog.Servers[1].ID, full.catalog.Servers[2].ID}
@@ -309,6 +315,7 @@ func TestServerFilters(t *testing.T) {
 // TestSearchRespectsAllowList ensures filtered-out servers are not
 // reachable through the search meta-tool.
 func TestSearchRespectsAllowList(t *testing.T) {
+	t.Parallel()
 	full := New()
 	require.GreaterOrEqual(t, len(full.catalog.Servers), 2)
 	keep := full.catalog.Servers[0].ID
@@ -322,6 +329,7 @@ func TestSearchRespectsAllowList(t *testing.T) {
 }
 
 func TestEnableUnknownServer(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	res, err := ts.handleEnable(t.Context(), EnableArgs{ID: "definitely-not-a-server"})
 	require.NoError(t, err)
@@ -334,6 +342,7 @@ func TestEnableUnknownServer(t *testing.T) {
 // to continue with the user's ORIGINAL request in the SAME turn — not on
 // the next one. This is the property that makes a re-ask unnecessary.
 func TestEnableSyncStartSuccess(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	stubStartOK(ts)
 
@@ -363,6 +372,7 @@ func TestEnableSyncStartSuccess(t *testing.T) {
 // does not re-pop the dialog, and tells the model how to retry on user
 // request — all in the SAME turn.
 func TestEnableSyncStartOAuthDeclined(t *testing.T) {
+	t.Parallel()
 	ts := New()
 
 	var changes atomic.Int32
@@ -401,6 +411,7 @@ func TestEnableSyncStartOAuthDeclined(t *testing.T) {
 // Tools() call retries; the tool result falls back to the legacy
 // "tools appear next turn" wording so the model knows to verify.
 func TestEnableSyncStartAuthorizationRequiredDefers(t *testing.T) {
+	t.Parallel()
 	ts := New()
 
 	id := firstOAuthServerID(t, ts)
@@ -430,6 +441,7 @@ func TestEnableSyncStartAuthorizationRequiredDefers(t *testing.T) {
 // must be rolled back so the next Tools() call doesn't replay the failed
 // handshake.
 func TestEnableSyncStartTransportError(t *testing.T) {
+	t.Parallel()
 	ts := New()
 
 	id := firstOAuthServerID(t, ts)
@@ -484,6 +496,7 @@ func (f *flakyStartToolSet) Stop(context.Context) error { return nil }
 // without invoking the seam, so the OAuth dialog never re-surfaced and
 // the only escape was disable+enable.
 func TestEnableRetriesStartOnExistingUnstartedEntry(t *testing.T) {
+	t.Parallel()
 	ts := New()
 
 	id := firstOAuthServerID(t, ts)
@@ -550,6 +563,7 @@ func TestEnableRetriesStartOnExistingUnstartedEntry(t *testing.T) {
 // fresh wrapper (not on the cancelled one) and drives Start again — which
 // is what makes the "user asked to retry" path work.
 func TestEnableSyncStartCancelledRollsBack(t *testing.T) {
+	t.Parallel()
 	ts := New()
 
 	id := firstOAuthServerID(t, ts)
@@ -611,6 +625,7 @@ func TestEnableSyncStartCancelledRollsBack(t *testing.T) {
 // the user did not ask for. This test pins the post-fix behaviour:
 // Turn-2's Tools() must not touch the cancelled wrapper at all.
 func TestToolsAfterCancelledEnableDoesNotReFireOAuth(t *testing.T) {
+	t.Parallel()
 	ts := New()
 
 	id := firstOAuthServerID(t, ts)
@@ -644,6 +659,7 @@ func TestToolsAfterCancelledEnableDoesNotReFireOAuth(t *testing.T) {
 }
 
 func TestListEnabled(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	stubStartOK(ts)
 	ctx := t.Context()
@@ -663,6 +679,7 @@ func TestListEnabled(t *testing.T) {
 }
 
 func TestStopReleasesEverything(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	stubStartOK(ts)
 	ctx := t.Context()
@@ -700,6 +717,7 @@ func firstOAuthServerID(t *testing.T, ts *Toolset) string {
 }
 
 func TestSetManagedOAuthPersistence(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	stubStartOK(ts)
 	ctx := t.Context()
@@ -725,6 +743,7 @@ func TestSetManagedOAuthPersistence(t *testing.T) {
 }
 
 func TestConcurrentEnableDisable(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	stubStartOK(ts)
 	ctx := t.Context()
@@ -803,6 +822,7 @@ func TestConcurrentEnableDisable(t *testing.T) {
 }
 
 func TestToolsContextCancellation(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	stubStartOK(ts)
 
@@ -825,6 +845,7 @@ func TestToolsContextCancellation(t *testing.T) {
 // toolset really is started lazily and its tools merge with the meta
 // surface.
 func TestToolsExposesEnabledServerTools(t *testing.T) {
+	t.Parallel()
 	srv := newFakeMCPServer(t)
 	defer srv.Close()
 
@@ -873,6 +894,7 @@ func TestToolsExposesEnabledServerTools(t *testing.T) {
 // TestResetAuthForwardsToTokenStore verifies that reset_remote_mcp_server_auth
 // places the right call with the right URL.
 func TestResetAuthForwardsToTokenStore(t *testing.T) {
+	t.Parallel()
 	ts := New()
 
 	var removedURLs []string
@@ -901,6 +923,7 @@ func TestResetAuthForwardsToTokenStore(t *testing.T) {
 // TestResetAuthUnknownServer confirms unknown ids surface a friendly error
 // without touching the token store.
 func TestResetAuthUnknownServer(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	called := 0
 	ts.removeOAuthToken = func(string) error { called++; return nil }
@@ -915,6 +938,7 @@ func TestResetAuthUnknownServer(t *testing.T) {
 // TestResetAuthNoOpForNonOAuth confirms that resetting auth for a
 // non-OAuth ("none") server is a no-op that doesn't reach the token store.
 func TestResetAuthNoOpForNonOAuth(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	called := 0
 	ts.removeOAuthToken = func(string) error { called++; return nil }
@@ -943,6 +967,7 @@ func TestResetAuthNoOpForNonOAuth(t *testing.T) {
 // currently-enabled server stops its toolset (so the next enable does a
 // fresh handshake) AND fires the tools-changed handler.
 func TestResetAuthDisablesEnabledServer(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	stubStartOK(ts)
 	ts.removeOAuthToken = func(string) error { return nil }
@@ -979,6 +1004,7 @@ func TestResetAuthDisablesEnabledServer(t *testing.T) {
 // TestResetAuthSurfacesStoreErrors confirms that errors from the token
 // store are surfaced to the caller as IsError results (not panics).
 func TestResetAuthSurfacesStoreErrors(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	ts.removeOAuthToken = func(string) error { return errors.New("keyring on fire") }
 
@@ -1003,6 +1029,7 @@ func TestResetAuthSurfacesStoreErrors(t *testing.T) {
 // the keyring; the runtime's tool list has therefore changed regardless of
 // whether the keyring removal eventually succeeds. Notify must fire.
 func TestResetAuthNotifiesEvenWhenKeyringFails(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	stubStartOK(ts)
 	ts.removeOAuthToken = func(string) error { return errors.New("keyring on fire") }
@@ -1041,6 +1068,7 @@ func TestResetAuthNotifiesEvenWhenKeyringFails(t *testing.T) {
 // it can usefully perform), revealed once at least one server is enabled,
 // and hidden again after the last server is disabled.
 func TestDisableAndResetAuthGatedOnEnabledServers(t *testing.T) {
+	t.Parallel()
 	// Use a local auth-required fake server so the test never touches the
 	// network and is independent of catalog data. The OAuth path keeps the
 	// entry in t.enabled (handleEnable's defensive deferred-auth fallback),
@@ -1120,6 +1148,7 @@ func (d *declineOnStartToolSet) Stop(context.Context) error {
 // second time on the next Tools() iteration — which is what previously
 // caused the dialog to re-appear in the host on every agent loop turn.
 func TestToolsOAuthDeclineRemovesServer(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	const id = "decline-server"
 	server := Server{
@@ -1225,6 +1254,7 @@ func (c *cancelOnStartToolSet) Stop(context.Context) error {
 // entry so the next Tools() iteration does not silently re-fire the
 // OAuth dialog on an unrelated user message.
 func TestToolsCancelledStartRemovesServer(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	const id = "cancel-server"
 	server := Server{
@@ -1289,6 +1319,7 @@ func TestToolsCancelledStartRemovesServer(t *testing.T) {
 // case the entry has already been removed and notify() has already fired;
 // disableAfterDecline must not double-notify.
 func TestToolsOAuthDeclineNoNotifyWhenAlreadyDisabled(t *testing.T) {
+	t.Parallel()
 	ts := New()
 	const id = "decline-server-concurrent"
 	server := Server{
@@ -1343,6 +1374,7 @@ func mustTools(t *testing.T, ctx context.Context, ts *Toolset) []tools.Tool {
 }
 
 func TestToolsAuthRequiredIsDeferred(t *testing.T) {
+	t.Parallel()
 	srv := newAuthRequiredMCPServer(t)
 	defer srv.Close()
 
@@ -1526,6 +1558,7 @@ func writeJSONRPC(t *testing.T, w http.ResponseWriter, id json.RawMessage, resul
 //	MCP_CATALOG_OAUTH_LIVE=1 go test -run TestCatalogOAuthDiscoveryLive \
 //	    -v -count=1 -timeout=120s ./pkg/tools/builtin/mcpcatalog
 func TestCatalogOAuthDiscoveryLive(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("MCP_CATALOG_OAUTH_LIVE") == "" {
 		t.Skip("skipping live OAuth discovery probe: makes real HTTPS calls " +
 			"to every oauth server in the embedded catalog. " +

@@ -14,6 +14,7 @@ import (
 )
 
 func TestPackageFileAsOCIToStore(t *testing.T) {
+	t.Parallel()
 	agentFilename := filepath.Join(t.TempDir(), "test.yaml")
 	testContent := `version: "2"
 agents:
@@ -56,6 +57,7 @@ agents:
 }
 
 func TestPackageFileAsOCIToStore_InlinesInstructionFile(t *testing.T) {
+	t.Parallel()
 	// A config that uses instruction_file must be pushed self-contained: the
 	// file contents are inlined and the now-unresolvable reference is dropped,
 	// even when the config carries an explicit version (which normally makes
@@ -107,6 +109,7 @@ agents:
 }
 
 func TestPackageFileAsOCIToStoreInvalidTag(t *testing.T) {
+	t.Parallel()
 	agentFilename := filepath.Join(t.TempDir(), "test.txt")
 	require.NoError(t, os.WriteFile(agentFilename, []byte("test content"), 0o644))
 
@@ -120,6 +123,7 @@ func TestPackageFileAsOCIToStoreInvalidTag(t *testing.T) {
 }
 
 func TestPackageFileAsOCIToStore_WithProviders(t *testing.T) {
+	t.Parallel()
 	// Test that configs with providers are correctly marshalled when packaged
 	// This is important because configs without version get re-marshalled
 	agentFilename := filepath.Join(t.TempDir(), "test.yaml")

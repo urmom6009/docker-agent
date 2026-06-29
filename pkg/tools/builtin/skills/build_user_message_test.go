@@ -11,6 +11,7 @@ import (
 // name present, next-user-message directive present, attached files
 // listed when provided, no task-delegation boilerplate.
 func TestBuildSkillSystemMessage(t *testing.T) {
+	t.Parallel()
 	t.Run("no attachments", func(t *testing.T) {
 		prepared := &PreparedSkillFork{SkillName: "commit"}
 		msg := BuildSkillSystemMessage(prepared, nil)
@@ -35,6 +36,7 @@ func TestBuildSkillSystemMessage(t *testing.T) {
 // shape: <skill> envelope, frontmatter stripped, body verbatim,
 // User's request: header for non-empty Task.
 func TestBuildSkillUserMessage_StripsFrontmatter(t *testing.T) {
+	t.Parallel()
 	prepared := &PreparedSkillFork{
 		SkillName: "commit",
 		Task:      "fix the typo",
@@ -61,6 +63,7 @@ func TestBuildSkillUserMessage_StripsFrontmatter(t *testing.T) {
 
 // TestBuildSkillUserMessage_NoTask: empty Task drops the User's request: header.
 func TestBuildSkillUserMessage_NoTask(t *testing.T) {
+	t.Parallel()
 	prepared := &PreparedSkillFork{
 		SkillName: "review",
 		Content:   "---\nname: review\ndescription: x\n---\nReview the code.\n",
@@ -75,6 +78,7 @@ func TestBuildSkillUserMessage_NoTask(t *testing.T) {
 // TestStripFrontmatter covers no-fence, well-formed, unterminated, and
 // leading-blank-line cases.
 func TestStripFrontmatter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   string

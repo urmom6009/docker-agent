@@ -11,6 +11,7 @@ import (
 )
 
 func TestConvertMessagesToResponseInput_OrphanedFunctionCall(t *testing.T) {
+	t.Parallel()
 	// Simulate a conversation where an assistant made 2 tool calls but only
 	// one has a result (the other was cancelled/interrupted).
 	messages := []chat.Message{
@@ -47,6 +48,7 @@ func TestConvertMessagesToResponseInput_OrphanedFunctionCall(t *testing.T) {
 }
 
 func TestConvertMessagesToResponseInput_AssistantTextWithToolCalls(t *testing.T) {
+	t.Parallel()
 	// When an assistant message has both text content and tool calls,
 	// the text must not be silently discarded.
 	messages := []chat.Message{
@@ -82,6 +84,7 @@ func TestConvertMessagesToResponseInput_AssistantTextWithToolCalls(t *testing.T)
 }
 
 func TestConvertMessagesToResponseInput_NoOrphans(t *testing.T) {
+	t.Parallel()
 	// All tool calls have matching results — no placeholder needed.
 	messages := []chat.Message{
 		{Role: chat.MessageRoleUser, Content: "hello"},

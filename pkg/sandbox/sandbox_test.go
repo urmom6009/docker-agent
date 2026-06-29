@@ -174,6 +174,7 @@ func TestForWorkspace_SbxBackend(t *testing.T) {
 }
 
 func TestExtraWorkspace(t *testing.T) {
+	t.Parallel()
 	t.Run("empty ref", func(t *testing.T) {
 		assert.Empty(t, sandbox.ExtraWorkspace("/workspace", ""))
 	})

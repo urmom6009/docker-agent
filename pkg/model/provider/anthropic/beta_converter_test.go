@@ -11,6 +11,7 @@ import (
 )
 
 func TestConvertBetaMessages_MergesConsecutiveToolMessages(t *testing.T) {
+	t.Parallel()
 	// Simulates the roast battle scenario where:
 	// - Assistant message has 2 tool_use blocks (transfer_task calls)
 	// - Two separate tool messages follow (one for each transfer_task result)
@@ -81,6 +82,7 @@ func TestConvertBetaMessages_MergesConsecutiveToolMessages(t *testing.T) {
 }
 
 func TestConvertBetaMessages_SingleToolMessage(t *testing.T) {
+	t.Parallel()
 	// When there's only one tool message, it should still work correctly
 	messages := []chat.Message{
 		{

@@ -19,6 +19,7 @@ func skipOnWindows(t *testing.T) {
 }
 
 func TestExpandCommands(t *testing.T) {
+	t.Parallel()
 	skipOnWindows(t)
 
 	tests := []struct {
@@ -72,6 +73,7 @@ func TestExpandCommands(t *testing.T) {
 }
 
 func TestExpandCommands_WorkingDirectory(t *testing.T) {
+	t.Parallel()
 	skipOnWindows(t)
 
 	tmpDir := t.TempDir()
@@ -82,6 +84,7 @@ func TestExpandCommands_WorkingDirectory(t *testing.T) {
 }
 
 func TestExpandCommands_ScriptExecution(t *testing.T) {
+	t.Parallel()
 	skipOnWindows(t)
 
 	tmpDir := t.TempDir()
@@ -92,6 +95,7 @@ func TestExpandCommands_ScriptExecution(t *testing.T) {
 }
 
 func TestExpandCommands_FailedCommand(t *testing.T) {
+	t.Parallel()
 	skipOnWindows(t)
 
 	result := ExpandCommands(t.Context(), "Before !`nonexistent_command_12345` after", t.TempDir())
@@ -101,6 +105,7 @@ func TestExpandCommands_FailedCommand(t *testing.T) {
 }
 
 func TestExpandCommands_CancelledContext(t *testing.T) {
+	t.Parallel()
 	skipOnWindows(t)
 
 	ctx, cancel := context.WithCancel(t.Context())

@@ -75,6 +75,7 @@ func newRerankTestManager(t *testing.T, rerankErr error) (*Manager, *failingRera
 }
 
 func TestQueryDisablesRerankerAfterNonRetryableError(t *testing.T) {
+	t.Parallel()
 	rerankErr := &modelerrors.StatusError{
 		StatusCode: http.StatusNotFound,
 		Err:        errors.New("not_found_error: model: claude-sonnet-4-7"),
@@ -92,6 +93,7 @@ func TestQueryDisablesRerankerAfterNonRetryableError(t *testing.T) {
 }
 
 func TestQueryKeepsRerankerOnTransientError(t *testing.T) {
+	t.Parallel()
 	rerankErr := &modelerrors.StatusError{
 		StatusCode: http.StatusInternalServerError,
 		Err:        errors.New("server error"),
@@ -109,6 +111,7 @@ func TestQueryKeepsRerankerOnTransientError(t *testing.T) {
 }
 
 func TestQueryKeepsRerankerOnContextCancellation(t *testing.T) {
+	t.Parallel()
 	m, reranker := newRerankTestManager(t, context.Canceled)
 
 	results, err := m.Query(t.Context(), "some query")

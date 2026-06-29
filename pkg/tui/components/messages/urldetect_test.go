@@ -9,6 +9,7 @@ import (
 )
 
 func TestFindURLSpans(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		text     string
@@ -90,6 +91,7 @@ func TestFindURLSpans(t *testing.T) {
 }
 
 func TestURLAtPosition(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		line     string
@@ -149,6 +151,7 @@ func TestURLAtPosition(t *testing.T) {
 }
 
 func TestBalanceParens(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -226,6 +229,7 @@ func TestURLAtPositionOSC8(t *testing.T) {
 }
 
 func TestUnderlineLine(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		line     string

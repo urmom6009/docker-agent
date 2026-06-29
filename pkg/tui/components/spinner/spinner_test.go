@@ -10,6 +10,7 @@ import (
 )
 
 func TestSpinnerCopyDoesNotLeakAnimationSubscription(t *testing.T) {
+	t.Parallel()
 	s1 := New(ModeSpinnerOnly, lipgloss.NewStyle())
 	cmd := s1.Init()
 	require.NotNil(t, cmd)
@@ -22,6 +23,7 @@ func TestSpinnerCopyDoesNotLeakAnimationSubscription(t *testing.T) {
 }
 
 func TestFrameWrapsAround(t *testing.T) {
+	t.Parallel()
 	n := len(spinnerFrames)
 	require.Equal(t, spinnerFrames[0], Frame(0))
 	require.Equal(t, spinnerFrames[1], Frame(1))

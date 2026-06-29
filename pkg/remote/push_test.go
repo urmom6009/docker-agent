@@ -14,6 +14,7 @@ import (
 )
 
 func TestPush(t *testing.T) {
+	t.Parallel()
 	store, err := content.NewStore(content.WithBaseDir(t.TempDir()))
 	require.NoError(t, err)
 
@@ -46,6 +47,7 @@ func TestPush(t *testing.T) {
 }
 
 func TestPushNonExistentArtifact(t *testing.T) {
+	t.Parallel()
 	err := Push(t.Context(), "registry.example.com/test:latest")
 	require.Error(t, err)
 
@@ -54,6 +56,7 @@ func TestPushNonExistentArtifact(t *testing.T) {
 }
 
 func TestPushWithOptions(t *testing.T) {
+	t.Parallel()
 	store, err := content.NewStore(content.WithBaseDir(t.TempDir()))
 	require.NoError(t, err)
 
@@ -74,6 +77,7 @@ func TestPushWithOptions(t *testing.T) {
 }
 
 func TestContentStore(t *testing.T) {
+	t.Parallel()
 	store, err := content.NewStore(content.WithBaseDir(t.TempDir()))
 	require.NoError(t, err)
 

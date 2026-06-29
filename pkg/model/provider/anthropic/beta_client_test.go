@@ -28,6 +28,7 @@ func optionsFromStore(store *modelsdev.Store) options.ModelOptions {
 
 // TestCountAnthropicTokensBeta_Success tests successful token counting for beta API
 func TestCountAnthropicTokensBeta_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/v1/messages/count_tokens", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("content-type"))
@@ -71,6 +72,7 @@ func TestCountAnthropicTokensBeta_Success(t *testing.T) {
 
 // TestCountAnthropicTokensBeta_NoAPIKey tests error when API key is missing
 func TestCountAnthropicTokensBeta_NoAPIKey(t *testing.T) {
+	t.Parallel()
 	// Use a test server that returns 401 Unauthorized
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -95,6 +97,7 @@ func TestCountAnthropicTokensBeta_NoAPIKey(t *testing.T) {
 
 // TestCountAnthropicTokensBeta_ServerError tests error handling for server errors
 func TestCountAnthropicTokensBeta_ServerError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -116,6 +119,7 @@ func TestCountAnthropicTokensBeta_ServerError(t *testing.T) {
 
 // TestCountAnthropicTokensBeta_WithTools tests token counting includes tools
 func TestCountAnthropicTokensBeta_WithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload map[string]any
 		err := json.NewDecoder(r.Body).Decode(&payload)
@@ -154,6 +158,7 @@ func TestCountAnthropicTokensBeta_WithTools(t *testing.T) {
 
 // TestClampMaxTokens_WithinLimit tests clamping when configured tokens are within limit
 func TestClampMaxTokens_WithinLimit(t *testing.T) {
+	t.Parallel()
 	// Context limit: 200k, used: 50k, safety: 1k, remaining: 149k
 	// Configured: 8k (within limit)
 	result := clampMaxTokens(200000, 50000, 8000)
@@ -162,6 +167,7 @@ func TestClampMaxTokens_WithinLimit(t *testing.T) {
 
 // TestClampMaxTokens_ExceedsLimit tests clamping when configured tokens exceed remaining
 func TestClampMaxTokens_ExceedsLimit(t *testing.T) {
+	t.Parallel()
 	// Context limit: 200k, used: 190k, safety: 1024, remaining: 8976
 	// Configured: 16k (exceeds limit)
 	result := clampMaxTokens(200000, 190000, 16000)
@@ -170,6 +176,7 @@ func TestClampMaxTokens_ExceedsLimit(t *testing.T) {
 
 // TestClampMaxTokens_MinimumOne tests clamping never returns less than 1
 func TestClampMaxTokens_MinimumOne(t *testing.T) {
+	t.Parallel()
 	// Context limit: 200k, used: 199k, safety: 1k, remaining: 0 (would be negative)
 	result := clampMaxTokens(200000, 199000, 8000)
 	assert.Equal(t, int64(1), result)
@@ -177,6 +184,7 @@ func TestClampMaxTokens_MinimumOne(t *testing.T) {
 
 // TestClampMaxTokens_ExactlyAtLimit tests clamping when used + safety equals limit
 func TestClampMaxTokens_ExactlyAtLimit(t *testing.T) {
+	t.Parallel()
 	// Context limit: 200k, used: 199k, safety: 1k, remaining: 0
 	result := clampMaxTokens(200000, 199000, 1000)
 	assert.Equal(t, int64(1), result)
@@ -187,6 +195,7 @@ func TestClampMaxTokens_ExactlyAtLimit(t *testing.T) {
 // catalogue has no entry. Model-specific large windows (Fable, Opus 4.6+) come
 // from the catalogue/snapshot, not from hard-coded name patterns.
 func TestContextLimit_FromModelsDev(t *testing.T) {
+	t.Parallel()
 	store := modelsdev.NewDatabaseStore(&modelsdev.Database{
 		Providers: map[string]modelsdev.Provider{
 			"anthropic": {
@@ -227,6 +236,7 @@ func TestContextLimit_FromModelsDev(t *testing.T) {
 
 // TestExtractBetaSystemBlocks_SingleSystemMessage tests extracting system messages
 func TestExtractBetaSystemBlocks_SingleSystemMessage(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleSystem,
@@ -242,6 +252,7 @@ func TestExtractBetaSystemBlocks_SingleSystemMessage(t *testing.T) {
 
 // TestExtractBetaSystemBlocks_MultipleSystemMessages tests extracting multiple system messages
 func TestExtractBetaSystemBlocks_MultipleSystemMessages(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleSystem,
@@ -267,6 +278,7 @@ func TestExtractBetaSystemBlocks_MultipleSystemMessages(t *testing.T) {
 // TestExtractBetaSystemBlocks_SkipsEmptyText tests that empty system text is skipped.
 // System blocks are trimmed because YAML literal-block instructions always append a trailing newline.
 func TestExtractBetaSystemBlocks_SkipsEmptyText(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleSystem,
@@ -286,6 +298,7 @@ func TestExtractBetaSystemBlocks_SkipsEmptyText(t *testing.T) {
 
 // TestExtractBetaSystemBlocks_MultiContent tests extracting from multi-content system messages
 func TestExtractBetaSystemBlocks_MultiContent(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role: chat.MessageRoleSystem,
@@ -305,6 +318,7 @@ func TestExtractBetaSystemBlocks_MultiContent(t *testing.T) {
 
 // TestConvertBetaMessages_UserMessage tests converting user messages
 func TestConvertBetaMessages_UserMessage(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleUser,
@@ -322,6 +336,7 @@ func TestConvertBetaMessages_UserMessage(t *testing.T) {
 
 // TestConvertBetaMessages_SkipsSystemMessages tests that system messages are skipped
 func TestConvertBetaMessages_SkipsSystemMessages(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleSystem,
@@ -342,6 +357,7 @@ func TestConvertBetaMessages_SkipsSystemMessages(t *testing.T) {
 
 // TestConvertBetaMessages_AssistantMessage tests converting assistant messages
 func TestConvertBetaMessages_AssistantMessage(t *testing.T) {
+	t.Parallel()
 	msgs := []chat.Message{
 		{
 			Role:    chat.MessageRoleAssistant,

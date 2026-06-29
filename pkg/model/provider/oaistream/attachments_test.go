@@ -20,6 +20,7 @@ var minJPEG = []byte{0xFF, 0xD8, 0xFF, 0xE0}
 // InlineData and a vision-capable model produces an image content part with
 // a data-URI, not a text part.
 func TestConvertDocument_StrategyB64_Image(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",
@@ -43,6 +44,7 @@ func TestConvertDocument_StrategyB64_Image(t *testing.T) {
 // InlineData and a PDF-capable model produces a `file` content part carrying a
 // base64 data URI, rather than being dropped.
 func TestConvertDocument_StrategyB64_PDF(t *testing.T) {
+	t.Parallel()
 	pdf := []byte("%PDF-1.4 minimal")
 	doc := chat.Document{
 		Name:     "spec.pdf",
@@ -66,6 +68,7 @@ func TestConvertDocument_StrategyB64_PDF(t *testing.T) {
 // TestConvertDocument_StrategyB64_PDFDropped verifies that a PDF is dropped when
 // the model does not declare PDF support.
 func TestConvertDocument_StrategyB64_PDFDropped(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "spec.pdf",
 		MimeType: "application/pdf",
@@ -81,6 +84,7 @@ func TestConvertDocument_StrategyB64_PDFDropped(t *testing.T) {
 // image attachment is forwarded when the injected caps allow it and dropped
 // otherwise, independent of any models.dev store.
 func TestConvertMessagesWithCaps(t *testing.T) {
+	t.Parallel()
 	messages := []chat.Message{{
 		Role: chat.MessageRoleUser,
 		MultiContent: []chat.MessagePart{{
@@ -133,6 +137,7 @@ func TestConvertMessagesWithCaps(t *testing.T) {
 // TestConvertDocument_StrategyB64_ImageDropped verifies that an image is
 // dropped when the model does not support vision.
 func TestConvertDocument_StrategyB64_ImageDropped(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",
@@ -152,6 +157,7 @@ func TestConvertDocument_StrategyB64_ImageDropped(t *testing.T) {
 // It calls ConvertMultiContent with an injected fake store, exercising
 // the same path as the production client (which calls ConvertMessages with c.ID()).
 func TestConvertDocument_QualifiedIDRequired(t *testing.T) {
+	t.Parallel()
 	store := modelsdev.NewDatabaseStore(&modelsdev.Database{
 		Providers: map[string]modelsdev.Provider{
 			"openai": {
@@ -186,6 +192,7 @@ func TestConvertDocument_QualifiedIDRequired(t *testing.T) {
 }
 
 func TestConvertDocument_StrategyTXT(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "readme.md",
 		MimeType: "text/markdown",
@@ -202,6 +209,7 @@ func TestConvertDocument_StrategyTXT(t *testing.T) {
 }
 
 func TestConvertDocument_StrategyTXT_Envelope(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "data.csv",
 		MimeType: "text/csv",
@@ -217,6 +225,7 @@ func TestConvertDocument_StrategyTXT_Envelope(t *testing.T) {
 }
 
 func TestConvertDocument_Drop_NoContent(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "empty.txt",
 		MimeType: "text/plain",

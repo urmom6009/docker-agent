@@ -11,6 +11,7 @@ import (
 )
 
 func TestTodoTool_DisplayNames(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	all, err := tool.Tools(t.Context())
@@ -23,6 +24,7 @@ func TestTodoTool_DisplayNames(t *testing.T) {
 }
 
 func TestTodoTool_CreateTodo(t *testing.T) {
+	t.Parallel()
 	storage := NewMemoryTodoStorage()
 	tool := New(WithStorage(storage))
 
@@ -47,6 +49,7 @@ func TestTodoTool_CreateTodo(t *testing.T) {
 }
 
 func TestTodoTool_CreateTodos(t *testing.T) {
+	t.Parallel()
 	storage := NewMemoryTodoStorage()
 	tool := New(WithStorage(storage))
 
@@ -88,6 +91,7 @@ func TestTodoTool_CreateTodos(t *testing.T) {
 }
 
 func TestTodoTool_ListTodos(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	descs := []string{"First", "Second", "Third"}
@@ -116,6 +120,7 @@ func TestTodoTool_ListTodos(t *testing.T) {
 }
 
 func TestTodoTool_ListTodos_Empty(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	result, err := tool.handler.listTodos(t.Context(), tools.ToolCall{})
@@ -130,6 +135,7 @@ func TestTodoTool_ListTodos_Empty(t *testing.T) {
 }
 
 func TestTodoTool_UpdateTodos(t *testing.T) {
+	t.Parallel()
 	storage := NewMemoryTodoStorage()
 	tool := New(WithStorage(storage))
 
@@ -177,6 +183,7 @@ func TestTodoTool_UpdateTodos(t *testing.T) {
 }
 
 func TestTodoTool_UpdateTodos_PartialFailure(t *testing.T) {
+	t.Parallel()
 	storage := NewMemoryTodoStorage()
 	tool := New(WithStorage(storage))
 
@@ -211,6 +218,7 @@ func TestTodoTool_UpdateTodos_PartialFailure(t *testing.T) {
 }
 
 func TestTodoTool_UpdateTodos_AllNotFound(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	result, err := tool.handler.updateTodos(t.Context(), UpdateTodosArgs{
@@ -231,6 +239,7 @@ func TestTodoTool_UpdateTodos_AllNotFound(t *testing.T) {
 }
 
 func TestTodoTool_UpdateTodos_AllCompleted_NoAutoRemoval(t *testing.T) {
+	t.Parallel()
 	storage := NewMemoryTodoStorage()
 	tool := New(WithStorage(storage))
 
@@ -263,6 +272,7 @@ func TestTodoTool_UpdateTodos_AllCompleted_NoAutoRemoval(t *testing.T) {
 }
 
 func TestTodoTool_WithStorage(t *testing.T) {
+	t.Parallel()
 	storage := NewMemoryTodoStorage()
 	tool := New(WithStorage(storage))
 
@@ -274,12 +284,14 @@ func TestTodoTool_WithStorage(t *testing.T) {
 }
 
 func TestTodoTool_WithStorage_NilPanics(t *testing.T) {
+	t.Parallel()
 	assert.Panics(t, func() {
 		WithStorage(nil)
 	})
 }
 
 func TestTodoTool_OutputSchema(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	allTools, err := tool.Tools(t.Context())
@@ -292,6 +304,7 @@ func TestTodoTool_OutputSchema(t *testing.T) {
 }
 
 func TestTodoTool_ParametersAreObjects(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	allTools, err := tool.Tools(t.Context())
@@ -307,6 +320,7 @@ func TestTodoTool_ParametersAreObjects(t *testing.T) {
 }
 
 func TestTodoTool_CreateTodo_FullStateOutput(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	// Create first todo
@@ -328,6 +342,7 @@ func TestTodoTool_CreateTodo_FullStateOutput(t *testing.T) {
 }
 
 func TestTodoTool_UpdateTodos_FullStateOutput(t *testing.T) {
+	t.Parallel()
 	tool := New()
 
 	_, err := tool.handler.createTodos(t.Context(), CreateTodosArgs{

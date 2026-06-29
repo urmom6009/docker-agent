@@ -29,6 +29,7 @@ func newTestServer(exposed ...string) (*server, *echo.Echo) {
 }
 
 func TestHandleModels(t *testing.T) {
+	t.Parallel()
 	srv, e := newTestServer("root", "reviewer")
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v1/models", http.NoBody)
@@ -54,6 +55,7 @@ func TestHandleModels(t *testing.T) {
 }
 
 func TestHandleChatCompletions_RejectsBadJSON(t *testing.T) {
+	t.Parallel()
 	srv, e := newTestServer()
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/v1/chat/completions", strings.NewReader("not json"))
@@ -67,6 +69,7 @@ func TestHandleChatCompletions_RejectsBadJSON(t *testing.T) {
 }
 
 func TestHandleChatCompletions_RejectsEmptyMessages(t *testing.T) {
+	t.Parallel()
 	srv, e := newTestServer()
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/v1/chat/completions",
@@ -85,6 +88,7 @@ func TestHandleChatCompletions_RejectsEmptyMessages(t *testing.T) {
 }
 
 func TestHandleChatCompletions_RejectsHistoryWithoutUser(t *testing.T) {
+	t.Parallel()
 	srv, e := newTestServer()
 
 	body := `{"messages":[{"role":"system","content":"be helpful"}]}`
@@ -99,6 +103,7 @@ func TestHandleChatCompletions_RejectsHistoryWithoutUser(t *testing.T) {
 }
 
 func TestWriteError_ShapeAndType(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		status   int

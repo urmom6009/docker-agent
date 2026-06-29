@@ -9,6 +9,7 @@ import (
 )
 
 func TestConversationLockSet_AcquireRelease(t *testing.T) {
+	t.Parallel()
 	l := newConversationLockSet()
 	assert.True(t, l.tryAcquire("a"), "first acquire should succeed")
 	assert.False(t, l.tryAcquire("a"), "second acquire on the same id should fail")
@@ -18,6 +19,7 @@ func TestConversationLockSet_AcquireRelease(t *testing.T) {
 }
 
 func TestConversationLockSet_DifferentIDsDontBlock(t *testing.T) {
+	t.Parallel()
 	l := newConversationLockSet()
 	assert.True(t, l.tryAcquire("a"))
 	assert.True(t, l.tryAcquire("b"), "different ids should not block each other")
@@ -26,6 +28,7 @@ func TestConversationLockSet_DifferentIDsDontBlock(t *testing.T) {
 }
 
 func TestConversationLockSet_EmptyIDIsNoop(t *testing.T) {
+	t.Parallel()
 	l := newConversationLockSet()
 	// Empty id is the "no conversation" path: tryAcquire must always
 	// succeed and release must be safe.
@@ -35,12 +38,14 @@ func TestConversationLockSet_EmptyIDIsNoop(t *testing.T) {
 }
 
 func TestConversationLockSet_NilIsNoop(t *testing.T) {
+	t.Parallel()
 	var l *conversationLockSet
 	assert.True(t, l.tryAcquire("a"))
 	l.release("a") // must not panic
 }
 
 func TestConversationLockSet_RaceFreeUnderConcurrency(t *testing.T) {
+	t.Parallel()
 	// Run the race detector over a hot loop. The lock set's invariant —
 	// "at most one acquired ID at a time" — must hold.
 	l := newConversationLockSet()

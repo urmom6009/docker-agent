@@ -398,6 +398,7 @@ func TestExpandPathToken(t *testing.T) {
 }
 
 func TestWithAllowList_RejectsUndefinedEnvVar(t *testing.T) {
+	t.Parallel()
 	// Regression test: a typo in an env-var name in allow_list must NOT
 	// silently grant access to the working directory. The toolset must
 	// fail-closed: reject all operations when list construction fails.

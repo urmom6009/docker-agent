@@ -18,6 +18,7 @@ import (
 )
 
 func TestBuildSession_RequiresUserMessage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		messages []ChatCompletionMessage
@@ -64,6 +65,7 @@ func TestBuildSession_RequiresUserMessage(t *testing.T) {
 }
 
 func TestBuildSession_PreservesHistory(t *testing.T) {
+	t.Parallel()
 	sess := buildSession([]ChatCompletionMessage{
 		{Role: "system", Content: "you are a docker agent"},
 		{Role: "user", Content: "hello"},
@@ -91,6 +93,7 @@ func TestBuildSession_PreservesHistory(t *testing.T) {
 }
 
 func TestBuildSession_PreservesToolMessage(t *testing.T) {
+	t.Parallel()
 	sess := buildSession([]ChatCompletionMessage{
 		{Role: "user", Content: "compute 2+2"},
 		{Role: "assistant", Content: ""}, // dropped: empty content
@@ -108,6 +111,7 @@ func TestBuildSession_PreservesToolMessage(t *testing.T) {
 }
 
 func TestBuildSession_UnknownRoleTreatedAsUser(t *testing.T) {
+	t.Parallel()
 	sess := buildSession([]ChatCompletionMessage{
 		{Role: "developer", Content: "do this"},
 	})
@@ -120,6 +124,7 @@ func TestBuildSession_UnknownRoleTreatedAsUser(t *testing.T) {
 }
 
 func TestAgentPolicy_Pick(t *testing.T) {
+	t.Parallel()
 	p := agentPolicy{exposed: []string{"root", "reviewer"}, fallback: "root"}
 
 	assert.Equal(t, "reviewer", p.pick("reviewer"))
@@ -129,6 +134,7 @@ func TestAgentPolicy_Pick(t *testing.T) {
 }
 
 func TestErrTypeFor(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "invalid_request_error", errTypeFor(400))
 	assert.Equal(t, "invalid_request_error", errTypeFor(404))
 	assert.Equal(t, "internal_error", errTypeFor(500))
@@ -136,6 +142,7 @@ func TestErrTypeFor(t *testing.T) {
 }
 
 func TestNewRouter_CORSDisabledByDefault(t *testing.T) {
+	t.Parallel()
 	srv, _ := newTestServer("root")
 	r := newRouter(srv, Options{})
 
@@ -150,6 +157,7 @@ func TestNewRouter_CORSDisabledByDefault(t *testing.T) {
 }
 
 func TestNewRouter_CORSAllowsConfiguredOrigin(t *testing.T) {
+	t.Parallel()
 	srv, _ := newTestServer("root")
 	r := newRouter(srv, Options{CORSOrigin: "https://example.com"})
 
@@ -163,6 +171,7 @@ func TestNewRouter_CORSAllowsConfiguredOrigin(t *testing.T) {
 }
 
 func TestCorsMiddlewareConfig(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		spec    string
@@ -194,6 +203,7 @@ func TestCorsMiddlewareConfig(t *testing.T) {
 }
 
 func TestNewRouter_CORSAllowList(t *testing.T) {
+	t.Parallel()
 	srv, _ := newTestServer("root")
 	r := newRouter(srv, Options{CORSOrigin: "https://a.example.com,https://b.example.com"})
 
@@ -218,6 +228,7 @@ func TestNewRouter_CORSAllowList(t *testing.T) {
 }
 
 func TestNewRouter_CORSRegex(t *testing.T) {
+	t.Parallel()
 	srv, _ := newTestServer("root")
 	r := newRouter(srv, Options{CORSOrigin: `~^https://[a-z]+\.example\.com$`})
 
@@ -239,6 +250,7 @@ func TestNewRouter_CORSRegex(t *testing.T) {
 }
 
 func TestBearerAuthMiddleware(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name       string
 		header     string
@@ -267,6 +279,7 @@ func TestBearerAuthMiddleware(t *testing.T) {
 }
 
 func TestHandleChatCompletions_RejectsConcurrentSameConversation(t *testing.T) {
+	t.Parallel()
 	srv, _ := newTestServer("root")
 	r := newRouter(srv, Options{})
 
@@ -287,6 +300,7 @@ func TestHandleChatCompletions_RejectsConcurrentSameConversation(t *testing.T) {
 }
 
 func TestBearerAuthMiddleware_AllowsCORSPreflight(t *testing.T) {
+	t.Parallel()
 	// CORS preflight must succeed without an Authorization header.
 	srv, _ := newTestServer("root")
 	r := newRouter(srv, Options{APIKey: "secret", CORSOrigin: "https://example.com"})
@@ -301,6 +315,7 @@ func TestBearerAuthMiddleware_AllowsCORSPreflight(t *testing.T) {
 }
 
 func TestNewRouter_RejectsOversizedBody(t *testing.T) {
+	t.Parallel()
 	srv, _ := newTestServer("root")
 	r := newRouter(srv, Options{MaxRequestBytes: 16})
 
@@ -314,6 +329,7 @@ func TestNewRouter_RejectsOversizedBody(t *testing.T) {
 }
 
 func TestValidateSamplingParams(t *testing.T) {
+	t.Parallel()
 	f := func(v float64) *float64 { return &v }
 	i := func(v int64) *int64 { return &v }
 
@@ -348,6 +364,7 @@ func TestValidateSamplingParams(t *testing.T) {
 }
 
 func TestChatCompletionMessage_UnmarshalContentString(t *testing.T) {
+	t.Parallel()
 	var m ChatCompletionMessage
 	require.NoError(t, json.Unmarshal([]byte(`{"role":"user","content":"hello"}`), &m))
 	assert.Equal(t, "user", m.Role)
@@ -356,6 +373,7 @@ func TestChatCompletionMessage_UnmarshalContentString(t *testing.T) {
 }
 
 func TestChatCompletionMessage_UnmarshalContentParts(t *testing.T) {
+	t.Parallel()
 	var m ChatCompletionMessage
 	input := `{
 		"role":"user",
@@ -376,6 +394,7 @@ func TestChatCompletionMessage_UnmarshalContentParts(t *testing.T) {
 }
 
 func TestChatCompletionMessage_RoundTripText(t *testing.T) {
+	t.Parallel()
 	in := ChatCompletionMessage{Role: "assistant", Content: "hi there"}
 	raw, err := json.Marshal(in)
 	require.NoError(t, err)
@@ -383,6 +402,7 @@ func TestChatCompletionMessage_RoundTripText(t *testing.T) {
 }
 
 func TestChatCompletionMessage_RoundTripParts(t *testing.T) {
+	t.Parallel()
 	in := ChatCompletionMessage{
 		Role: "user",
 		Parts: []ContentPart{
@@ -396,6 +416,7 @@ func TestChatCompletionMessage_RoundTripParts(t *testing.T) {
 }
 
 func TestBuildSession_AcceptsImageParts(t *testing.T) {
+	t.Parallel()
 	sess := buildSession([]ChatCompletionMessage{{
 		Role: "user",
 		Parts: []ContentPart{
@@ -417,6 +438,7 @@ func TestBuildSession_AcceptsImageParts(t *testing.T) {
 }
 
 func TestStopSequences_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		json string
@@ -444,6 +466,7 @@ func TestStopSequences_UnmarshalJSON(t *testing.T) {
 }
 
 func TestChatCompletionRequest_UnmarshalStreamOptions(t *testing.T) {
+	t.Parallel()
 	var req ChatCompletionRequest
 	require.NoError(t, json.Unmarshal([]byte(`{
 		"messages": [{"role":"user","content":"hi"}],
@@ -456,6 +479,7 @@ func TestChatCompletionRequest_UnmarshalStreamOptions(t *testing.T) {
 }
 
 func TestSSEStream_ToolCallDelta(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	s := newSSEStream(rec, "chatcmpl-x", "root")
 	s.send(ChatCompletionStreamDelta{ToolCalls: []ToolCallReference{{
@@ -476,6 +500,7 @@ func TestSSEStream_ToolCallDelta(t *testing.T) {
 }
 
 func TestSSEStream_SendUsage(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	s := newSSEStream(rec, "chatcmpl-x", "root")
 	s.send(ChatCompletionStreamDelta{}, "stop")
@@ -490,6 +515,7 @@ func TestSSEStream_SendUsage(t *testing.T) {
 }
 
 func TestSSEStream_SendError(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	s := newSSEStream(rec, "chatcmpl-x", "root")
 	s.sendError(errors.New("model exploded"))
@@ -506,6 +532,7 @@ func TestSSEStream_SendError(t *testing.T) {
 }
 
 func TestRequestTimeoutMiddleware_AppliesDeadline(t *testing.T) {
+	t.Parallel()
 	e := echo.New()
 	e.Use(requestTimeoutMiddleware(5 * time.Millisecond))
 

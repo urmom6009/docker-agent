@@ -9,6 +9,7 @@ import (
 )
 
 func TestWrapErrorsFlagsVerbOnError(t *testing.T) {
+	t.Parallel()
 	src := `package p
 import "fmt"
 func f(err error) error { return fmt.Errorf("oops: %v", err) }
@@ -19,6 +20,7 @@ func f(err error) error { return fmt.Errorf("oops: %v", err) }
 }
 
 func TestWrapErrorsAllowsWrapVerb(t *testing.T) {
+	t.Parallel()
 	src := `package p
 import "fmt"
 func f(err error) error { return fmt.Errorf("oops: %w", err) }
@@ -29,6 +31,7 @@ func f(err error) error { return fmt.Errorf("oops: %w", err) }
 // An escaped percent followed by the letter w ("%%w") is a literal, not a
 // wrapping verb: a real unwrapped error in the same call must still be flagged.
 func TestWrapErrorsFlagsEscapedPercentW(t *testing.T) {
+	t.Parallel()
 	src := `package p
 import "fmt"
 func f(err error) error { return fmt.Errorf("done 50%%w: %v", err) }
@@ -39,6 +42,7 @@ func f(err error) error { return fmt.Errorf("done 50%%w: %v", err) }
 }
 
 func TestWrapErrorsIgnoresNonErrorArgs(t *testing.T) {
+	t.Parallel()
 	src := `package p
 import "fmt"
 func f(name string) error { return fmt.Errorf("bad name %q", name) }
@@ -49,6 +53,7 @@ func f(name string) error { return fmt.Errorf("bad name %q", name) }
 // A struct field named Error that is a string (a common API-response shape)
 // must not be mistaken for an error value.
 func TestWrapErrorsIgnoresStringErrorField(t *testing.T) {
+	t.Parallel()
 	src := `package p
 import "fmt"
 type resp struct{ Error string }
@@ -60,6 +65,7 @@ func f(e resp) error { return fmt.Errorf("server said: %s", e.Error) }
 // %w already present: even with a second %v error arg, the chain is intact
 // for at least one error, so the call is not flagged.
 func TestWrapErrorsAllowsMixedWhenWPresent(t *testing.T) {
+	t.Parallel()
 	src := `package p
 import "fmt"
 func f(a, b error) error { return fmt.Errorf("%w and %v", a, b) }
@@ -70,6 +76,7 @@ func f(a, b error) error { return fmt.Errorf("%w and %v", a, b) }
 // A %w verb carrying flags, width, precision, or an argument index is still a
 // wrap verb and must not be flagged.
 func TestWrapErrorsAllowsWrapVerbWithModifiers(t *testing.T) {
+	t.Parallel()
 	for _, format := range []string{"%[1]w", "%-10w", "%+w"} {
 		src := `package p
 import "fmt"

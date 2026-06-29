@@ -13,6 +13,7 @@ import (
 )
 
 func TestRenderToolOutputTruncatesOutput(t *testing.T) {
+	t.Parallel()
 	output := strings.Repeat("line\n", 50)
 	lines := renderToolOutput(output, 80)
 
@@ -21,6 +22,7 @@ func TestRenderToolOutputTruncatesOutput(t *testing.T) {
 }
 
 func TestRenderToolUsesFullTUIRenderer(t *testing.T) {
+	t.Parallel()
 	tv := shellToolView(tuitypes.ToolStatusCompleted)
 	tv.message.Content = "hi\n"
 
@@ -32,6 +34,7 @@ func TestRenderToolUsesFullTUIRenderer(t *testing.T) {
 }
 
 func TestRenderToolDoesNotLeakAnimationSubscription(t *testing.T) {
+	t.Parallel()
 	assert.False(t, animation.HasActive())
 	renderToolWithState(*shellToolView(tuitypes.ToolStatusRunning), 80, 3, nil)
 	assert.False(t, animation.HasActive())

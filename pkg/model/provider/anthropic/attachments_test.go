@@ -24,6 +24,7 @@ var minPDF = []byte{0x25, 0x50, 0x44, 0x46, 0x2D} // %PDF-
 // TestConvertDocumentAnthropic_StrategyB64_Image verifies that an image document
 // with InlineData and a vision-capable model produces a native ImageBlockParam.
 func TestConvertDocumentAnthropic_StrategyB64_Image(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",
@@ -41,6 +42,7 @@ func TestConvertDocumentAnthropic_StrategyB64_Image(t *testing.T) {
 // TestConvertDocumentAnthropic_StrategyB64_PDF verifies that a PDF document
 // produces a native BetaRequestDocumentBlock when the model supports PDFs.
 func TestConvertDocumentAnthropic_StrategyB64_PDF(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "spec.pdf",
 		MimeType: "application/pdf",
@@ -66,6 +68,7 @@ func TestConvertDocumentAnthropic_StrategyB64_PDF(t *testing.T) {
 // The image block must be present in the output — which only happens if the
 // fully-qualified "anthropic/claude-sonnet-4-6" was used for the caps lookup.
 func TestConvertDocumentAnthropic_QualifiedIDRequired(t *testing.T) {
+	t.Parallel()
 	store := modelsdev.NewDatabaseStore(&modelsdev.Database{
 		Providers: map[string]modelsdev.Provider{
 			"anthropic": {
@@ -111,6 +114,7 @@ func TestConvertDocumentAnthropic_QualifiedIDRequired(t *testing.T) {
 }
 
 func TestConvertDocumentAnthropic_StrategyTXT(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "spec.md",
 		MimeType: "text/markdown",
@@ -127,6 +131,7 @@ func TestConvertDocumentAnthropic_StrategyTXT(t *testing.T) {
 }
 
 func TestConvertDocumentAnthropic_StrategyTXT_Envelope(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "notes.txt",
 		MimeType: "text/plain",
@@ -142,6 +147,7 @@ func TestConvertDocumentAnthropic_StrategyTXT_Envelope(t *testing.T) {
 }
 
 func TestConvertDocumentAnthropic_Drop_NoContent(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "empty.txt",
 		MimeType: "text/plain",
@@ -154,6 +160,7 @@ func TestConvertDocumentAnthropic_Drop_NoContent(t *testing.T) {
 }
 
 func TestConvertDocumentAnthropic_Drop_UnsupportedMIME(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",

@@ -17,6 +17,7 @@ var minJPEG = []byte{0xFF, 0xD8, 0xFF, 0xE0}
 // TestConvertDocumentGemini_StrategyB64_Image verifies that an image document
 // with InlineData and a vision-capable model produces a Blob part (not a text part).
 func TestConvertDocumentGemini_StrategyB64_Image(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",
@@ -36,6 +37,7 @@ func TestConvertDocumentGemini_StrategyB64_Image(t *testing.T) {
 // TestConvertDocumentGemini_StrategyB64_ImageDropped verifies that an image is
 // dropped when the model does not support vision.
 func TestConvertDocumentGemini_StrategyB64_ImageDropped(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",
@@ -49,6 +51,7 @@ func TestConvertDocumentGemini_StrategyB64_ImageDropped(t *testing.T) {
 }
 
 func TestConvertDocumentGemini_StrategyTXT(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "readme.md",
 		MimeType: "text/markdown",
@@ -64,6 +67,7 @@ func TestConvertDocumentGemini_StrategyTXT(t *testing.T) {
 }
 
 func TestConvertDocumentGemini_StrategyTXT_Envelope(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "data.csv",
 		MimeType: "text/csv",
@@ -77,6 +81,7 @@ func TestConvertDocumentGemini_StrategyTXT_Envelope(t *testing.T) {
 }
 
 func TestConvertDocumentGemini_Drop_NoContent(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "empty.txt",
 		MimeType: "text/plain",

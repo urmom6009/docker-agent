@@ -9,6 +9,7 @@ import (
 )
 
 func TestMap_StoreLoad(t *testing.T) {
+	t.Parallel()
 	m := NewMap[string, int]()
 
 	m.Store("a", 1)
@@ -27,6 +28,7 @@ func TestMap_StoreLoad(t *testing.T) {
 }
 
 func TestMap_StoreOverwrites(t *testing.T) {
+	t.Parallel()
 	m := NewMap[string, int]()
 	m.Store("k", 1)
 	m.Store("k", 2)
@@ -38,6 +40,7 @@ func TestMap_StoreOverwrites(t *testing.T) {
 }
 
 func TestMap_Delete(t *testing.T) {
+	t.Parallel()
 	m := NewMap[string, int]()
 	m.Store("a", 1)
 	m.Store("b", 2)
@@ -53,6 +56,7 @@ func TestMap_Delete(t *testing.T) {
 }
 
 func TestMap_Length(t *testing.T) {
+	t.Parallel()
 	m := NewMap[string, int]()
 	assert.Equal(t, 0, m.Length())
 
@@ -63,6 +67,7 @@ func TestMap_Length(t *testing.T) {
 }
 
 func TestMap_Range(t *testing.T) {
+	t.Parallel()
 	m := NewMap[string, int]()
 	m.Store("a", 1)
 	m.Store("b", 2)
@@ -85,6 +90,7 @@ func TestMap_Range(t *testing.T) {
 }
 
 func TestMap_RangeCallbackCanMutate(t *testing.T) {
+	t.Parallel()
 	// Range iterates over a snapshot, so callbacks may safely mutate the map
 	// without deadlocking.
 	m := NewMap[string, int]()
@@ -100,6 +106,7 @@ func TestMap_RangeCallbackCanMutate(t *testing.T) {
 }
 
 func TestMap_ZeroValueStore(t *testing.T) {
+	t.Parallel()
 	// The zero value of Map must be usable: Store should lazily initialise
 	// the underlying map instead of panicking.
 	var m Map[string, int]
@@ -111,6 +118,7 @@ func TestMap_ZeroValueStore(t *testing.T) {
 }
 
 func TestMap_LoadOrStore(t *testing.T) {
+	t.Parallel()
 	m := NewMap[string, int]()
 
 	val, loaded := m.LoadOrStore("a", 1)
@@ -128,6 +136,7 @@ func TestMap_LoadOrStore(t *testing.T) {
 }
 
 func TestMap_LoadOrStoreZeroValue(t *testing.T) {
+	t.Parallel()
 	// The zero value of Map must be usable for LoadOrStore as well.
 	var m Map[string, int]
 	val, loaded := m.LoadOrStore("a", 42)
@@ -136,6 +145,7 @@ func TestMap_LoadOrStoreZeroValue(t *testing.T) {
 }
 
 func TestMap_LoadOrStoreConcurrent(t *testing.T) {
+	t.Parallel()
 	// Concurrent LoadOrStore calls for the same key must all return the
 	// same value, with exactly one of them reporting loaded == false.
 	m := NewMap[int, int]()
@@ -165,6 +175,7 @@ func TestMap_LoadOrStoreConcurrent(t *testing.T) {
 }
 
 func TestMap_Concurrent(t *testing.T) {
+	t.Parallel()
 	m := NewMap[int, int]()
 	var wg sync.WaitGroup
 
@@ -187,6 +198,7 @@ func TestMap_Concurrent(t *testing.T) {
 }
 
 func TestMap_Clear(t *testing.T) {
+	t.Parallel()
 	m := NewMap[string, int]()
 	m.Store("a", 1)
 	m.Store("b", 2)
@@ -206,6 +218,7 @@ func TestMap_Clear(t *testing.T) {
 }
 
 func TestMap_ClearZeroValue(t *testing.T) {
+	t.Parallel()
 	var m Map[string, int]
 	m.Clear() // should not panic on zero-value map
 	assert.Equal(t, 0, m.Length())

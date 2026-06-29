@@ -10,11 +10,13 @@ import (
 )
 
 func TestGetAbsolutePaths_WithBasePath(t *testing.T) {
+	t.Parallel()
 	result := GetAbsolutePaths("/base", []string{"relative/file.go", "/absolute/file.go"})
 	assert.Equal(t, []string{"/base/relative/file.go", "/absolute/file.go"}, result)
 }
 
 func TestGetAbsolutePaths_EmptyBasePath(t *testing.T) {
+	t.Parallel()
 	// When basePath is empty (OCI/URL sources), relative paths should be
 	// resolved against the current working directory instead of producing
 	// broken paths like "relative/file.go".
@@ -28,6 +30,7 @@ func TestGetAbsolutePaths_EmptyBasePath(t *testing.T) {
 }
 
 func TestGetAbsolutePaths_NilInput(t *testing.T) {
+	t.Parallel()
 	result := GetAbsolutePaths("/base", nil)
 	assert.Nil(t, result)
 }

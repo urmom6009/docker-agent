@@ -11,6 +11,7 @@ import (
 )
 
 func TestWithModelOverride_Empty(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(_ context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{{Name: "read_file"}}, nil
@@ -23,6 +24,7 @@ func TestWithModelOverride_Empty(t *testing.T) {
 }
 
 func TestWithModelOverride_SetsModelOnTools(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(_ context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{
@@ -41,6 +43,7 @@ func TestWithModelOverride_SetsModelOnTools(t *testing.T) {
 }
 
 func TestWithModelOverride_DoesNotMutateOriginal(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(_ context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{
@@ -62,6 +65,7 @@ func TestWithModelOverride_DoesNotMutateOriginal(t *testing.T) {
 }
 
 func TestWithModelOverride_Unwrap(t *testing.T) {
+	t.Parallel()
 	inner := &mockToolSet{
 		toolsFunc: func(_ context.Context) ([]tools.Tool, error) {
 			return []tools.Tool{{Name: "read_file"}}, nil
@@ -76,6 +80,7 @@ func TestWithModelOverride_Unwrap(t *testing.T) {
 }
 
 func TestWithModelOverride_Instructions(t *testing.T) {
+	t.Parallel()
 	inner := &instructableToolSet{
 		mockToolSet: mockToolSet{
 			toolsFunc: func(_ context.Context) ([]tools.Tool, error) {

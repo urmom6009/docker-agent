@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewLoadsAgentAndWelcomeMessage(t *testing.T) {
+	t.Parallel()
 	cfg := []byte(`agents:
   root:
     description: Test agent
@@ -33,6 +34,7 @@ func TestNewLoadsAgentAndWelcomeMessage(t *testing.T) {
 }
 
 func TestNewRequiresAgentSource(t *testing.T) {
+	t.Parallel()
 	s, err := New(t.Context(), Config{})
 	require.Nil(t, s)
 	require.ErrorIs(t, err, ErrAgentSourceRequired)
@@ -75,6 +77,7 @@ func newTestSession(rt *fakeRuntime) *Session {
 }
 
 func TestTranslateRuntimeEvent(t *testing.T) {
+	t.Parallel()
 	call := tools.ToolCall{ID: "call-1", Function: tools.FunctionCall{Name: "tool"}}
 	def := tools.Tool{Name: "tool"}
 
@@ -99,6 +102,7 @@ func TestTranslateRuntimeEvent(t *testing.T) {
 }
 
 func TestSessionSendStreamsEventsAndDone(t *testing.T) {
+	t.Parallel()
 	rt := newFakeRuntime()
 	s := newTestSession(rt)
 
@@ -116,6 +120,7 @@ func TestSessionSendStreamsEventsAndDone(t *testing.T) {
 }
 
 func TestSessionSendSurfacesConfirmationAndConfirmResumesRuntime(t *testing.T) {
+	t.Parallel()
 	rt := newFakeRuntime()
 	s := newTestSession(rt)
 
@@ -138,6 +143,7 @@ func TestSessionSendSurfacesConfirmationAndConfirmResumesRuntime(t *testing.T) {
 }
 
 func TestSessionSendHandlesRuntimeErrorWithoutDone(t *testing.T) {
+	t.Parallel()
 	rt := newFakeRuntime()
 	s := newTestSession(rt)
 
@@ -154,6 +160,7 @@ func TestSessionSendHandlesRuntimeErrorWithoutDone(t *testing.T) {
 }
 
 func TestSessionSendDeclinesElicitationAndRejectsMaxIterations(t *testing.T) {
+	t.Parallel()
 	rt := newFakeRuntime()
 	s := newTestSession(rt)
 
@@ -170,6 +177,7 @@ func TestSessionSendDeclinesElicitationAndRejectsMaxIterations(t *testing.T) {
 }
 
 func TestSessionSendRejectsConcurrentRun(t *testing.T) {
+	t.Parallel()
 	rt := newFakeRuntime()
 	s := newTestSession(rt)
 
@@ -186,6 +194,7 @@ func TestSessionSendRejectsConcurrentRun(t *testing.T) {
 }
 
 func TestSessionRejectsOperationsAfterClose(t *testing.T) {
+	t.Parallel()
 	rt := newFakeRuntime()
 	s := newTestSession(rt)
 
@@ -200,6 +209,7 @@ func TestSessionRejectsOperationsAfterClose(t *testing.T) {
 }
 
 func TestSessionCloseCancelsActiveRunAndClosesRuntime(t *testing.T) {
+	t.Parallel()
 	rt := newFakeRuntime()
 	s := newTestSession(rt)
 
@@ -217,6 +227,7 @@ func TestSessionCloseCancelsActiveRunAndClosesRuntime(t *testing.T) {
 }
 
 func TestSessionRestartKeepsRunActiveUntilRuntimeStops(t *testing.T) {
+	t.Parallel()
 	rt := newFakeRuntime()
 	s := newTestSession(rt)
 
@@ -237,6 +248,7 @@ func TestSessionRestartKeepsRunActiveUntilRuntimeStops(t *testing.T) {
 }
 
 func TestSessionRestartCancelsRunAndReplacesConversation(t *testing.T) {
+	t.Parallel()
 	rt := newFakeRuntime()
 	s := newTestSession(rt)
 

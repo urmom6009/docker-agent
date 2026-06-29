@@ -17,6 +17,7 @@ import (
 )
 
 func TestInlineImagesFromToolResultIncludesImagesAndImageDocuments(t *testing.T) {
+	t.Parallel()
 	b64 := testPNGBase64(t)
 	result := &tools.ToolCallResult{
 		Images: []tools.MediaContent{{Data: b64, MimeType: "image/png"}},
@@ -36,6 +37,7 @@ func TestInlineImagesFromToolResultIncludesImagesAndImageDocuments(t *testing.T)
 }
 
 func TestRenderToolIncludesKittyImageSequence(t *testing.T) {
+	t.Parallel()
 	b64 := testPNGBase64(t)
 	images := inlineImagesFromToolResult(&tools.ToolCallResult{
 		Images: []tools.MediaContent{{Data: b64, MimeType: "image/png"}},
@@ -63,6 +65,7 @@ func TestRenderToolIncludesKittyImageSequence(t *testing.T) {
 }
 
 func TestInlineImageFromBase64RejectsNonImages(t *testing.T) {
+	t.Parallel()
 	_, ok := inlineImageFromBase64("notes.txt", "text/plain", base64.StdEncoding.EncodeToString([]byte("hello")))
 	assert.False(t, ok)
 }

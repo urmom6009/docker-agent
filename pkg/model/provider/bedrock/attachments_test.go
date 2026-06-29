@@ -21,6 +21,7 @@ var minPDF = []byte{0x25, 0x50, 0x44, 0x46, 0x2D} // %PDF-
 // TestConvertDocumentBedrock_StrategyB64_Image verifies that an image document
 // with InlineData and a vision-capable model produces a ContentBlockMemberImage.
 func TestConvertDocumentBedrock_StrategyB64_Image(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",
@@ -42,6 +43,7 @@ func TestConvertDocumentBedrock_StrategyB64_Image(t *testing.T) {
 // TestConvertDocumentBedrock_StrategyB64_PDF verifies that a PDF document
 // produces a ContentBlockMemberDocument when the model supports PDFs.
 func TestConvertDocumentBedrock_StrategyB64_PDF(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "spec.pdf",
 		MimeType: "application/pdf",
@@ -60,6 +62,7 @@ func TestConvertDocumentBedrock_StrategyB64_PDF(t *testing.T) {
 // TestConvertDocumentBedrock_StrategyB64_ImageDropped verifies that an image
 // is dropped when the model does not support vision.
 func TestConvertDocumentBedrock_StrategyB64_ImageDropped(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",
@@ -73,6 +76,7 @@ func TestConvertDocumentBedrock_StrategyB64_ImageDropped(t *testing.T) {
 }
 
 func TestConvertDocumentBedrock_StrategyTXT(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "notes.md",
 		MimeType: "text/markdown",
@@ -90,6 +94,7 @@ func TestConvertDocumentBedrock_StrategyTXT(t *testing.T) {
 }
 
 func TestConvertDocumentBedrock_StrategyTXT_Envelope(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "data.csv",
 		MimeType: "text/csv",
@@ -105,6 +110,7 @@ func TestConvertDocumentBedrock_StrategyTXT_Envelope(t *testing.T) {
 }
 
 func TestConvertDocumentBedrock_Drop_NoContent(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "empty.txt",
 		MimeType: "text/plain",
@@ -117,6 +123,7 @@ func TestConvertDocumentBedrock_Drop_NoContent(t *testing.T) {
 }
 
 func TestSanitizeDocumentName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string

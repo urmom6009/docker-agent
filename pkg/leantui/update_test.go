@@ -102,6 +102,7 @@ func (r *cycleThinkingRuntime) OnToolsChanged(func(runtime.Event))              
 var _ runtime.Runtime = (*cycleThinkingRuntime)(nil)
 
 func TestShiftTabCyclesThinkingLevel(t *testing.T) {
+	t.Parallel()
 	rt := &cycleThinkingRuntime{supports: true, level: effort.High}
 	m := bareModel(24)
 	m.app = app.New(t.Context(), rt, session.New())
@@ -114,6 +115,7 @@ func TestShiftTabCyclesThinkingLevel(t *testing.T) {
 }
 
 func TestShiftTabReportsUnsupportedThinkingLevel(t *testing.T) {
+	t.Parallel()
 	rt := &cycleThinkingRuntime{supports: true, err: runtime.ErrUnsupported}
 	m := bareModel(24)
 	m.app = app.New(t.Context(), rt, session.New())

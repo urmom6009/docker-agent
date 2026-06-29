@@ -12,6 +12,7 @@ import (
 )
 
 func TestIsModelGardenConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		cfg  *latest.ModelConfig
@@ -76,6 +77,7 @@ func TestIsModelGardenConfig(t *testing.T) {
 }
 
 func TestWithModelsDevProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		cfg          *latest.ModelConfig
@@ -177,6 +179,7 @@ func TestWithModelsDevProvider(t *testing.T) {
 // publisher name (e.g. "meta") produced double-prefixed IDs like
 // "meta/meta/llama-..." that do not exist in models.dev.
 func TestWithModelsDevProvider_CapabilityLookupIDs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		cfg    *latest.ModelConfig
@@ -233,6 +236,7 @@ func TestWithModelsDevProvider_CapabilityLookupIDs(t *testing.T) {
 }
 
 func TestPublisher(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		cfg  *latest.ModelConfig
@@ -262,6 +266,7 @@ func TestPublisher(t *testing.T) {
 }
 
 func TestValidGCPIdentifier(t *testing.T) {
+	t.Parallel()
 	valid := []string{"my-project", "us-central1", "project123", "ab"}
 	for _, s := range valid {
 		if !validGCPIdentifier.MatchString(s) {
@@ -278,6 +283,7 @@ func TestValidGCPIdentifier(t *testing.T) {
 }
 
 func TestResolveProjectLocation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		cfg         *latest.ModelConfig

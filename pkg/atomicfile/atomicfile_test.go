@@ -14,6 +14,7 @@ import (
 )
 
 func TestWriteCreatesFileWithMode(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("file modes are POSIX-only")
 	}
@@ -33,6 +34,7 @@ func TestWriteCreatesFileWithMode(t *testing.T) {
 }
 
 func TestWriteOverwritesAndRetightensMode(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("file modes are POSIX-only")
 	}
@@ -53,6 +55,7 @@ func TestWriteOverwritesAndRetightensMode(t *testing.T) {
 }
 
 func TestWriteReturnsErrorForMissingDirectory(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "missing", "file")
 

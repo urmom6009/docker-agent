@@ -12,6 +12,7 @@ import (
 )
 
 func TestCommandsUnmarshal_Map(t *testing.T) {
+	t.Parallel()
 	var c types.Commands
 	input := []byte(`
 df: "check disk"
@@ -24,6 +25,7 @@ ls: "list files"
 }
 
 func TestCommandsUnmarshal_List(t *testing.T) {
+	t.Parallel()
 	var c types.Commands
 	input := []byte(`
 - df: "check disk"
@@ -36,6 +38,7 @@ func TestCommandsUnmarshal_List(t *testing.T) {
 }
 
 func TestCommandsUnmarshal_URL(t *testing.T) {
+	t.Parallel()
 	var c types.Commands
 	input := []byte(`
 feedback:

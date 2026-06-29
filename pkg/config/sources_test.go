@@ -135,6 +135,7 @@ func TestURLSource_Read_ConnectionError(t *testing.T) {
 }
 
 func TestURLSource_Read_CachesContent(t *testing.T) {
+	t.Parallel()
 	// Not parallel - uses shared cache directory
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -172,6 +173,7 @@ func TestURLSource_Read_CachesContent(t *testing.T) {
 }
 
 func TestURLSource_Read_UsesETagForConditionalRequest(t *testing.T) {
+	t.Parallel()
 	// Not parallel - uses shared cache directory
 
 	var requestCount atomic.Int32
@@ -211,6 +213,7 @@ func TestURLSource_Read_UsesETagForConditionalRequest(t *testing.T) {
 }
 
 func TestURLSource_Read_FallsBackToCacheOnNetworkError(t *testing.T) {
+	t.Parallel()
 	// Not parallel - uses shared cache directory
 
 	// Pre-populate cache for a non-existent server
@@ -235,6 +238,7 @@ func TestURLSource_Read_FallsBackToCacheOnNetworkError(t *testing.T) {
 }
 
 func TestURLSource_Read_FallsBackToCacheOnHTTPError(t *testing.T) {
+	t.Parallel()
 	// Not parallel - uses shared cache directory
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -263,6 +267,7 @@ func TestURLSource_Read_FallsBackToCacheOnHTTPError(t *testing.T) {
 }
 
 func TestURLSource_Read_UpdatesCacheWhenContentChanges(t *testing.T) {
+	t.Parallel()
 	// Not parallel - uses shared cache directory
 
 	var serverContent atomic.Value
@@ -411,6 +416,7 @@ func TestURLSource_Read_RejectsLocalAddresses(t *testing.T) {
 }
 
 func TestURLSource_Read_RejectsHTTPRedirect(t *testing.T) {
+	t.Parallel()
 	// Not parallel - clears cache.
 
 	// HTTPS origin that 302s to plain http. We use httptest.NewTLSServer so

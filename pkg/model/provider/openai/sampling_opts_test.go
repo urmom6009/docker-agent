@@ -10,6 +10,7 @@ import (
 )
 
 func TestApplySamplingProviderOpts(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		opts     map[string]any

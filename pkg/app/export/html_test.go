@@ -14,6 +14,7 @@ import (
 // raw HTML in assistant content, preventing stored XSS in exported HTML files.
 // This is a regression test for the html.WithUnsafe() removal.
 func TestRenderMarkdownEscapesRawHTML(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		input   string
@@ -66,6 +67,7 @@ func TestRenderMarkdownEscapesRawHTML(t *testing.T) {
 // TestGenerateEscapesAssistantHTML verifies the end-to-end export does not
 // emit attacker-controlled raw HTML from assistant messages.
 func TestGenerateEscapesAssistantHTML(t *testing.T) {
+	t.Parallel()
 	data := SessionData{
 		Title:     "test",
 		CreatedAt: time.Now(),

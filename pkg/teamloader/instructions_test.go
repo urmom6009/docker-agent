@@ -19,6 +19,7 @@ func (t toolSet) Instructions() string {
 }
 
 func TestWithEmptyInstructions(t *testing.T) {
+	t.Parallel()
 	inner := &toolSet{}
 
 	wrapped := WithInstructions(inner, "")
@@ -27,6 +28,7 @@ func TestWithEmptyInstructions(t *testing.T) {
 }
 
 func TestWithInstructions_replace(t *testing.T) {
+	t.Parallel()
 	inner := &toolSet{
 		instruction: "Existing instructions",
 	}
@@ -37,6 +39,7 @@ func TestWithInstructions_replace(t *testing.T) {
 }
 
 func TestWithInstructions_add(t *testing.T) {
+	t.Parallel()
 	inner := &toolSet{
 		instruction: "Existing instructions",
 	}

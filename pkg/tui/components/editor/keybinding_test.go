@@ -16,6 +16,7 @@ import (
 // derived from the resolved config so the test holds whether or not a user has
 // remapped editor_newline.
 func TestConfigureNewlineKeybinding(t *testing.T) {
+	t.Parallel()
 	core.ResetKeys()
 	t.Cleanup(core.ResetKeys)
 	want := core.GetKeys().EditorNewline.Keys()

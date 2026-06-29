@@ -88,6 +88,7 @@ func newAgent() *agent.Agent {
 }
 
 func TestDispatcher_RoutesToToolsetHandler(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 	sess.ToolsApproved = true // skip approval so we exercise the happy path
@@ -118,6 +119,7 @@ func TestDispatcher_RoutesToToolsetHandler(t *testing.T) {
 }
 
 func TestDispatcher_EmitsToolOutputFromHandlerContext(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 	sess.ToolsApproved = true
@@ -146,6 +148,7 @@ func TestDispatcher_EmitsToolOutputFromHandlerContext(t *testing.T) {
 }
 
 func TestDispatcher_RecordsDocumentToolResult(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 	sess.ToolsApproved = true
@@ -184,6 +187,7 @@ func TestDispatcher_RecordsDocumentToolResult(t *testing.T) {
 }
 
 func TestDispatcher_RoutesToRuntimeHandler(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 	sess.ToolsApproved = true
@@ -221,6 +225,7 @@ func TestDispatcher_RoutesToRuntimeHandler(t *testing.T) {
 }
 
 func TestDispatcher_UnknownToolEmitsErrorResponse(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 
@@ -241,6 +246,7 @@ func TestDispatcher_UnknownToolEmitsErrorResponse(t *testing.T) {
 }
 
 func TestDispatcher_UserCancellationStopsBatchAndSynthesizesRemaining(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 
@@ -285,6 +291,7 @@ func TestDispatcher_UserCancellationStopsBatchAndSynthesizesRemaining(t *testing
 }
 
 func TestDispatcher_ResumeApproveRunsTool(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 
@@ -319,6 +326,7 @@ func TestDispatcher_ResumeApproveRunsTool(t *testing.T) {
 }
 
 func TestDispatcher_ResumeRejectEmitsErrorResponseWithReason(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 
@@ -348,6 +356,7 @@ func TestDispatcher_ResumeRejectEmitsErrorResponseWithReason(t *testing.T) {
 }
 
 func TestDispatcher_ResumeApproveToolPersistsToSessionPermissions(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 
@@ -380,6 +389,7 @@ func TestDispatcher_ResumeApproveToolPersistsToSessionPermissions(t *testing.T) 
 }
 
 func TestDispatcher_ReadOnlyHintAutoApproves(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New() // ToolsApproved=false; no permissions configured
 
@@ -412,6 +422,7 @@ func TestDispatcher_ReadOnlyHintAutoApproves(t *testing.T) {
 }
 
 func TestDispatcher_DenyByPermissionsEmitsErrorResponse(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 
@@ -449,6 +460,7 @@ func TestDispatcher_DenyByPermissionsEmitsErrorResponse(t *testing.T) {
 // with a stub HookDispatcher so the test doesn't depend on the
 // portcullis ruleset shipping a particular set of patterns.
 func TestDispatcher_ToolResponseTransformRewritesOutput(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 	sess.ToolsApproved = true
@@ -501,6 +513,7 @@ func TestDispatcher_ToolResponseTransformRewritesOutput(t *testing.T) {
 // returns nil for the event), the original output flows through
 // untouched and no surprise allocations happen.
 func TestDispatcher_ToolResponseTransformIsNoOpWithoutHooks(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 	sess.ToolsApproved = true
@@ -540,6 +553,7 @@ func TestDispatcher_ToolResponseTransformIsNoOpWithoutHooks(t *testing.T) {
 // rejection reason would leak — errorResponse used to bypass the
 // rewrite chain entirely.
 func TestDispatcher_ToolResponseTransformAppliesToErrorResponse(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 
@@ -581,6 +595,7 @@ func TestDispatcher_ToolResponseTransformAppliesToErrorResponse(t *testing.T) {
 // toolset's static [tools.Tool.Metadata] reaches the tool-call
 // confirmation event when the user is prompted.
 func TestDispatcher_ConfirmationCarriesToolMetadata(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 
@@ -613,6 +628,7 @@ func TestDispatcher_ConfirmationCarriesToolMetadata(t *testing.T) {
 // permission_request hook can enrich the confirmation metadata and that
 // hook keys win over the toolset's own keys on a clash.
 func TestDispatcher_ConfirmationMergesHookMetadata(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 
@@ -660,6 +676,7 @@ func TestDispatcher_ConfirmationMergesHookMetadata(t *testing.T) {
 // the confirmation event carries nil metadata when neither the toolset
 // nor a hook contributed any, keeping the wire payload lean.
 func TestDispatcher_ConfirmationMetadataNilWhenNoneSupplied(t *testing.T) {
+	t.Parallel()
 	a := newAgent()
 	sess := session.New()
 

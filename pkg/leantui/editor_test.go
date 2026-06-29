@@ -9,6 +9,7 @@ import (
 )
 
 func TestEditorInsertAndText(t *testing.T) {
+	t.Parallel()
 	e := newEditor("")
 	e.insert([]rune("hello"))
 	assert.Equal(t, "hello", e.text())
@@ -20,12 +21,14 @@ func TestEditorInsertAndText(t *testing.T) {
 }
 
 func TestEditorInsertStripsCarriageReturns(t *testing.T) {
+	t.Parallel()
 	e := newEditor("")
 	e.insert([]rune("a\r\nb"))
 	assert.Equal(t, "a\nb", e.text())
 }
 
 func TestEditorBackspaceAndDelete(t *testing.T) {
+	t.Parallel()
 	e := newEditor("")
 	e.setText("abc")
 	e.backspace()
@@ -37,6 +40,7 @@ func TestEditorBackspaceAndDelete(t *testing.T) {
 }
 
 func TestEditorWordOps(t *testing.T) {
+	t.Parallel()
 	e := newEditor("")
 	e.setText("foo bar baz")
 	e.moveWordLeft()
@@ -54,6 +58,7 @@ func TestEditorWordOps(t *testing.T) {
 }
 
 func TestEditorLayoutSingleLine(t *testing.T) {
+	t.Parallel()
 	e := newEditor("")
 	e.setText("hello")
 	lines, row, col := e.layout(20)
@@ -64,6 +69,7 @@ func TestEditorLayoutSingleLine(t *testing.T) {
 }
 
 func TestEditorLayoutWrapping(t *testing.T) {
+	t.Parallel()
 	e := newEditor("")
 	e.setText(strings.Repeat("a", 25))
 	lines, row, col := e.layout(12) // content width 10
@@ -76,6 +82,7 @@ func TestEditorLayoutWrapping(t *testing.T) {
 }
 
 func TestEditorLayoutPlaceholder(t *testing.T) {
+	t.Parallel()
 	e := newEditor("type here")
 	lines, row, col := e.layout(40)
 	require.Len(t, lines, 1)
@@ -85,6 +92,7 @@ func TestEditorLayoutPlaceholder(t *testing.T) {
 }
 
 func TestEditorVerticalMovement(t *testing.T) {
+	t.Parallel()
 	e := newEditor("")
 	e.setText("line1\nline2\nline3")
 	// cursor at end (line3)
@@ -98,6 +106,7 @@ func TestEditorVerticalMovement(t *testing.T) {
 }
 
 func TestEditorHistory(t *testing.T) {
+	t.Parallel()
 	e := newEditor("")
 	e.rememberHistory("first")
 	e.rememberHistory("second")
@@ -117,6 +126,7 @@ func TestEditorHistory(t *testing.T) {
 }
 
 func TestEditorHistoryDeduplicates(t *testing.T) {
+	t.Parallel()
 	e := newEditor("")
 	e.rememberHistory("same")
 	e.rememberHistory("same")

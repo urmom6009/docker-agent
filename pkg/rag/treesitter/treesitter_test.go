@@ -36,6 +36,7 @@ func (c *Calculator) Add(a, b int) int {
 }
 
 func TestTreeSitterPreProcessor_IncludesGodocComments(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(80, 0, false)
 
 	// Test case with godoc-style comments
@@ -69,6 +70,7 @@ func Subtract(a, b int) int {
 }
 
 func TestTreeSitterPreProcessor_FunctionWithoutComment(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(1000, 0, false)
 
 	content := []byte(`package main
@@ -88,6 +90,7 @@ func Multiply(a, b int) int {
 }
 
 func TestTreeSitterPreProcessor_MethodWithComment(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(1000, 0, false)
 
 	content := []byte(`package main
@@ -110,6 +113,7 @@ func (c Calculator) Calculate(a, b int) int {
 }
 
 func TestTreeSitterPreProcessor_MultilineComment(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(1000, 0, false)
 
 	content := []byte(`package main
@@ -137,6 +141,7 @@ func Divide(a, b int) (int, error) {
 }
 
 func TestTreeSitterPreProcessor_BlankLinesBetweenCommentAndFunction(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(1000, 0, false)
 
 	// Test with more than one blank line between comment and function
@@ -161,6 +166,7 @@ func Process() {
 }
 
 func TestTreeSitterPreProcessor_AdjacentComment(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(1000, 0, false)
 
 	// Test with no blank line between comment and function (most common godoc style)
@@ -182,6 +188,7 @@ func Handler() {
 }
 
 func TestTreeSitterPreProcessor_MixedCommentsAndFunctions(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(80, 0, false)
 
 	content := []byte(`package main
@@ -224,6 +231,7 @@ func Third() {
 }
 
 func TestTreeSitterPreProcessor_ChunkSizeRespected(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(50, 0, false)
 
 	content := []byte(`package main
@@ -248,6 +256,7 @@ func Another(x int) int {
 }
 
 func TestTreeSitterPreProcessor_LargeFunctionExceedsChunkSize(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(50, 0, false)
 
 	content := []byte(`package main
@@ -279,6 +288,7 @@ func ProcessData() {
 }
 
 func TestTreeSitterPreProcessor_UnsupportedExtension(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(1000, 0, false)
 
 	content := []byte(`console.log("hello");`)
@@ -292,6 +302,7 @@ func TestTreeSitterPreProcessor_UnsupportedExtension(t *testing.T) {
 }
 
 func TestTreeSitterPreProcessor_EmptyFile(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(1000, 0, false)
 
 	content := []byte(`package main`)
@@ -303,6 +314,7 @@ func TestTreeSitterPreProcessor_EmptyFile(t *testing.T) {
 }
 
 func TestTreeSitterPreProcessor_BlockCommentStyle(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(1000, 0, false)
 
 	content := []byte(`package main
@@ -327,6 +339,7 @@ func BlockCommented() {
 }
 
 func TestTreeSitterPreProcessor_FunctionsGroupedInChunk(t *testing.T) {
+	t.Parallel()
 	processor := NewDocumentProcessor(10000, 0, false)
 
 	content := []byte(`package main

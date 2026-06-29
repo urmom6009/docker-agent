@@ -10,6 +10,7 @@ import (
 )
 
 func TestRotatingFile_Write(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.log")
 
@@ -28,6 +29,7 @@ func TestRotatingFile_Write(t *testing.T) {
 }
 
 func TestRotatingFile_Rotate(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.log")
 
@@ -64,6 +66,7 @@ func TestRotatingFile_Rotate(t *testing.T) {
 }
 
 func TestRotatingFile_MaxBackups(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.log")
 
@@ -98,6 +101,7 @@ func TestRotatingFile_MaxBackups(t *testing.T) {
 }
 
 func TestRotatingFile_AppendsToExisting(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.log")
 
@@ -118,6 +122,7 @@ func TestRotatingFile_AppendsToExisting(t *testing.T) {
 }
 
 func TestRotatingFile_CreatesDirectory(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "subdir", "nested", "test.log")
 

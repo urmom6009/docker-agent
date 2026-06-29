@@ -35,6 +35,7 @@ func newFetchToolForTest(opts ...ToolOption) *ToolSet {
 }
 
 func TestFetchToolWithOptions(t *testing.T) {
+	t.Parallel()
 	customTimeout := 60 * time.Second
 
 	tool := newFetchToolForTest(WithTimeout(customTimeout))
@@ -43,6 +44,7 @@ func TestFetchToolWithOptions(t *testing.T) {
 }
 
 func TestFetchTool_Tools(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest()
 
 	allTools, err := tool.Tools(t.Context())
@@ -93,6 +95,7 @@ func TestFetchTool_Tools(t *testing.T) {
 }
 
 func TestFetchTool_Instructions(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest()
 
 	instructions := tools.GetInstructions(tool)
@@ -101,6 +104,7 @@ func TestFetchTool_Instructions(t *testing.T) {
 }
 
 func TestFetchTool_StartStop(t *testing.T) {
+	t.Parallel()
 	// Tool doesn't need to implement Startable -
 	// it has no initialization or cleanup requirements
 	tool := newFetchToolForTest()
@@ -111,6 +115,7 @@ func TestFetchTool_StartStop(t *testing.T) {
 }
 
 func TestFetch_Call_Success(t *testing.T) {
+	t.Parallel()
 	url := runHTTPServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		fmt.Fprint(w, "Hello, World!")
@@ -128,6 +133,7 @@ func TestFetch_Call_Success(t *testing.T) {
 }
 
 func TestFetch_Call_MultipleURLs(t *testing.T) {
+	t.Parallel()
 	url1 := runHTTPServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, "Server 1")
 	})
@@ -150,6 +156,7 @@ func TestFetch_Call_MultipleURLs(t *testing.T) {
 }
 
 func TestFetch_Call_InvalidURL(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest()
 
 	result, err := tool.handler.CallTool(t.Context(), ToolArgs{
@@ -162,6 +169,7 @@ func TestFetch_Call_InvalidURL(t *testing.T) {
 }
 
 func TestFetch_Call_UnsupportedProtocol(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest()
 
 	result, err := tool.handler.CallTool(t.Context(), ToolArgs{
@@ -175,6 +183,7 @@ func TestFetch_Call_UnsupportedProtocol(t *testing.T) {
 }
 
 func TestFetch_Call_NoURLs(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest()
 
 	_, err := tool.handler.CallTool(t.Context(), ToolArgs{})
@@ -182,6 +191,7 @@ func TestFetch_Call_NoURLs(t *testing.T) {
 }
 
 func TestFetch_Markdown(t *testing.T) {
+	t.Parallel()
 	url := runHTTPServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprint(w, "<h1>Hello docker agent</h1>")
@@ -202,6 +212,7 @@ func TestFetch_Markdown(t *testing.T) {
 }
 
 func TestFetch_Text(t *testing.T) {
+	t.Parallel()
 	url := runHTTPServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprint(w, "<h1>Hello docker agent</h1>")
@@ -231,6 +242,7 @@ func runHTTPServer(t *testing.T, handler http.HandlerFunc) string {
 }
 
 func TestFetch_RobotsAllowed(t *testing.T) {
+	t.Parallel()
 	robotsContent := "User-agent: *\nAllow: /"
 
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -259,6 +271,7 @@ func TestFetch_RobotsAllowed(t *testing.T) {
 }
 
 func TestFetch_RobotsBlocked(t *testing.T) {
+	t.Parallel()
 	robotsContent := "User-agent: *\nDisallow: /blocked"
 
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -286,6 +299,7 @@ func TestFetch_RobotsBlocked(t *testing.T) {
 }
 
 func TestFetch_RobotsMissing(t *testing.T) {
+	t.Parallel()
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/robots.txt" {
 			http.NotFound(w, r)
@@ -311,6 +325,7 @@ func TestFetch_RobotsMissing(t *testing.T) {
 }
 
 func TestFetch_RobotsCachePerHost_MultipleURLs(t *testing.T) {
+	t.Parallel()
 	// Regression test: robots.txt should be fetched once per host,
 	// but each URL's path must be evaluated individually.
 	robotsContent := "User-agent: *\nDisallow: /secret\nAllow: /"
@@ -355,6 +370,7 @@ func TestFetch_RobotsCachePerHost_MultipleURLs(t *testing.T) {
 }
 
 func TestFetch_RobotsUnexpectedStatus(t *testing.T) {
+	t.Parallel()
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/robots.txt" {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -374,6 +390,7 @@ func TestFetch_RobotsUnexpectedStatus(t *testing.T) {
 }
 
 func TestFetchTool_OutputSchema(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest()
 
 	allTools, err := tool.Tools(t.Context())
@@ -386,6 +403,7 @@ func TestFetchTool_OutputSchema(t *testing.T) {
 }
 
 func TestFetchTool_ParametersAreObjects(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest()
 
 	allTools, err := tool.Tools(t.Context())
@@ -401,6 +419,7 @@ func TestFetchTool_ParametersAreObjects(t *testing.T) {
 }
 
 func TestFetchTool_WithAllowedDomainsOption(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest(WithAllowedDomains([]string{"example.com"}))
 
 	assert.Equal(t, []string{"example.com"}, tool.handler.allowedDomains)
@@ -408,6 +427,7 @@ func TestFetchTool_WithAllowedDomainsOption(t *testing.T) {
 }
 
 func TestFetchTool_WithBlockedDomainsOption(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest(WithBlockedDomains([]string{"evil.example.com"}))
 
 	assert.Equal(t, []string{"evil.example.com"}, tool.handler.blockedDomains)
@@ -415,6 +435,7 @@ func TestFetchTool_WithBlockedDomainsOption(t *testing.T) {
 }
 
 func TestFetchTool_AllowedDomainsAppearInInstructions(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest(WithAllowedDomains([]string{"docker.com", "github.com"}))
 
 	instructions := tools.GetInstructions(tool)
@@ -425,6 +446,7 @@ func TestFetchTool_AllowedDomainsAppearInInstructions(t *testing.T) {
 }
 
 func TestFetchTool_BlockedDomainsAppearInInstructions(t *testing.T) {
+	t.Parallel()
 	tool := newFetchToolForTest(WithBlockedDomains([]string{"169.254.169.254"}))
 
 	instructions := tools.GetInstructions(tool)
@@ -434,6 +456,7 @@ func TestFetchTool_BlockedDomainsAppearInInstructions(t *testing.T) {
 }
 
 func TestFetchTool_WithHeadersOption(t *testing.T) {
+	t.Parallel()
 	headers := map[string]string{
 		"Authorization": "Bearer secret-token",
 		"X-Api-Key":     "key-123",
@@ -444,6 +467,7 @@ func TestFetchTool_WithHeadersOption(t *testing.T) {
 }
 
 func TestFetch_Headers_SentOnRequest(t *testing.T) {
+	t.Parallel()
 	var gotAuthorization, gotAPIKey, gotUserAgent, gotAgentVersion string
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/robots.txt" {
@@ -478,6 +502,7 @@ func TestFetch_Headers_SentOnRequest(t *testing.T) {
 // TestFetch_Headers_OverrideDefaults pins the precedence rule: caller-supplied
 // headers win over the default User-Agent and the format-driven Accept header.
 func TestFetch_Headers_OverrideDefaults(t *testing.T) {
+	t.Parallel()
 	var gotUserAgent, gotAccept string
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/robots.txt" {
@@ -504,6 +529,7 @@ func TestFetch_Headers_OverrideDefaults(t *testing.T) {
 }
 
 func TestMatchesDomain(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		host    string
@@ -565,6 +591,7 @@ func TestMatchesDomain(t *testing.T) {
 }
 
 func TestFetch_AllowedDomains_DeniesUnknownHost(t *testing.T) {
+	t.Parallel()
 	url := runHTTPServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, "should not be reached")
 	})
@@ -583,6 +610,7 @@ func TestFetch_AllowedDomains_DeniesUnknownHost(t *testing.T) {
 }
 
 func TestFetch_AllowedDomains_PermitsKnownHost(t *testing.T) {
+	t.Parallel()
 	requests := 0
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -607,6 +635,7 @@ func TestFetch_AllowedDomains_PermitsKnownHost(t *testing.T) {
 }
 
 func TestFetch_BlockedDomains_DeniesMatchingHost(t *testing.T) {
+	t.Parallel()
 	url := runHTTPServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, "should not be reached")
 	})
@@ -623,6 +652,7 @@ func TestFetch_BlockedDomains_DeniesMatchingHost(t *testing.T) {
 }
 
 func TestFetch_BlockedDomains_DeniesIgnoringRobots(t *testing.T) {
+	t.Parallel()
 	// The deny check must happen before robots.txt is fetched, so a server
 	// that errors on /robots.txt should still produce a clear domain error.
 	robotsRequested := false
@@ -651,6 +681,7 @@ func TestFetch_BlockedDomains_DeniesIgnoringRobots(t *testing.T) {
 // that is NOT in the allow-list must be rejected before the redirect is
 // followed, otherwise the policy is hollow.
 func TestFetch_AllowedDomains_RejectsRedirectToBlockedHost(t *testing.T) {
+	t.Parallel()
 	redirected := false
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/robots.txt" {
@@ -682,6 +713,7 @@ func TestFetch_AllowedDomains_RejectsRedirectToBlockedHost(t *testing.T) {
 // regression test for the deny-list path: a redirect to a deny-listed host
 // must not be followed.
 func TestFetch_BlockedDomains_RejectsRedirectToBlockedHost(t *testing.T) {
+	t.Parallel()
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/robots.txt" {
 			http.NotFound(w, r)
@@ -704,6 +736,7 @@ func TestFetch_BlockedDomains_RejectsRedirectToBlockedHost(t *testing.T) {
 
 // Additional edge case tests for security review
 func TestMatchesDomain_EdgeCases(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		host    string
@@ -741,6 +774,7 @@ func TestMatchesDomain_EdgeCases(t *testing.T) {
 // header guarantees the test exercises the toolset's own CheckRedirect logic
 // rather than passing accidentally on stdlib behaviour.
 func TestFetch_Headers_StrippedOnCrossHostRedirect(t *testing.T) {
+	t.Parallel()
 	var gotAPIKeyOnInitial, gotAPIKeyOnRedirect string
 	var redirectURL string
 
@@ -789,6 +823,7 @@ func TestFetch_Headers_StrippedOnCrossHostRedirect(t *testing.T) {
 // preserved when redirecting within the same host (e.g., http -> https upgrade,
 // or path-only redirects).
 func TestFetch_Headers_PreservedOnSameHostRedirect(t *testing.T) {
+	t.Parallel()
 	var gotAuthOnInitial, gotAuthOnRedirect string
 
 	url := runHTTPServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -831,6 +866,7 @@ func TestFetch_Headers_PreservedOnSameHostRedirect(t *testing.T) {
 // the same custom headers as the main request, those credentials must be
 // stripped on cross-host redirects too.
 func TestFetch_Headers_StrippedOnRobotsCrossHostRedirect(t *testing.T) {
+	t.Parallel()
 	var leaked string
 
 	// External host that observes any leaked credential.

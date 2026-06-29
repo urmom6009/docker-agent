@@ -8,6 +8,7 @@ import (
 )
 
 func TestTokenizeForWordDiff(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   string
@@ -42,12 +43,14 @@ func TestTokenizeForWordDiff(t *testing.T) {
 }
 
 func TestDiffWords_IdenticalLines(t *testing.T) {
+	t.Parallel()
 	oldSegs, newSegs := diffWords("foo bar", "foo bar")
 	assert.Equal(t, []wordSegment{{Text: "foo bar", Changed: false}}, oldSegs)
 	assert.Equal(t, []wordSegment{{Text: "foo bar", Changed: false}}, newSegs)
 }
 
 func TestDiffWords_SingleWordChange(t *testing.T) {
+	t.Parallel()
 	oldSegs, newSegs := diffWords("foo bar baz", "foo qux baz")
 
 	assert.Equal(t, "foo bar baz", concat(oldSegs))
@@ -60,6 +63,7 @@ func TestDiffWords_SingleWordChange(t *testing.T) {
 }
 
 func TestDiffWords_OneSideEmpty(t *testing.T) {
+	t.Parallel()
 	oldSegs, newSegs := diffWords("", "added line")
 	assert.Empty(t, concat(oldSegs))
 	assert.Equal(t, "added line", concat(newSegs))
@@ -67,6 +71,7 @@ func TestDiffWords_OneSideEmpty(t *testing.T) {
 }
 
 func TestDiffWords_PunctuationOnlyChange(t *testing.T) {
+	t.Parallel()
 	oldSegs, newSegs := diffWords("return err", "return fmt.Errorf(\"%w\", err)")
 
 	assert.Equal(t, "return err", concat(oldSegs))
@@ -84,6 +89,7 @@ func TestDiffWords_PunctuationOnlyChange(t *testing.T) {
 // the concatenation of the returned segments must equal each side's input,
 // otherwise byte offsets fed to applyWordEmphasis would be wrong.
 func TestDiffWords_SegmentsReconstructInputs(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		old, new string
 	}{

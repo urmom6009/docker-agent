@@ -13,6 +13,7 @@ import (
 )
 
 func TestDependencies(t *testing.T) {
+	t.Parallel()
 	t.Run("TUI musn't know about teams", func(t *testing.T) {
 		imports := listImports(t, "../pkg/tui")
 

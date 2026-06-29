@@ -25,6 +25,7 @@ func jsonString(s string) string {
 }
 
 func TestBuildPermissionPattern(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		call tools.ToolCall
@@ -69,17 +70,20 @@ func TestBuildPermissionPattern(t *testing.T) {
 }
 
 func TestAlwaysAllowLabel(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "always allow ls*", AlwaysAllowLabel("shell:cmd=ls*"))
 	assert.Equal(t, "always allow write_file", AlwaysAllowLabel("write_file"))
 }
 
 func TestOptionsHelpUsesThePattern(t *testing.T) {
+	t.Parallel()
 	opts := OptionsHelp("shell:cmd=rm*")
 	require.Len(t, opts, 8)
 	assert.Equal(t, []string{"Y", "yes", "N", "no", "T", "always allow rm*", "A", "all tools"}, opts)
 }
 
 func TestDecisionResume(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, runtime.ResumeApprove(), Approve.Resume("", ""))
 	assert.Equal(t, runtime.ResumeApproveTool("shell:cmd=ls*"), ApproveTool.Resume("shell:cmd=ls*", ""))
 	assert.Equal(t, runtime.ResumeApproveSession(), ApproveSession.Resume("", ""))
@@ -87,6 +91,7 @@ func TestDecisionResume(t *testing.T) {
 }
 
 func TestRejectionReasonsAreStable(t *testing.T) {
+	t.Parallel()
 	reasons := RejectionReasons()
 	require.Len(t, reasons, 4)
 	ids := make([]string, 0, len(reasons))

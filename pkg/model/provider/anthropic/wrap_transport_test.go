@@ -73,6 +73,7 @@ func writeMinimalAnthropicSSE(w http.ResponseWriter) {
 }
 
 func TestNewClient_TransportWrapperInvokedDirectPath(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeMinimalAnthropicSSE(w)
 	}))
@@ -114,6 +115,7 @@ func TestNewClient_TransportWrapperInvokedDirectPath(t *testing.T) {
 }
 
 func TestNewClient_TransportWrapperInvokedGatewayPath(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeMinimalAnthropicSSE(w)
 	}))

@@ -15,6 +15,7 @@ import (
 )
 
 func TestUserHeaders(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		cfg  *latest.ModelConfig
@@ -85,6 +86,7 @@ func TestUserHeaders(t *testing.T) {
 // TestBuildHeaderOptions verifies that the headers configured for a
 // model actually reach the wire via a real HTTP server.
 func TestBuildHeaderOptions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		cfg          latest.ModelConfig
@@ -215,6 +217,7 @@ func captureHeaders(t *testing.T, cfg *latest.ModelConfig, envVars map[string]st
 }
 
 func TestSanitizeHeaderValue(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -273,6 +276,7 @@ func TestSanitizeHeaderValue(t *testing.T) {
 // TestBuildHeaderOptions_Sanitization verifies that header values are
 // sanitized before being sent on the wire.
 func TestBuildHeaderOptions_Sanitization(t *testing.T) {
+	t.Parallel()
 	cfg := latest.ModelConfig{
 		Provider: "openai",
 		Model:    "gpt-4o",
@@ -298,6 +302,7 @@ func TestBuildHeaderOptions_Sanitization(t *testing.T) {
 // TestBuildHeaderMap verifies that buildHeaderMap correctly merges
 // provider defaults with user-configured headers.
 func TestBuildHeaderMap(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		cfg  *latest.ModelConfig

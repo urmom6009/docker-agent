@@ -38,6 +38,7 @@ import (
 //     (the catalogue has drifted to the grok-4.x family),
 //   - vision-capable models that ARE catalogued resolve correctly.
 func TestReproIssue2741_CustomProviderAttachmentDegradesToTextOnly(t *testing.T) {
+	t.Parallel()
 	// In-memory catalogue: NewDatabaseStore sets the db directly, so no network
 	// fetch and no knownProvider predicate are involved — fully deterministic.
 	store := modelsdev.NewDatabaseStore(&modelsdev.Database{

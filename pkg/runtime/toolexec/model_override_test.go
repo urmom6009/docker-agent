@@ -9,11 +9,13 @@ import (
 )
 
 func TestResolveModelOverride_NoCalls(t *testing.T) {
+	t.Parallel()
 	result := ResolveModelOverride(nil, nil)
 	assert.Empty(t, result)
 }
 
 func TestResolveModelOverride_NoOverride(t *testing.T) {
+	t.Parallel()
 	agentTools := []tools.Tool{
 		{Name: "read_file"},
 		{Name: "write_file"},
@@ -27,6 +29,7 @@ func TestResolveModelOverride_NoOverride(t *testing.T) {
 }
 
 func TestResolveModelOverride_SingleOverride(t *testing.T) {
+	t.Parallel()
 	agentTools := []tools.Tool{
 		{Name: "read_file", ModelOverride: "openai/gpt-4o-mini"},
 		{Name: "write_file"},
@@ -40,6 +43,7 @@ func TestResolveModelOverride_SingleOverride(t *testing.T) {
 }
 
 func TestResolveModelOverride_FirstOverrideWins(t *testing.T) {
+	t.Parallel()
 	agentTools := []tools.Tool{
 		{Name: "read_file", ModelOverride: "openai/gpt-4o-mini"},
 		{Name: "search_kb", ModelOverride: "anthropic/claude-haiku"},
@@ -54,6 +58,7 @@ func TestResolveModelOverride_FirstOverrideWins(t *testing.T) {
 }
 
 func TestResolveModelOverride_MixedOverrideAndNonOverride(t *testing.T) {
+	t.Parallel()
 	agentTools := []tools.Tool{
 		{Name: "read_file"},
 		{Name: "search_kb", ModelOverride: "openai/gpt-4o-mini"},
@@ -70,6 +75,7 @@ func TestResolveModelOverride_MixedOverrideAndNonOverride(t *testing.T) {
 }
 
 func TestResolveModelOverride_UnknownTool(t *testing.T) {
+	t.Parallel()
 	agentTools := []tools.Tool{
 		{Name: "read_file"},
 	}

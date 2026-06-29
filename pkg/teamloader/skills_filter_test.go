@@ -11,6 +11,7 @@ import (
 )
 
 func TestFilterSkillsByName_NoFilterReturnsAll(t *testing.T) {
+	t.Parallel()
 	loaded := []skills.Skill{
 		{Name: "git"},
 		{Name: "docker"},
@@ -25,6 +26,7 @@ func TestFilterSkillsByName_NoFilterReturnsAll(t *testing.T) {
 }
 
 func TestFilterSkillsByName_KeepsMatchingSkills(t *testing.T) {
+	t.Parallel()
 	loaded := []skills.Skill{
 		{Name: "git"},
 		{Name: "docker"},
@@ -39,6 +41,7 @@ func TestFilterSkillsByName_KeepsMatchingSkills(t *testing.T) {
 }
 
 func TestFilterSkillsByName_PreservesOriginalOrder(t *testing.T) {
+	t.Parallel()
 	loaded := []skills.Skill{
 		{Name: "a"},
 		{Name: "b"},
@@ -54,6 +57,7 @@ func TestFilterSkillsByName_PreservesOriginalOrder(t *testing.T) {
 }
 
 func TestFilterSkillsByName_IgnoresUnknownNames(t *testing.T) {
+	t.Parallel()
 	loaded := []skills.Skill{
 		{Name: "git"},
 	}
@@ -63,11 +67,13 @@ func TestFilterSkillsByName_IgnoresUnknownNames(t *testing.T) {
 }
 
 func TestFilterSkillsByName_EmptyLoaded(t *testing.T) {
+	t.Parallel()
 	result := filterSkillsByName(nil, []string{"git"})
 	assert.Empty(t, result)
 }
 
 func TestInlineSkills_Conversion(t *testing.T) {
+	t.Parallel()
 	defs := []latest.InlineSkill{
 		{
 			Name:         "triage",
@@ -97,10 +103,12 @@ func TestInlineSkills_Conversion(t *testing.T) {
 }
 
 func TestInlineSkills_Empty(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, inlineSkills(nil))
 }
 
 func TestFilterSkillsByName_KeepsAllDuplicateNameMatches(t *testing.T) {
+	t.Parallel()
 	// The loaded slice may contain multiple skills with the same name (e.g. one
 	// from the local filesystem and one from a remote source, which are keyed
 	// separately in skills.Load). The filter must not silently drop duplicates

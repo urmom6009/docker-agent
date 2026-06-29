@@ -19,6 +19,7 @@ import (
 // The test focuses on structural elements rather than exact escape sequences,
 // which depend on the active theme.
 func TestRenderEditFile_EndToEnd(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "main.go")
 
@@ -74,6 +75,7 @@ func main() {
 }
 
 func TestRenderEditFile_TabIndentedLineDoesNotPanic(t *testing.T) {
+	t.Parallel()
 	// Regression: tab-indented modified lines used to feed raw (1-byte-tab)
 	// text into diffWords while chroma tokens were built from the
 	// tab-expanded variant, producing out-of-bounds slice indices in
@@ -106,6 +108,7 @@ func TestRenderEditFile_TabIndentedLineDoesNotPanic(t *testing.T) {
 }
 
 func TestRenderEditFile_MissingFileReturnsEmptyDiff(t *testing.T) {
+	t.Parallel()
 	args := map[string]any{
 		"path": "/nonexistent/path/that/does/not/exist.go",
 		"edits": []map[string]string{

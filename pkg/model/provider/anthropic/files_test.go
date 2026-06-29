@@ -32,6 +32,7 @@ func hashFile(filePath string) (string, error) {
 }
 
 func TestDetectMimeType(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path     string
 		expected string
@@ -54,6 +55,7 @@ func TestDetectMimeType(t *testing.T) {
 }
 
 func TestIsImageMime(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		mimeType string
 		expected bool
@@ -76,6 +78,7 @@ func TestIsImageMime(t *testing.T) {
 }
 
 func TestIsDocumentMime(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		mimeType string
 		expected bool
@@ -97,6 +100,7 @@ func TestIsDocumentMime(t *testing.T) {
 }
 
 func TestIsSupportedMime(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		mimeType string
 		expected bool
@@ -121,6 +125,7 @@ func TestIsSupportedMime(t *testing.T) {
 }
 
 func TestHashFile(t *testing.T) {
+	t.Parallel()
 	// Create a temporary file
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
@@ -148,17 +153,20 @@ func TestHashFile(t *testing.T) {
 }
 
 func TestHashFile_NotFound(t *testing.T) {
+	t.Parallel()
 	_, err := hashFile("/nonexistent/path/to/file.txt")
 	assert.Error(t, err)
 }
 
 func TestNewFileManager(t *testing.T) {
+	t.Parallel()
 	fm := NewFileManager(nil)
 	require.NotNil(t, fm)
 	assert.Equal(t, 0, fm.CachedCount())
 }
 
 func TestUploadedFile_TTL(t *testing.T) {
+	t.Parallel()
 	old := &UploadedFile{
 		FileID:     "file_old",
 		UploadedAt: time.Now().Add(-25 * time.Hour),
@@ -175,6 +183,7 @@ func TestUploadedFile_TTL(t *testing.T) {
 }
 
 func TestFileManager_Deduplication(t *testing.T) {
+	t.Parallel()
 	// This test verifies the deduplication logic structure
 	// Actual upload testing would require mocking the Anthropic client
 
@@ -216,6 +225,7 @@ func TestFileManager_Deduplication(t *testing.T) {
 }
 
 func TestCreateFileContentBlock_NotSupported(t *testing.T) {
+	t.Parallel()
 	// Standard API doesn't support file references - Files API is Beta-only
 	_, err := createFileContentBlock("file_123", "image/png")
 	require.Error(t, err)
@@ -223,6 +233,7 @@ func TestCreateFileContentBlock_NotSupported(t *testing.T) {
 }
 
 func TestCreateBetaFileContentBlock_Image(t *testing.T) {
+	t.Parallel()
 	block, err := createBetaFileContentBlock("file_beta_123", "image/jpeg")
 	require.NoError(t, err)
 	assert.NotNil(t, block.OfImage)
@@ -231,6 +242,7 @@ func TestCreateBetaFileContentBlock_Image(t *testing.T) {
 }
 
 func TestCreateBetaFileContentBlock_Document(t *testing.T) {
+	t.Parallel()
 	block, err := createBetaFileContentBlock("file_beta_456", "application/pdf")
 	require.NoError(t, err)
 	assert.NotNil(t, block.OfDocument)
@@ -239,12 +251,14 @@ func TestCreateBetaFileContentBlock_Document(t *testing.T) {
 }
 
 func TestCreateBetaFileContentBlock_Unsupported(t *testing.T) {
+	t.Parallel()
 	_, err := createBetaFileContentBlock("file_beta_000", "video/mp4")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrUnsupportedFileType)
 }
 
 func TestFileManager_CleanupAll_Empty(t *testing.T) {
+	t.Parallel()
 	fm := NewFileManager(nil)
 	err := fm.CleanupAll(t.Context())
 	require.NoError(t, err)

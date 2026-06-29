@@ -35,6 +35,7 @@ func bareModel(height int) *model {
 }
 
 func TestStreamingGrowthScrollsAndRendersMarkdown(t *testing.T) {
+	t.Parallel()
 	m := bareModel(10)
 	m.busy = true
 	m.render() // initial frame
@@ -60,6 +61,7 @@ func TestStreamingGrowthScrollsAndRendersMarkdown(t *testing.T) {
 }
 
 func TestBuildLinesPlacesCursorOnInput(t *testing.T) {
+	t.Parallel()
 	m := bareModel(24)
 	m.editor.setText("hello")
 
@@ -71,6 +73,7 @@ func TestBuildLinesPlacesCursorOnInput(t *testing.T) {
 }
 
 func TestConversationLinesShowsSpinnerWhenBusy(t *testing.T) {
+	t.Parallel()
 	m := bareModel(24)
 	m.busy = true
 	lines := m.conversationLines(80)
@@ -78,6 +81,7 @@ func TestConversationLinesShowsSpinnerWhenBusy(t *testing.T) {
 }
 
 func TestToolConfirmationReplacesRunningTool(t *testing.T) {
+	t.Parallel()
 	m := bareModel(24)
 	tv := shellToolView(tuitypes.ToolStatusRunning)
 	m.upsertTool("root", tv.message.ToolCall, tv.message.ToolDefinition, tuitypes.ToolStatusRunning)
@@ -92,6 +96,7 @@ func TestToolConfirmationReplacesRunningTool(t *testing.T) {
 }
 
 func TestBuildLinesConfirmCursorSitsOnOptions(t *testing.T) {
+	t.Parallel()
 	m := bareModel(24)
 	m.confirm = &confirmState{
 		tool:     "shell",

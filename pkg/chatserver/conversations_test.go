@@ -11,6 +11,7 @@ import (
 )
 
 func TestConversationStore_Disabled(t *testing.T) {
+	t.Parallel()
 	c := newConversationStore(0, time.Hour)
 	c.Put("a", session.New())
 	assert.Nil(t, c.Get("a"))
@@ -18,6 +19,7 @@ func TestConversationStore_Disabled(t *testing.T) {
 }
 
 func TestConversationStore_PutGet(t *testing.T) {
+	t.Parallel()
 	c := newConversationStore(8, time.Hour)
 	s := session.New()
 	c.Put("a", s)
@@ -28,6 +30,7 @@ func TestConversationStore_PutGet(t *testing.T) {
 }
 
 func TestConversationStore_TTL(t *testing.T) {
+	t.Parallel()
 	now := time.Unix(1_000_000, 0)
 	c := newConversationStore(8, time.Minute)
 	c.now = func() time.Time { return now }
@@ -41,6 +44,7 @@ func TestConversationStore_TTL(t *testing.T) {
 }
 
 func TestConversationStore_LRUEviction(t *testing.T) {
+	t.Parallel()
 	now := time.Unix(1_000_000, 0)
 	c := newConversationStore(2, time.Hour)
 	c.now = func() time.Time { return now }
@@ -62,6 +66,7 @@ func TestConversationStore_LRUEviction(t *testing.T) {
 }
 
 func TestConversationStore_Delete(t *testing.T) {
+	t.Parallel()
 	c := newConversationStore(8, time.Hour)
 	c.Put("a", session.New())
 	c.Delete("a")
@@ -69,6 +74,7 @@ func TestConversationStore_Delete(t *testing.T) {
 }
 
 func TestAppendLatestUser(t *testing.T) {
+	t.Parallel()
 	sess := session.New()
 	appended := appendLatestUser(sess, []ChatCompletionMessage{
 		{Role: "system", Content: "be helpful"},
@@ -82,6 +88,7 @@ func TestAppendLatestUser(t *testing.T) {
 }
 
 func TestAppendLatestUser_NoUserMessage(t *testing.T) {
+	t.Parallel()
 	sess := session.New()
 	appended := appendLatestUser(sess, []ChatCompletionMessage{
 		{Role: "system", Content: "be helpful"},

@@ -9,6 +9,7 @@ import (
 )
 
 func TestLoopDetector(t *testing.T) {
+	t.Parallel()
 	makeCalls := func(pairs ...string) []tools.ToolCall {
 		var calls []tools.ToolCall
 		for i := 0; i < len(pairs); i += 2 {
@@ -205,6 +206,7 @@ func TestLoopDetector(t *testing.T) {
 }
 
 func TestToolLoopDetector_Reset(t *testing.T) {
+	t.Parallel()
 	calls := []tools.ToolCall{{
 		Function: tools.FunctionCall{Name: "read_file", Arguments: `{"path":"a.txt"}`},
 	}}

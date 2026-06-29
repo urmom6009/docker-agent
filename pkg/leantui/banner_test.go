@@ -10,6 +10,7 @@ import (
 )
 
 func TestCommitWelcomePadsBanner(t *testing.T) {
+	t.Parallel()
 	m := &model{}
 	m.commitWelcome()
 

@@ -27,6 +27,7 @@ func (c *oaiCountingTransport) RoundTrip(req *http.Request) (*http.Response, err
 }
 
 func TestNewClient_TransportWrapperInvokedDirectPath(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeSSEResponse(w)
 	}))
@@ -69,6 +70,7 @@ func TestNewClient_TransportWrapperInvokedDirectPath(t *testing.T) {
 }
 
 func TestNewClient_TransportWrapperInvokedGatewayPath(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeSSEResponse(w)
 	}))
@@ -117,6 +119,7 @@ func TestNewClient_TransportWrapperInvokedGatewayPath(t *testing.T) {
 // http.RoundTripper, so websocket would silently drop the wrapper; the fallback
 // ensures the wrapper covers every outbound request.
 func TestNewClient_WebSocketFallsBackToSSEWhenTransportWrapperSet(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeSSEResponse(w)
 	}))

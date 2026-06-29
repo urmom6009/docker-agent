@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewClient_RequiresAPIKeyWhenNoAuthConfigured(t *testing.T) {
+	t.Parallel()
 	cfg := &latest.ModelConfig{Provider: "anthropic", Model: "claude-x"}
 	_, err := NewClient(t.Context(), cfg, environment.NewMapEnvProvider(nil))
 	require.Error(t, err)
@@ -21,6 +22,7 @@ func TestNewClient_RequiresAPIKeyWhenNoAuthConfigured(t *testing.T) {
 }
 
 func TestNewClient_WIFAuth_BypassesAPIKey(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token")
 	require.NoError(t, os.WriteFile(tokenPath, []byte("jwt"), 0o600))
@@ -46,6 +48,7 @@ func TestNewClient_WIFAuth_BypassesAPIKey(t *testing.T) {
 }
 
 func TestNewClient_WIFAuth_RejectsBrokenConfig(t *testing.T) {
+	t.Parallel()
 	cfg := &latest.ModelConfig{
 		Provider: "anthropic",
 		Model:    "claude-x",
@@ -65,6 +68,7 @@ func TestNewClient_WIFAuth_RejectsBrokenConfig(t *testing.T) {
 }
 
 func TestNewClient_WIFAuth_RejectsUnknownType(t *testing.T) {
+	t.Parallel()
 	cfg := &latest.ModelConfig{
 		Provider: "anthropic",
 		Model:    "claude-x",
@@ -76,6 +80,7 @@ func TestNewClient_WIFAuth_RejectsUnknownType(t *testing.T) {
 }
 
 func TestNewClient_AuthAndGatewayMutuallyExclusive(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token")
 	require.NoError(t, os.WriteFile(tokenPath, []byte("jwt"), 0o600))

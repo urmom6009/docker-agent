@@ -10,6 +10,7 @@ import (
 )
 
 func TestReadHeadBranch(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	head := filepath.Join(dir, "HEAD")
 	require.NoError(t, os.WriteFile(head, []byte("ref: refs/heads/main\n"), 0o644))
@@ -17,6 +18,7 @@ func TestReadHeadBranch(t *testing.T) {
 }
 
 func TestReadHeadSlashedBranch(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	head := filepath.Join(dir, "HEAD")
 	require.NoError(t, os.WriteFile(head, []byte("ref: refs/heads/feature/login\n"), 0o644))
@@ -24,6 +26,7 @@ func TestReadHeadSlashedBranch(t *testing.T) {
 }
 
 func TestReadHeadDetached(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	head := filepath.Join(dir, "HEAD")
 	require.NoError(t, os.WriteFile(head, []byte("0123456789abcdef\n"), 0o644))
@@ -31,6 +34,7 @@ func TestReadHeadDetached(t *testing.T) {
 }
 
 func TestGitBranchWalksUp(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, ".git"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(root, ".git", "HEAD"), []byte("ref: refs/heads/dev\n"), 0o644))
@@ -42,10 +46,12 @@ func TestGitBranchWalksUp(t *testing.T) {
 }
 
 func TestGitBranchNoRepo(t *testing.T) {
+	t.Parallel()
 	assert.Empty(t, gitBranch(t.TempDir()))
 }
 
 func TestShortenPath(t *testing.T) {
+	t.Parallel()
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
 	assert.Equal(t, "~", shortenPath(home))

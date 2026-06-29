@@ -14,12 +14,14 @@ import (
 )
 
 func TestNew_disabled(t *testing.T) {
+	t.Parallel()
 	c, err := New(Config{Enabled: false})
 	require.NoError(t, err)
 	assert.Nil(t, c)
 }
 
 func TestMemoryCache_caseSensitiveDefault(t *testing.T) {
+	t.Parallel()
 	c, err := New(Config{Enabled: true, CaseSensitive: true})
 	require.NoError(t, err)
 	require.NotNil(t, c)
@@ -35,6 +37,7 @@ func TestMemoryCache_caseSensitiveDefault(t *testing.T) {
 }
 
 func TestMemoryCache_caseInsensitive(t *testing.T) {
+	t.Parallel()
 	c, err := New(Config{Enabled: true, CaseSensitive: false})
 	require.NoError(t, err)
 
@@ -46,6 +49,7 @@ func TestMemoryCache_caseInsensitive(t *testing.T) {
 }
 
 func TestMemoryCache_trimSpaces(t *testing.T) {
+	t.Parallel()
 	c, err := New(Config{Enabled: true, TrimSpaces: true})
 	require.NoError(t, err)
 
@@ -61,6 +65,7 @@ func TestMemoryCache_trimSpaces(t *testing.T) {
 }
 
 func TestMemoryCache_noTrimByDefault(t *testing.T) {
+	t.Parallel()
 	c, err := New(Config{Enabled: true})
 	require.NoError(t, err)
 
@@ -71,6 +76,7 @@ func TestMemoryCache_noTrimByDefault(t *testing.T) {
 }
 
 func TestMemoryCache_overwrite(t *testing.T) {
+	t.Parallel()
 	c, err := New(Config{Enabled: true})
 	require.NoError(t, err)
 
@@ -87,6 +93,7 @@ func TestMemoryCache_overwrite(t *testing.T) {
 // underlying JSON file is rewritten only on the first Store. This is
 // what keeps cache replays free of redundant disk traffic.
 func TestFileCache_dedupSkipsRedundantWrite(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
@@ -113,6 +120,7 @@ func TestFileCache_dedupSkipsRedundantWrite(t *testing.T) {
 }
 
 func TestFileCache_persists(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
@@ -136,6 +144,7 @@ func TestFileCache_persists(t *testing.T) {
 }
 
 func TestFileCache_missingFileIsFine(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "nested", "cache.json")
 
@@ -157,6 +166,7 @@ func TestFileCache_missingFileIsFine(t *testing.T) {
 }
 
 func TestFileCache_corruptFile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 	require.NoError(t, os.WriteFile(path, []byte("not json"), 0o600))
@@ -175,6 +185,7 @@ func TestFileCache_corruptFile(t *testing.T) {
 // Store) tries os.CreateTemp in that directory and fails; the error is
 // swallowed and the cache keeps serving from memory.
 func TestFileCache_persistenceFailureKeepsInMemory(t *testing.T) {
+	t.Parallel()
 	if os.Geteuid() == 0 {
 		t.Skip("running as root: directory permissions are bypassed, can't force a write failure")
 	}
@@ -208,6 +219,7 @@ func TestFileCache_persistenceFailureKeepsInMemory(t *testing.T) {
 // atomic write does not leak temporary files on the happy path. Only the
 // JSON file and the persistent .lock sentinel are expected to remain.
 func TestFileCache_atomicWriteLeavesNoTempFiles(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
@@ -236,6 +248,7 @@ func TestFileCache_atomicWriteLeavesNoTempFiles(t *testing.T) {
 // reader will never observe a half-written cache thanks to the
 // rename-over-temp atomicity.
 func TestFileCache_concurrentStoreNeverYieldsTornFile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
@@ -279,6 +292,7 @@ func TestFileCache_concurrentStoreNeverYieldsTornFile(t *testing.T) {
 // a stale snapshot under its own mutex, and the last writer would
 // silently clobber the other's entries.
 func TestFileCache_crossProcessConcurrentStoresPreserveAllEntries(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
@@ -326,6 +340,7 @@ func TestFileCache_crossProcessConcurrentStoresPreserveAllEntries(t *testing.T) 
 // advanced since the last load, it re-reads the file and the new entry
 // becomes visible.
 func TestFileCache_lookupReloadsAfterExternalWrite(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 
@@ -357,6 +372,7 @@ func TestFileCache_lookupReloadsAfterExternalWrite(t *testing.T) {
 // processes lock different inodes and lose mutual exclusion. The lock
 // file is a long-lived sentinel.
 func TestFileCache_lockFileNeverDeleted(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 

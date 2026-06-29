@@ -100,6 +100,7 @@ func TestAgentDetailsDialog_RendersConfigSections(t *testing.T) {
 // produce differently-colored titles. Not parallel: it mutates the global
 // agent-order registry.
 func TestAgentDetailsDialog_TitleUsesAgentAccentColor(t *testing.T) {
+	t.Parallel()
 	styles.SetAgentOrder([]string{"root", "helper"})
 	t.Cleanup(func() { styles.SetAgentOrder(nil) })
 

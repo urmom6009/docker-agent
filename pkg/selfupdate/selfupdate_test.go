@@ -160,6 +160,7 @@ func (c *reExecCapture) fn(path string, args, env []string) error {
 }
 
 func TestTryUpdateSuccess(t *testing.T) {
+	t.Parallel()
 	payload := []byte("#!/bin/sh\necho new binary\n")
 	srv := newFakeRelease(t, "v2.0.0", payload, true)
 
@@ -184,6 +185,7 @@ func TestTryUpdateSuccess(t *testing.T) {
 }
 
 func TestTryUpdateDeclinedDoesNotUpdate(t *testing.T) {
+	t.Parallel()
 	payload := []byte("#!/bin/sh\necho new binary\n")
 	srv := newFakeRelease(t, "v2.0.0", payload, true)
 
@@ -234,6 +236,7 @@ func TestAnswerIsYes(t *testing.T) {
 }
 
 func TestTryUpdateAlreadyLatest(t *testing.T) {
+	t.Parallel()
 	srv := newFakeRelease(t, "v1.0.0", []byte("x"), true)
 
 	dir := t.TempDir()
@@ -251,6 +254,7 @@ func TestTryUpdateAlreadyLatest(t *testing.T) {
 }
 
 func TestTryUpdateDevVersionNeverUpdates(t *testing.T) {
+	t.Parallel()
 	srv := newFakeRelease(t, "v1.0.0", []byte("x"), true)
 
 	dir := t.TempDir()
@@ -266,6 +270,7 @@ func TestTryUpdateDevVersionNeverUpdates(t *testing.T) {
 }
 
 func TestTryUpdateChecksumMismatch(t *testing.T) {
+	t.Parallel()
 	payload := []byte("real payload")
 
 	dir := t.TempDir()
@@ -301,6 +306,7 @@ func TestTryUpdateChecksumMismatch(t *testing.T) {
 }
 
 func TestTryUpdateMissingChecksumFailsClosed(t *testing.T) {
+	t.Parallel()
 	payload := []byte("real payload")
 	srv := newFakeRelease(t, "v2.0.0", payload, false)
 
@@ -322,6 +328,7 @@ func TestTryUpdateMissingChecksumFailsClosed(t *testing.T) {
 }
 
 func TestTryUpdateReExecFailureRestoresPreviousBinary(t *testing.T) {
+	t.Parallel()
 	payload := []byte("new binary")
 	srv := newFakeRelease(t, "v2.0.0", payload, true)
 
@@ -345,6 +352,7 @@ func TestTryUpdateReExecFailureRestoresPreviousBinary(t *testing.T) {
 }
 
 func TestTryUpdateDownloadNotFound(t *testing.T) {
+	t.Parallel()
 	// Latest resolves but the asset 404s: must fail and leave binary intact.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/releases/latest") {
@@ -370,6 +378,7 @@ func TestTryUpdateDownloadNotFound(t *testing.T) {
 }
 
 func TestRunSwallowsErrors(t *testing.T) {
+	t.Parallel()
 	// A totally unreachable server must not panic or propagate: Run is
 	// best-effort and only logs.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -414,6 +423,7 @@ func TestLatestReleaseAuthHeader(t *testing.T) {
 }
 
 func TestLatestReleaseRejectsUntrustedDownloadHost(t *testing.T) {
+	t.Parallel()
 	// The asset download URL points at an attacker-controlled host while the
 	// trusted DownloadBaseURL is the test server: resolution must fail rather
 	// than follow the foreign URL.
@@ -515,6 +525,7 @@ func TestIsOwnedBackupPath(t *testing.T) {
 }
 
 func TestSwapBinary(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	dst := filepath.Join(dir, "docker-agent")
 	src := filepath.Join(dir, "staged")

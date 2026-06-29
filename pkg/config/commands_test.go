@@ -7,6 +7,7 @@ import (
 )
 
 func TestV2Commands_AllForms(t *testing.T) {
+	t.Parallel()
 	cfg, err := Load(t.Context(), NewFileSource("testdata/commands_v2.yaml"))
 	require.NoError(t, err)
 
@@ -38,6 +39,7 @@ func TestV2Commands_AllForms(t *testing.T) {
 }
 
 func TestV2Commands_DisplayText(t *testing.T) {
+	t.Parallel()
 	cfg, err := Load(t.Context(), NewFileSource("testdata/commands_v2.yaml"))
 	require.NoError(t, err)
 
@@ -51,6 +53,7 @@ func TestV2Commands_DisplayText(t *testing.T) {
 }
 
 func TestMigrate_v1_Commands_AllForms(t *testing.T) {
+	t.Parallel()
 	cfg, err := Load(t.Context(), NewFileSource("testdata/commands_v1.yaml"))
 	require.NoError(t, err)
 
@@ -69,6 +72,7 @@ func TestMigrate_v1_Commands_AllForms(t *testing.T) {
 }
 
 func TestMigrate_v0_Commands_AllForms(t *testing.T) {
+	t.Parallel()
 	cfg, err := Load(t.Context(), NewFileSource("testdata/commands_v0.yaml"))
 	require.NoError(t, err)
 

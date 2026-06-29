@@ -11,6 +11,7 @@ import (
 )
 
 func TestBuildKeys_Defaults(t *testing.T) {
+	t.Parallel()
 	keys := buildKeys(nil)
 
 	assert.Equal(t, []string{"ctrl+c"}, keys.Quit.Keys())
@@ -23,6 +24,7 @@ func TestBuildKeys_Defaults(t *testing.T) {
 }
 
 func TestBuildKeys_Overrides(t *testing.T) {
+	t.Parallel()
 	settings := &userconfig.Settings{
 		Keybindings: []userconfig.Keybinding{
 			{Action: "quit", Keys: []string{"ctrl+q"}},
@@ -49,12 +51,14 @@ func TestBuildKeys_Overrides(t *testing.T) {
 }
 
 func TestBuildKeys_EmptySettings(t *testing.T) {
+	t.Parallel()
 	keys := buildKeys(&userconfig.Settings{})
 	assert.Equal(t, []string{"ctrl+c"}, keys.Quit.Keys())
 	assert.Equal(t, []string{"enter"}, keys.EditorSend.Keys())
 }
 
 func TestBuildKeys_EmptyKeysIgnored(t *testing.T) {
+	t.Parallel()
 	keys := buildKeys(&userconfig.Settings{
 		Keybindings: []userconfig.Keybinding{
 			{Action: "quit", Keys: []string{}},
@@ -64,6 +68,7 @@ func TestBuildKeys_EmptyKeysIgnored(t *testing.T) {
 }
 
 func TestBuildKeys_MalformedKeysIgnored(t *testing.T) {
+	t.Parallel()
 	keys := buildKeys(&userconfig.Settings{
 		Keybindings: []userconfig.Keybinding{
 			{Action: "quit", Keys: []string{"ctrl+q", " ", "", "ctrl q"}},
@@ -74,6 +79,7 @@ func TestBuildKeys_MalformedKeysIgnored(t *testing.T) {
 }
 
 func TestBuildKeys_IntraConfigConflict(t *testing.T) {
+	t.Parallel()
 	keys := buildKeys(&userconfig.Settings{
 		Keybindings: []userconfig.Keybinding{
 			{Action: "quit", Keys: []string{"ctrl+q"}},
@@ -87,6 +93,7 @@ func TestBuildKeys_IntraConfigConflict(t *testing.T) {
 // A custom key that collides with a non-remapped action's default must be
 // rejected so it is never bound to two actions.
 func TestBuildKeys_ConflictWithDefault(t *testing.T) {
+	t.Parallel()
 	keys := buildKeys(&userconfig.Settings{
 		Keybindings: []userconfig.Keybinding{
 			{Action: "editor_send", Keys: []string{"ctrl+j"}}, // ctrl+j is newline's default
@@ -98,6 +105,7 @@ func TestBuildKeys_ConflictWithDefault(t *testing.T) {
 
 // Reassigning a key away from its default action frees it for another action.
 func TestBuildKeys_ReuseFreedKey(t *testing.T) {
+	t.Parallel()
 	keys := buildKeys(&userconfig.Settings{
 		Keybindings: []userconfig.Keybinding{
 			{Action: "editor_newline", Keys: []string{"alt+enter"}}, // frees ctrl+j
@@ -109,6 +117,7 @@ func TestBuildKeys_ReuseFreedKey(t *testing.T) {
 }
 
 func TestValidateKey(t *testing.T) {
+	t.Parallel()
 	valid := []string{"ctrl+q", "q", "?", "enter", "tab", "esc", "space", "f1", "f13", "shift+enter", "alt+enter", "ctrl+?", "ctrl+shift+a", "up"}
 	for _, k := range valid {
 		assert.True(t, validateKey(k), "expected %q to be valid", k)
@@ -122,6 +131,7 @@ func TestValidateKey(t *testing.T) {
 // A typo'd key name must be rejected so it never silently replaces a critical
 // action's working default (the lock-out footgun).
 func TestBuildKeys_InvalidKeyNameKeepsDefault(t *testing.T) {
+	t.Parallel()
 	keys := buildKeys(&userconfig.Settings{
 		Keybindings: []userconfig.Keybinding{
 			{Action: "editor_send", Keys: []string{"foobar"}},
@@ -132,6 +142,7 @@ func TestBuildKeys_InvalidKeyNameKeepsDefault(t *testing.T) {
 
 // Overriding onto a key reserved by a built-in shortcut is rejected.
 func TestBuildKeys_ReservedKeyConflict(t *testing.T) {
+	t.Parallel()
 	keys := buildKeys(&userconfig.Settings{
 		Keybindings: []userconfig.Keybinding{
 			{Action: "commands", Keys: []string{"ctrl+t"}}, // ctrl+t is the new-tab shortcut
@@ -141,6 +152,7 @@ func TestBuildKeys_ReservedKeyConflict(t *testing.T) {
 }
 
 func TestBuildKeys_FromYAML(t *testing.T) {
+	t.Parallel()
 	yamlConfig := `
 settings:
   keybindings:
@@ -163,6 +175,7 @@ settings:
 }
 
 func TestGetKeys_CacheAndReset(t *testing.T) {
+	t.Parallel()
 	ResetKeys()
 	t.Cleanup(ResetKeys)
 
@@ -175,6 +188,7 @@ func TestGetKeys_CacheAndReset(t *testing.T) {
 }
 
 func TestValidActions(t *testing.T) {
+	t.Parallel()
 	actions := ValidActions()
 	assert.Contains(t, actions, "editor_send")
 	assert.Contains(t, actions, "editor_newline")

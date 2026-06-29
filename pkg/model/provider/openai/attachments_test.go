@@ -19,6 +19,7 @@ var minJPEG = []byte{0xFF, 0xD8, 0xFF, 0xE0}
 // document with InlineData and a vision-capable model produces a native image
 // part (OfInputImage) with a data-URI.
 func TestConvertDocumentResponseInput_StrategyB64_Image(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",
@@ -41,6 +42,7 @@ func TestConvertDocumentResponseInput_StrategyB64_Image(t *testing.T) {
 // TestConvertDocumentResponseInput_StrategyB64_ImageDropped verifies that an
 // image is dropped for a text-only model.
 func TestConvertDocumentResponseInput_StrategyB64_PDF(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "report.pdf",
 		MimeType: "application/pdf",
@@ -56,6 +58,7 @@ func TestConvertDocumentResponseInput_StrategyB64_PDF(t *testing.T) {
 }
 
 func TestConvertDocumentResponseInput_StrategyB64_ImageDropped(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "photo.jpg",
 		MimeType: "image/jpeg",
@@ -69,6 +72,7 @@ func TestConvertDocumentResponseInput_StrategyB64_ImageDropped(t *testing.T) {
 }
 
 func TestConvertDocumentResponseInput_StrategyTXT(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "spec.md",
 		MimeType: "text/markdown",
@@ -86,6 +90,7 @@ func TestConvertDocumentResponseInput_StrategyTXT(t *testing.T) {
 }
 
 func TestConvertDocumentResponseInput_StrategyTXT_Envelope(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "data.csv",
 		MimeType: "text/csv",
@@ -101,6 +106,7 @@ func TestConvertDocumentResponseInput_StrategyTXT_Envelope(t *testing.T) {
 }
 
 func TestConvertDocumentResponseInput_Drop_NoContent(t *testing.T) {
+	t.Parallel()
 	doc := chat.Document{
 		Name:     "empty.md",
 		MimeType: "text/markdown",

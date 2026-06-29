@@ -8,6 +8,7 @@ import (
 )
 
 func TestAttachServer_RequiresArgs(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 
 	_, err := AttachServer(ctx, "", "session-1")
@@ -20,6 +21,7 @@ func TestAttachServer_RequiresArgs(t *testing.T) {
 }
 
 func TestAttachServer_BuildsWithValidArgs(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 
 	srv, err := AttachServer(ctx, "http://127.0.0.1:1234", "session-1")

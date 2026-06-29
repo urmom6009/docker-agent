@@ -29,6 +29,7 @@ func setupTestDB(t *testing.T) database.Database {
 }
 
 func TestNewMemoryDatabase(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 
 	assert.NotNil(t, db, "Database should be created successfully")
@@ -40,6 +41,7 @@ func TestNewMemoryDatabase(t *testing.T) {
 }
 
 func TestAddMemory(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 
 	ctx := t.Context()
@@ -67,6 +69,7 @@ func TestAddMemory(t *testing.T) {
 }
 
 func TestAddMemoryWithCategory(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 
 	memory := database.UserMemory{
@@ -86,6 +89,7 @@ func TestAddMemoryWithCategory(t *testing.T) {
 }
 
 func TestGetMemories(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 
 	memories, err := db.GetMemories(t.Context())
@@ -128,6 +132,7 @@ func TestGetMemories(t *testing.T) {
 }
 
 func TestDeleteMemory(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 
 	memory := database.UserMemory{
@@ -160,6 +165,7 @@ func TestDeleteMemory(t *testing.T) {
 }
 
 func TestSearchMemories(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	ctx := t.Context()
 
@@ -225,6 +231,7 @@ func TestSearchMemories(t *testing.T) {
 }
 
 func TestUpdateMemory(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	ctx := t.Context()
 
@@ -273,6 +280,7 @@ func TestUpdateMemory(t *testing.T) {
 }
 
 func TestMigrationAddsCategory(t *testing.T) {
+	t.Parallel()
 	tmpFile := t.TempDir() + "/migrate.db"
 
 	// Create a DB with the old schema (no category column)
@@ -303,6 +311,7 @@ func TestMigrationAddsCategory(t *testing.T) {
 }
 
 func TestDatabaseOperationsWithCanceledContext(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -331,6 +340,7 @@ func TestDatabaseOperationsWithCanceledContext(t *testing.T) {
 }
 
 func TestDatabaseWithMultipleInstances(t *testing.T) {
+	t.Parallel()
 	tmpFile := t.TempDir() + "/shared.db"
 	db1, err := NewMemoryDatabase(tmpFile)
 	require.NoError(t, err)

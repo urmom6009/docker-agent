@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewProviderOmitsModelFlagWhenModelEmpty(t *testing.T) {
+	t.Parallel()
 	p, err := NewProvider(&latest.HarnessConfig{Type: TypeCodex})
 	require.NoError(t, err)
 
@@ -18,6 +19,7 @@ func TestNewProviderOmitsModelFlagWhenModelEmpty(t *testing.T) {
 }
 
 func TestNewProviderUsesConfiguredModel(t *testing.T) {
+	t.Parallel()
 	p, err := NewProvider(&latest.HarnessConfig{Type: TypeClaudeCode, Model: "claude-sonnet-4-5", Effort: "high"})
 	require.NoError(t, err)
 
@@ -27,6 +29,7 @@ func TestNewProviderUsesConfiguredModel(t *testing.T) {
 }
 
 func TestLabel(t *testing.T) {
+	t.Parallel()
 	require.Equal(t, "codex", Label(&latest.HarnessConfig{Type: TypeCodex}))
 	require.Equal(t, "codex/gpt-5", Label(&latest.HarnessConfig{Type: TypeCodex, Model: "gpt-5"}))
 }

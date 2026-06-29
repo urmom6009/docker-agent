@@ -12,6 +12,7 @@ import (
 )
 
 func TestMakeAllRequired(t *testing.T) {
+	t.Parallel()
 	type DirectoryTreeArgs struct {
 		Path     string `json:"path" jsonschema:"The directory path to traverse"`
 		MaxDepth int    `json:"max_depth,omitempty" jsonschema:"Maximum depth to traverse (optional)"`
@@ -32,6 +33,7 @@ func TestMakeAllRequired(t *testing.T) {
 }
 
 func TestMakeAllRequired_NoParameter(t *testing.T) {
+	t.Parallel()
 	type NoArgs struct{}
 	schema := tools.MustSchemaFor[NoArgs]()
 
@@ -49,6 +51,7 @@ func TestMakeAllRequired_NoParameter(t *testing.T) {
 }
 
 func TestMakeAllRequired_NilSchema(t *testing.T) {
+	t.Parallel()
 	updatedSchema := makeAllRequired(nil)
 	buf, err := json.Marshal(updatedSchema)
 	require.NoError(t, err)
@@ -56,6 +59,7 @@ func TestMakeAllRequired_NilSchema(t *testing.T) {
 }
 
 func TestMakeAllRequired_AnyOf(t *testing.T) {
+	t.Parallel()
 	// Reproduces the chrome-devtools-mcp "emulate" tool schema where
 	// viewport has an anyOf with an object variant whose properties
 	// are not all listed in required. OpenAI rejects this.
@@ -108,6 +112,7 @@ func TestMakeAllRequired_AnyOf(t *testing.T) {
 }
 
 func TestMakeAllRequired_NestedProperties(t *testing.T) {
+	t.Parallel()
 	schema := shared.FunctionParameters{
 		"type": "object",
 		"properties": map[string]any{
@@ -138,6 +143,7 @@ func TestMakeAllRequired_NestedProperties(t *testing.T) {
 }
 
 func TestMakeAllRequired_ArrayItems(t *testing.T) {
+	t.Parallel()
 	schema := shared.FunctionParameters{
 		"type": "object",
 		"properties": map[string]any{
@@ -168,6 +174,7 @@ func TestMakeAllRequired_ArrayItems(t *testing.T) {
 }
 
 func TestMakeAllRequired_AdditionalProperties(t *testing.T) {
+	t.Parallel()
 	// Schema-form additionalProperties (Notion-style) must be preserved so the
 	// model knows what dictionary values look like. The inner schema is still
 	// normalized: all its properties become required, newly-required ones are
@@ -214,6 +221,7 @@ func TestMakeAllRequired_AdditionalProperties(t *testing.T) {
 }
 
 func TestConvertParametersToSchema_JiraEditIssueFields(t *testing.T) {
+	t.Parallel()
 	// Regression for the Atlassian remote MCP `editJiraIssue` tool, whose
 	// `fields` property declared additionalProperties as an object schema.
 	schema := shared.FunctionParameters{
@@ -240,6 +248,7 @@ func TestConvertParametersToSchema_JiraEditIssueFields(t *testing.T) {
 }
 
 func TestRemoveFormatFields(t *testing.T) {
+	t.Parallel()
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -276,6 +285,7 @@ func TestRemoveFormatFields(t *testing.T) {
 }
 
 func TestRemoveFormatFields_NestedObjects(t *testing.T) {
+	t.Parallel()
 	schema := shared.FunctionParameters{
 		"type": "object",
 		"properties": map[string]any{
@@ -314,6 +324,7 @@ func TestRemoveFormatFields_NestedObjects(t *testing.T) {
 }
 
 func TestRemoveFormatFields_ArrayItems(t *testing.T) {
+	t.Parallel()
 	schema := shared.FunctionParameters{
 		"type": "object",
 		"properties": map[string]any{
@@ -354,16 +365,19 @@ func TestRemoveFormatFields_ArrayItems(t *testing.T) {
 }
 
 func TestRemoveFormatFields_NilSchema(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, removeFormatFields(nil))
 }
 
 func TestRemoveFormatFields_NoProperties(t *testing.T) {
+	t.Parallel()
 	schema := shared.FunctionParameters{"type": "object"}
 	updated := removeFormatFields(schema)
 	assert.Equal(t, schema, updated)
 }
 
 func TestMakeAllRequired_TypeArrayWithObject(t *testing.T) {
+	t.Parallel()
 	// Reproduces the user_prompt tool schema where a property has
 	// type: ["object", "null"] with nested properties. OpenAI requires
 	// these nested properties to also have additionalProperties: false.
@@ -403,6 +417,7 @@ func TestMakeAllRequired_TypeArrayWithObject(t *testing.T) {
 }
 
 func TestEnsureTypeFields_AdditionalPropertiesMissingType(t *testing.T) {
+	t.Parallel()
 	// Reproduces the Notion MCP notion-search tool schema where
 	// filters.additionalProperties is an object schema without a "type" key.
 	// OpenAI Responses API rejects schemas missing "type".
@@ -499,6 +514,7 @@ func TestIsStrictCompatible(t *testing.T) {
 }
 
 func TestConvertParametersToSchema_NotionStylePreservesShape(t *testing.T) {
+	t.Parallel()
 	// Notion MCP tools declare schema-form additionalProperties so the model
 	// knows what dictionary values look like. We must not strip that, even
 	// though it forces non-strict mode. The inner schema is still normalized
@@ -542,6 +558,7 @@ func TestConvertParametersToSchema_NotionStylePreservesShape(t *testing.T) {
 }
 
 func TestConvertParametersToSchema_AdditionalPropertiesMissingType(t *testing.T) {
+	t.Parallel()
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -570,6 +587,7 @@ func TestConvertParametersToSchema_AdditionalPropertiesMissingType(t *testing.T)
 }
 
 func TestFixSchemaArrayItems(t *testing.T) {
+	t.Parallel()
 	schema := `{
   "properties": {
     "arguments": {

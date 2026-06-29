@@ -9,6 +9,7 @@ import (
 )
 
 func TestExtractResult(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		meta     *filesystem.SearchFilesContentMeta
@@ -61,6 +62,7 @@ func TestExtractResult(t *testing.T) {
 }
 
 func TestExtractArgs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		args     string

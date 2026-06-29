@@ -27,6 +27,7 @@ func newConvServer(t *testing.T) *server {
 // conversation mutates a copy, leaving the cached session untouched until
 // the caller commits.
 func TestResolveSession_WorksOnClone(t *testing.T) {
+	t.Parallel()
 	s := newConvServer(t)
 
 	seed := session.New()
@@ -55,6 +56,7 @@ func TestResolveSession_WorksOnClone(t *testing.T) {
 // continuation request carrying no new user message is rejected rather than
 // silently replaying the prior turn.
 func TestResolveSession_RejectsContinuationWithoutUser(t *testing.T) {
+	t.Parallel()
 	s := newConvServer(t)
 
 	seed := session.New()
@@ -73,6 +75,7 @@ func TestResolveSession_RejectsContinuationWithoutUser(t *testing.T) {
 // leaves the cached conversation at its prior state, so a retry runs against
 // the last successful turn instead of inheriting half-failed history.
 func TestCommitConversation_FailedRunDoesNotAdvance(t *testing.T) {
+	t.Parallel()
 	s := newConvServer(t)
 
 	seed := session.New()
@@ -97,6 +100,7 @@ func TestCommitConversation_FailedRunDoesNotAdvance(t *testing.T) {
 // TestCommitConversation_SuccessfulRunAdvances verifies that a successful run
 // commits the working copy back into the cache.
 func TestCommitConversation_SuccessfulRunAdvances(t *testing.T) {
+	t.Parallel()
 	s := newConvServer(t)
 
 	seed := session.New()
@@ -120,6 +124,7 @@ func TestCommitConversation_SuccessfulRunAdvances(t *testing.T) {
 // TestCommitConversation_RestoresAfterEviction verifies that a successful run
 // restores a conversation that was evicted while the request was in flight.
 func TestCommitConversation_RestoresAfterEviction(t *testing.T) {
+	t.Parallel()
 	s := newConvServer(t)
 
 	seed := session.New()
@@ -145,6 +150,7 @@ func TestCommitConversation_RestoresAfterEviction(t *testing.T) {
 // TestResolveSession_NewConversation verifies that a request without a cached
 // conversation builds a fresh session from the full history.
 func TestResolveSession_NewConversation(t *testing.T) {
+	t.Parallel()
 	s := newConvServer(t)
 
 	working, err := s.resolveSession("conv-new", []ChatCompletionMessage{

@@ -17,6 +17,7 @@ func newTestRenderer(height int) (*renderer, *bytes.Buffer) {
 }
 
 func TestRendererFirstFrame(t *testing.T) {
+	t.Parallel()
 	r, buf := newTestRenderer(24)
 	r.frame([]string{"alpha", "beta", "input"}, 2, 0)
 
@@ -29,6 +30,7 @@ func TestRendererFirstFrame(t *testing.T) {
 }
 
 func TestRendererInPlaceUpdate(t *testing.T) {
+	t.Parallel()
 	r, buf := newTestRenderer(24)
 	r.frame([]string{"alpha", "beta", "in"}, 2, 2)
 	buf.Reset()
@@ -41,6 +43,7 @@ func TestRendererInPlaceUpdate(t *testing.T) {
 }
 
 func TestRendererAppendScrolls(t *testing.T) {
+	t.Parallel()
 	r, buf := newTestRenderer(3) // tiny viewport forces scrolling
 	r.frame([]string{"l1", "l2", "input"}, 2, 0)
 	buf.Reset()
@@ -53,6 +56,7 @@ func TestRendererAppendScrolls(t *testing.T) {
 }
 
 func TestRendererShrinkClearsTrailing(t *testing.T) {
+	t.Parallel()
 	r, buf := newTestRenderer(24)
 	r.frame([]string{"a", "b", "c", "d"}, 3, 0)
 	buf.Reset()
@@ -64,6 +68,7 @@ func TestRendererShrinkClearsTrailing(t *testing.T) {
 }
 
 func TestRendererNoChangeOnlyMovesCursor(t *testing.T) {
+	t.Parallel()
 	r, buf := newTestRenderer(24)
 	r.frame([]string{"a", "b", "c"}, 0, 0)
 	buf.Reset()
@@ -75,6 +80,7 @@ func TestRendererNoChangeOnlyMovesCursor(t *testing.T) {
 }
 
 func TestRendererMoveCursorClampsCurrentRow(t *testing.T) {
+	t.Parallel()
 	r, _ := newTestRenderer(3)
 	r.viewportTop = 5
 
@@ -87,6 +93,7 @@ func TestRendererMoveCursorClampsCurrentRow(t *testing.T) {
 }
 
 func TestRendererResizeForcesFullRedraw(t *testing.T) {
+	t.Parallel()
 	r, buf := newTestRenderer(24)
 	r.frame([]string{"a", "b", "c"}, 0, 0)
 	buf.Reset()
@@ -97,6 +104,7 @@ func TestRendererResizeForcesFullRedraw(t *testing.T) {
 }
 
 func TestDiffLines(t *testing.T) {
+	t.Parallel()
 	first, last := diffLines([]string{"a", "b", "c"}, []string{"a", "x", "c"})
 	assert.Equal(t, 1, first)
 	assert.Equal(t, 1, last)
@@ -111,6 +119,7 @@ func TestDiffLines(t *testing.T) {
 }
 
 func TestRendererEraseBelow(t *testing.T) {
+	t.Parallel()
 	r, buf := newTestRenderer(24)
 	r.frame([]string{"msg1", "msg2", "input", "footer"}, 2, 0)
 	buf.Reset()

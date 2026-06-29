@@ -14,6 +14,7 @@ import (
 )
 
 func TestSessionBrowserNavigation(t *testing.T) {
+	t.Parallel()
 	sessions := []session.Summary{
 		{ID: "1", Title: "Session 1", CreatedAt: time.Now()},
 		{ID: "2", Title: "Session 2", CreatedAt: time.Now()},
@@ -62,6 +63,7 @@ func TestSessionBrowserNavigation(t *testing.T) {
 }
 
 func TestSessionBrowserNavigationWithCtrl(t *testing.T) {
+	t.Parallel()
 	sessions := []session.Summary{
 		{ID: "1", Title: "Session 1", CreatedAt: time.Now()},
 		{ID: "2", Title: "Session 2", CreatedAt: time.Now()},
@@ -97,6 +99,7 @@ func TestSessionBrowserNavigationWithCtrl(t *testing.T) {
 }
 
 func TestSessionBrowserViewShowsSelection(t *testing.T) {
+	t.Parallel()
 	sessions := []session.Summary{
 		{ID: "1", Title: "Session 1", CreatedAt: time.Now()},
 		{ID: "2", Title: "Session 2", CreatedAt: time.Now()},
@@ -125,6 +128,7 @@ func TestSessionBrowserViewShowsSelection(t *testing.T) {
 }
 
 func TestSessionBrowserFiltersEmptySessions(t *testing.T) {
+	t.Parallel()
 	sessions := []session.Summary{
 		{ID: "1", Title: "Session 1", CreatedAt: time.Now()},
 		{ID: "2", Title: "", CreatedAt: time.Now()},
@@ -147,6 +151,7 @@ func TestSessionBrowserFiltersEmptySessions(t *testing.T) {
 }
 
 func TestSessionBrowserAllEmptySessions(t *testing.T) {
+	t.Parallel()
 	sessions := []session.Summary{
 		{ID: "1", Title: "", CreatedAt: time.Now()},
 		{ID: "2", Title: "", CreatedAt: time.Now()},
@@ -161,6 +166,7 @@ func TestSessionBrowserAllEmptySessions(t *testing.T) {
 }
 
 func TestSessionBrowserScrolling(t *testing.T) {
+	t.Parallel()
 	// Create more sessions than can fit in view
 	sessions := make([]session.Summary, 20)
 	for i := range sessions {
@@ -205,6 +211,7 @@ func TestSessionBrowserScrolling(t *testing.T) {
 }
 
 func TestSessionBrowserMouseClickSelectsSession(t *testing.T) {
+	t.Parallel()
 	sessions := []session.Summary{
 		{ID: "1", Title: "Session 1", CreatedAt: time.Now()},
 		{ID: "2", Title: "Session 2", CreatedAt: time.Now()},
@@ -251,6 +258,7 @@ func TestSessionBrowserMouseClickSelectsSession(t *testing.T) {
 }
 
 func TestSessionBrowserDoubleClickOpensSession(t *testing.T) {
+	t.Parallel()
 	sessions := []session.Summary{
 		{ID: "sess-1", Title: "Session 1", CreatedAt: time.Now()},
 		{ID: "sess-2", Title: "Session 2", CreatedAt: time.Now()},
@@ -283,6 +291,7 @@ func TestSessionBrowserDoubleClickOpensSession(t *testing.T) {
 }
 
 func TestSessionBrowserClickOutsideListIgnored(t *testing.T) {
+	t.Parallel()
 	sessions := []session.Summary{
 		{ID: "1", Title: "Session 1", CreatedAt: time.Now()},
 		{ID: "2", Title: "Session 2", CreatedAt: time.Now()},

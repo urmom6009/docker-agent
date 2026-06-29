@@ -13,6 +13,7 @@ import (
 )
 
 func TestSkillsToolset_ReadSkillContent_Local(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	skillFile := filepath.Join(tmpDir, "SKILL.md")
 	require.NoError(t, os.WriteFile(skillFile, []byte("# Local Skill\nDo the thing."), 0o644))
@@ -27,6 +28,7 @@ func TestSkillsToolset_ReadSkillContent_Local(t *testing.T) {
 }
 
 func TestSkillsToolset_ReadSkillContent_NotFound(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "exists", Description: "Exists", FilePath: "/tmp/nonexistent"},
 	}, "")
@@ -37,6 +39,7 @@ func TestSkillsToolset_ReadSkillContent_NotFound(t *testing.T) {
 }
 
 func TestSkillsToolset_ReadSkillFile(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "SKILL.md"), []byte("# Main"), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "references"), 0o755))
@@ -55,6 +58,7 @@ func TestSkillsToolset_ReadSkillFile(t *testing.T) {
 }
 
 func TestSkillsToolset_ReadSkillFile_PathTraversal(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "SKILL.md"), []byte("# Main"), 0o644))
 
@@ -72,6 +76,7 @@ func TestSkillsToolset_ReadSkillFile_PathTraversal(t *testing.T) {
 }
 
 func TestSkillsToolset_ReadSkillFile_SkillNotFound(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "exists", Description: "Exists", FilePath: "/tmp/test"},
 	}, "")
@@ -82,6 +87,7 @@ func TestSkillsToolset_ReadSkillFile_SkillNotFound(t *testing.T) {
 }
 
 func TestSkillsToolset_Instructions(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "skill-a", Description: "Does A"},
 		{Name: "skill-b", Description: "Does B", Files: []string{"SKILL.md", "references/HELP.md"}},
@@ -102,6 +108,7 @@ func TestSkillsToolset_Instructions(t *testing.T) {
 }
 
 func TestSkillsToolset_Instructions_NoFiles(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "simple", Description: "Simple skill"},
 	}, "")
@@ -114,6 +121,7 @@ func TestSkillsToolset_Instructions_NoFiles(t *testing.T) {
 }
 
 func TestSkillsToolset_Instructions_Empty(t *testing.T) {
+	t.Parallel()
 	st := New(nil, "")
 	assert.Empty(t, st.Instructions())
 
@@ -122,6 +130,7 @@ func TestSkillsToolset_Instructions_Empty(t *testing.T) {
 }
 
 func TestSkillsToolset_Tools_WithFiles(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "test", Description: "Test skill", Files: []string{"SKILL.md", "references/HELP.md"}},
 	}, "")
@@ -135,6 +144,7 @@ func TestSkillsToolset_Tools_WithFiles(t *testing.T) {
 }
 
 func TestSkillsToolset_Tools_WithoutFiles(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "test", Description: "Test skill"},
 	}, "")
@@ -147,6 +157,7 @@ func TestSkillsToolset_Tools_WithoutFiles(t *testing.T) {
 }
 
 func TestSkillsToolset_Tools_Empty(t *testing.T) {
+	t.Parallel()
 	st := New(nil, "")
 
 	tools, err := st.Tools(t.Context())
@@ -155,6 +166,7 @@ func TestSkillsToolset_Tools_Empty(t *testing.T) {
 }
 
 func TestSkillsToolset_Skills(t *testing.T) {
+	t.Parallel()
 	input := []skills.Skill{
 		{Name: "a", Description: "A"},
 		{Name: "b", Description: "B"},
@@ -165,6 +177,7 @@ func TestSkillsToolset_Skills(t *testing.T) {
 }
 
 func TestSkillsToolset_HandleReadSkill(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	skillFile := filepath.Join(tmpDir, "SKILL.md")
 	require.NoError(t, os.WriteFile(skillFile, []byte("skill instructions"), 0o644))
@@ -180,6 +193,7 @@ func TestSkillsToolset_HandleReadSkill(t *testing.T) {
 }
 
 func TestSkillsToolset_HandleReadSkill_NotFound(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "exists", Description: "Exists", FilePath: "/tmp/test"},
 	}, "")
@@ -191,6 +205,7 @@ func TestSkillsToolset_HandleReadSkill_NotFound(t *testing.T) {
 }
 
 func TestSkillsToolset_HandleReadSkillFile(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "SKILL.md"), []byte("# Main"), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "scripts"), 0o755))
@@ -210,6 +225,7 @@ func TestSkillsToolset_HandleReadSkillFile(t *testing.T) {
 }
 
 func TestSkillsToolset_HandleReadSkillFile_PathTraversal(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "SKILL.md"), []byte("# Main"), 0o644))
 
@@ -224,6 +240,7 @@ func TestSkillsToolset_HandleReadSkillFile_PathTraversal(t *testing.T) {
 }
 
 func TestSkillsToolset_ReadSkillContent_ExpandsCommands(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("skipping on windows")
 	}
@@ -243,6 +260,7 @@ func TestSkillsToolset_ReadSkillContent_ExpandsCommands(t *testing.T) {
 }
 
 func TestSkillsToolset_ReadSkillContent_ExpandsScript(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("skipping on windows")
 	}
@@ -267,6 +285,7 @@ func TestSkillsToolset_ReadSkillContent_ExpandsScript(t *testing.T) {
 }
 
 func TestSkillsToolset_ReadSkillContent_RemoteSkillSkipsExpansion(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	skillFile := filepath.Join(tmpDir, "SKILL.md")
 	content := "Info: !`echo should-not-run`"
@@ -282,6 +301,7 @@ func TestSkillsToolset_ReadSkillContent_RemoteSkillSkipsExpansion(t *testing.T) 
 }
 
 func TestSkillsToolset_ReadSkillContent_Inline(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "inline", Description: "Inline skill", InlineContent: "# Inline\nDo it."},
 	}, "")
@@ -292,6 +312,7 @@ func TestSkillsToolset_ReadSkillContent_Inline(t *testing.T) {
 }
 
 func TestSkillsToolset_ReadSkillContent_InlineSkipsExpansion(t *testing.T) {
+	t.Parallel()
 	// Inline content must never be shell-expanded, even when a working dir is set.
 	st := New([]skills.Skill{
 		{Name: "inline", Description: "Inline", InlineContent: "Info: !`echo should-not-run`"},
@@ -303,6 +324,7 @@ func TestSkillsToolset_ReadSkillContent_InlineSkipsExpansion(t *testing.T) {
 }
 
 func TestSkillsToolset_ReadSkillFile_InlineRejected(t *testing.T) {
+	t.Parallel()
 	// An inline skill has no backing directory. read_skill_file must reject it
 	// rather than resolving against an empty BaseDir (the process working dir).
 	st := New([]skills.Skill{
@@ -317,6 +339,7 @@ func TestSkillsToolset_ReadSkillFile_InlineRejected(t *testing.T) {
 }
 
 func TestSkillsToolset_FindSkill(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "alpha", Description: "Alpha skill"},
 		{Name: "beta", Description: "Beta skill"},
@@ -334,6 +357,7 @@ func TestSkillsToolset_FindSkill(t *testing.T) {
 }
 
 func TestSkillsToolset_Instructions_ForkSkills(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "inline-skill", Description: "Runs inline"},
 		{Name: "fork-skill", Description: "Runs as sub-agent", Context: "fork"},
@@ -355,6 +379,7 @@ func TestSkillsToolset_Instructions_ForkSkills(t *testing.T) {
 }
 
 func TestSkillsToolset_Instructions_NoForkSkills(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "normal", Description: "Normal skill"},
 	}, "")
@@ -368,6 +393,7 @@ func TestSkillsToolset_Instructions_NoForkSkills(t *testing.T) {
 }
 
 func TestSkillsToolset_Tools_WithForkSkills(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "inline", Description: "Inline skill"},
 		{Name: "forked", Description: "Forked skill", Context: "fork"},
@@ -383,6 +409,7 @@ func TestSkillsToolset_Tools_WithForkSkills(t *testing.T) {
 }
 
 func TestSkillsToolset_Tools_NoForkSkills(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "inline", Description: "Inline skill"},
 	}, "")
@@ -396,6 +423,7 @@ func TestSkillsToolset_Tools_NoForkSkills(t *testing.T) {
 }
 
 func TestSkillsToolset_PrepareForkSubSession(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	skillFile := filepath.Join(tmpDir, "SKILL.md")
 	require.NoError(t, os.WriteFile(skillFile, []byte("system instructions"), 0o644))
@@ -414,6 +442,7 @@ func TestSkillsToolset_PrepareForkSubSession(t *testing.T) {
 }
 
 func TestSkillsToolset_PrepareForkSubSession_NoModelOverride(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	skillFile := filepath.Join(tmpDir, "SKILL.md")
 	require.NoError(t, os.WriteFile(skillFile, []byte("system instructions"), 0o644))
@@ -430,6 +459,7 @@ func TestSkillsToolset_PrepareForkSubSession_NoModelOverride(t *testing.T) {
 }
 
 func TestSkillsToolset_PrepareForkSubSession_NotFound(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "exists", Description: "Exists", Context: "fork", FilePath: "/tmp/nonexistent"},
 	}, "")
@@ -442,6 +472,7 @@ func TestSkillsToolset_PrepareForkSubSession_NotFound(t *testing.T) {
 }
 
 func TestSkillsToolset_PrepareForkSubSession_NotFork(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	skillFile := filepath.Join(tmpDir, "SKILL.md")
 	require.NoError(t, os.WriteFile(skillFile, []byte("inline"), 0o644))
@@ -460,6 +491,7 @@ func TestSkillsToolset_PrepareForkSubSession_NotFork(t *testing.T) {
 }
 
 func TestSkillsToolset_PrepareForkSubSession_ReadFailure(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		// FilePath does not exist on disk; ReadSkillContent will fail.
 		{Name: "forked", Description: "Forked", Context: "fork", FilePath: "/does/not/exist/SKILL.md"},
@@ -473,6 +505,7 @@ func TestSkillsToolset_PrepareForkSubSession_ReadFailure(t *testing.T) {
 }
 
 func TestSkillsToolset_Tools_ForkAndFiles(t *testing.T) {
+	t.Parallel()
 	st := New([]skills.Skill{
 		{Name: "full", Description: "Full skill", Context: "fork", Files: []string{"SKILL.md", "ref.md"}},
 	}, "")
