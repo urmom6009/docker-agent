@@ -204,9 +204,17 @@
           ]
         },
         "base_url": {
-          "type": "string",
-          "description": "Base URL for the provider's API endpoint. Required for OpenAI-compatible providers, optional for native providers.",
-          "format": "uri",
+          "description": "Base URL for the provider's API endpoint. Required for OpenAI-compatible providers, optional for native providers. Accepts ${env.VAR} / ${VAR} references, substituted from the environment when a model using this provider is loaded.",
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\S*\\$\\{?[A-Za-z_]\\S*$"
+            }
+          ],
           "examples": [
             "https://router.example.com/v1"
           ]
@@ -1447,9 +1455,17 @@
           "maximum": 2
         },
         "base_url": {
-          "type": "string",
-          "description": "Base URL for the model API",
-          "format": "uri"
+          "description": "Base URL for the model API. Accepts ${env.VAR} / ${VAR} references, substituted from the environment when the model is loaded.",
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\S*\\$\\{?[A-Za-z_]\\S*$"
+            }
+          ]
         },
         "parallel_tool_calls": {
           "type": "boolean",
