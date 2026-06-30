@@ -929,6 +929,18 @@ type ModelConfig struct {
 	BaseURL           string   `json:"base_url,omitempty"`
 	ParallelToolCalls *bool    `json:"parallel_tool_calls,omitempty"`
 	TokenKey          string   `json:"token_key,omitempty"`
+	// BypassModelsGateway, when true, forces this model to connect directly to
+	// its provider, ignoring any configured models gateway (the --models-gateway
+	// flag / CAGENT_MODELS_GATEWAY env var). The model then authenticates with
+	// the provider's own credentials (e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY, or
+	// token_key) instead of routing through the gateway.
+	//
+	// Security note: a model that bypasses the gateway sends the provider's
+	// ambient credentials directly to its endpoint. Combined with a custom
+	// base_url this lets a config exfiltrate those credentials to an arbitrary
+	// host, so only enable it on configs you trust. For a router model the
+	// bypass propagates to its fallback and every routed target.
+	BypassModelsGateway bool `json:"bypass_models_gateway,omitempty"`
 	// ProviderOpts allows provider-specific options.
 	ProviderOpts map[string]any `json:"provider_opts,omitempty"`
 	TrackUsage   *bool          `json:"track_usage,omitempty"`
@@ -1113,6 +1125,7 @@ func (f *FlexibleModelConfig) isShorthandOnly() bool {
 		f.BaseURL == "" &&
 		f.ParallelToolCalls == nil &&
 		f.TokenKey == "" &&
+		!f.BypassModelsGateway &&
 		len(f.ProviderOpts) == 0 &&
 		f.TrackUsage == nil &&
 		f.ThinkingBudget == nil &&
