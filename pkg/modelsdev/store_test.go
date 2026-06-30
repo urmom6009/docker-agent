@@ -33,19 +33,16 @@ func expiredContext(t *testing.T) context.Context {
 	return ctx
 }
 
-// trackFetch swaps fetchCatalog for the duration of the test with a stub that
-// records whether a fetch was attempted and always reports the network as
-// unreachable. It returns a pointer to the "fetched" flag.
-func trackFetch(t *testing.T) *bool {
-	t.Helper()
-	var fetched bool
-	orig := fetchCatalog
-	fetchCatalog = func(context.Context, string) (*Database, string, error) {
-		fetched = true
+// trackingFetcher returns a stub fetcher that records whether a fetch was
+// attempted and always reports the network as unreachable, along with a
+// pointer to the "fetched" flag. Injected via WithFetcher so tests never
+// mutate package-level state and stay safe to run in parallel.
+func trackingFetcher() (fetched *bool, fetch fetcher) {
+	fetched = new(bool)
+	return fetched, func(context.Context, string) (*Database, string, error) {
+		*fetched = true
 		return nil, "", errors.New("fetch from API: network unreachable")
 	}
-	t.Cleanup(func() { fetchCatalog = orig })
-	return &fetched
 }
 
 // TestKnownProviderGatesFetch is the regression test for issue #3165: a lookup
@@ -53,19 +50,23 @@ func trackFetch(t *testing.T) *bool {
 // provider) must resolve locally without ever fetching the models.dev catalog,
 // while a known provider may still trigger a fetch.
 func TestKnownProviderGatesFetch(t *testing.T) {
+	t.Parallel()
+
 	// A cache path that does not exist, so there is no on-disk catalog to fall
 	// back on — the cold-start situation from the issue.
 	cacheFile := filepath.Join(t.TempDir(), "models_dev.json")
+	fetched, fetch := trackingFetcher()
 	store, err := NewStore(
 		WithCache(cacheFile),
 		WithKnownProvider(func(p string) bool { return p == "openai" }),
+		WithFetcher(fetch),
 	)
 	require.NoError(t, err)
 
 	ctx := expiredContext(t)
 
 	// Custom provider: not known -> resolves locally, no network attempt.
-	fetched := trackFetch(t)
+	*fetched = false
 	_, err = store.GetModel(ctx, NewID("mistral_gateway", "mistral-small-latest"))
 	require.Error(t, err)
 	assert.False(t, *fetched, "custom provider must not trigger a models.dev fetch")
@@ -74,7 +75,7 @@ func TestKnownProviderGatesFetch(t *testing.T) {
 	// Known provider: a cold cache still warrants a fetch — confirming the gate
 	// did not disable fetching wholesale. The fetch fails here (unreachable
 	// network) so the lookup falls back to the embedded snapshot.
-	fetched = trackFetch(t)
+	*fetched = false
 	_, _ = store.GetModel(ctx, NewID("openai", "gpt-4o"))
 	assert.True(t, *fetched, "known provider must still fetch the catalog when the cache is cold")
 }
@@ -82,11 +83,13 @@ func TestKnownProviderGatesFetch(t *testing.T) {
 // TestNoPredicateAlwaysAllowsFetch guards the default, backwards-compatible
 // behaviour: with no knownProvider predicate every provider may fetch.
 func TestNoPredicateAlwaysAllowsFetch(t *testing.T) {
+	t.Parallel()
+
 	cacheFile := filepath.Join(t.TempDir(), "models_dev.json")
-	store, err := NewStore(WithCache(cacheFile))
+	fetched, fetch := trackingFetcher()
+	store, err := NewStore(WithCache(cacheFile), WithFetcher(fetch))
 	require.NoError(t, err)
 
-	fetched := trackFetch(t)
 	_, _ = store.GetModel(expiredContext(t), NewID("mistral_gateway", "mistral-small-latest"))
 	assert.True(t, *fetched, "with no predicate, any provider may trigger a fetch")
 }

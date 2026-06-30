@@ -117,7 +117,7 @@ func TestLoadExamples(t *testing.T) {
 			runConfig := &config.RuntimeConfig{}
 			runConfig.WorkingDir = t.TempDir()
 
-			teams, err := Load(t.Context(), agentSource, runConfig, withTestProviderRegistry()...)
+			teams, err := Load(catalogContext(t), agentSource, runConfig, withTestProviderRegistry()...)
 			if errors.Is(err, dmr.ErrNotInstalled) {
 				t.Skipf("Skipping %s: Docker Model Runner not installed", agentFilename)
 			}
@@ -129,22 +129,25 @@ func TestLoadExamples(t *testing.T) {
 
 // gatherExampleEnvVars returns the union of env vars referenced by the given
 // example files (both for models and toolsets). The set is collected up-front
-// so t.Setenv can be called before any subtest starts.
+// so t.Setenv can be called before any subtest starts. It uses a static
+// gateway loader so MCP `ref:` toolsets in the examples don't trigger a live
+// catalog fetch.
 func gatherExampleEnvVars(t *testing.T, examples []string) map[string]bool {
 	t.Helper()
 
+	ctx := catalogContext(t)
 	envs := make(map[string]bool)
 	for _, agentFilename := range examples {
 		agentSource, err := config.Resolve(agentFilename, nil)
 		require.NoError(t, err)
 
-		cfg, err := config.Load(t.Context(), agentSource)
+		cfg, err := config.Load(ctx, agentSource)
 		require.NoError(t, err)
 
-		for _, env := range config.GatherEnvVarsForModels(t.Context(), cfg, environment.NewOsEnvProvider()) {
+		for _, env := range config.GatherEnvVarsForModels(ctx, cfg, environment.NewOsEnvProvider()) {
 			envs[env] = true
 		}
-		toolEnvs, _ := config.GatherEnvVarsForTools(t.Context(), cfg)
+		toolEnvs, _ := config.GatherEnvVarsForTools(ctx, cfg)
 		for _, env := range toolEnvs {
 			envs[env] = true
 		}

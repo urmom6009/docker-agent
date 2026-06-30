@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/docker-agent/pkg/hooks"
 	"github.com/docker/docker-agent/pkg/hooks/builtins"
+	"github.com/docker/docker-agent/pkg/httpclient"
 )
 
 // TestRegisterInstallsAllBuiltins pins the public contract of [Register]:
@@ -176,10 +177,15 @@ func TestAddPromptFilesNoArgsIsNoop(t *testing.T) {
 // lookup registers the builtins on a fresh Registry and returns the
 // named BuiltinFunc, failing the test if it isn't present. Centralising
 // the boilerplate keeps the per-builtin tests focused on behavior.
+//
+// It injects an SSRF-unsafe HTTP client for http_post so tests can reach
+// httptest.NewServer (which binds to 127.0.0.1); production wiring uses the
+// safe dial-time-protected client.
 func lookup(t *testing.T, name string) hooks.BuiltinFunc {
 	t.Helper()
 	r := hooks.NewRegistry()
-	require.NoError(t, builtins.Register(r))
+	require.NoError(t, builtins.Register(r,
+		builtins.WithHTTPPostClient(httpclient.NewSafeClient(30*time.Second, true))))
 	fn, ok := r.LookupBuiltin(name)
 	require.True(t, ok, "builtin %q must be registered", name)
 	require.NotNil(t, fn)

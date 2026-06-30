@@ -33,7 +33,7 @@ func EnsureCommand(ctx context.Context, command, version string) (string, error)
 		return command, nil
 	}
 
-	resolvedPath, err := resolve(ctx, command, version)
+	resolvedPath, err := resolve(ctx, command, version, doInstall)
 	if err != nil {
 		return "", fmt.Errorf("auto-installing command %q: %w", command, err)
 	}
@@ -46,9 +46,14 @@ func EnsureCommand(ctx context.Context, command, version string) (string, error)
 // the actual download and install; the other waits and receives the same result.
 var installGroup singleflight.Group
 
-// resolve checks if a command is available and installs it if needed.
-// Returns the path to the usable binary.
-func resolve(ctx context.Context, command, version string) (string, error) {
+// installFunc performs the actual package resolution and installation of a
+// command. doInstall is the production implementation; tests pass their own
+// (e.g. a panicking stub) so they never mutate package-level state.
+type installFunc func(ctx context.Context, command, version string) (string, error)
+
+// resolve checks if a command is available and installs it via install if
+// needed. Returns the path to the usable binary.
+func resolve(ctx context.Context, command, version string, install installFunc) (string, error) {
 	// Check system PATH first — return original command name (not full path)
 	// so the caller uses it as-is via exec.Command.
 	if _, err := exec.LookPath(command); err == nil {
@@ -63,7 +68,7 @@ func resolve(ctx context.Context, command, version string) (string, error) {
 
 	// Use singleflight to deduplicate concurrent installs of the same command.
 	result, err, _ := installGroup.Do(command, func() (any, error) {
-		return safeInstall(ctx, command, version)
+		return safeInstall(ctx, command, version, install)
 	})
 	if err != nil {
 		return "", err
@@ -72,11 +77,11 @@ func resolve(ctx context.Context, command, version string) (string, error) {
 	return result.(string), nil
 }
 
-// safeInstall wraps doInstall with panic recovery. Without this,
+// safeInstall wraps install with panic recovery. Without this,
 // singleflight wraps any panic in *panicError and re-raises it via
 // `go panic(...)` (see golang.org/x/sync/singleflight), which is
 // unrecoverable by callers and crashes the process. Issue #2765.
-func safeInstall(ctx context.Context, command, version string) (path string, err error) {
+func safeInstall(ctx context.Context, command, version string, install installFunc) (path string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			slog.ErrorContext(ctx, "Panic during tool auto-install",
@@ -85,13 +90,8 @@ func safeInstall(ctx context.Context, command, version string) (path string, err
 			err = fmt.Errorf("auto-install for %q panicked: %v", command, r)
 		}
 	}()
-	return doInstallFn(ctx, command, version)
+	return install(ctx, command, version)
 }
-
-// doInstallFn is the install function safeInstall delegates to. Indirected
-// through a var so tests can swap in a panicking implementation to verify
-// the recover path. Production code never reassigns this.
-var doInstallFn = doInstall
 
 // doInstall performs the actual package resolution and installation.
 func doInstall(ctx context.Context, command, versionRef string) (string, error) {

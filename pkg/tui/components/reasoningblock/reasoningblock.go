@@ -61,9 +61,10 @@ func fadeStyleForProgress(progress float64) lipgloss.Style {
 	return fadeStyles[idx]
 }
 
-// nowFunc is the time function used to get the current time.
-// Tests can override this for deterministic behavior.
-var nowFunc = time.Now
+// defaultNow is the time function used to get the current time. Each Model
+// captures it into its own field at construction so tests can override the
+// clock per-instance instead of mutating package-level state.
+var defaultNow = time.Now
 
 // toolEntry holds a tool call message and its view.
 type toolEntry struct {
@@ -116,6 +117,9 @@ type Model struct {
 	reasoningVersion    int          // increments when reasoning content changes
 	cache               *renderCache // cached rendering results
 	animationRegistered bool         // whether we're registered with animation coordinator
+	// now returns the current time. Defaults to time.Now; tests override it
+	// per-instance for deterministic fade/grace-period behaviour.
+	now func() time.Time
 }
 
 // New creates a new reasoning block.
@@ -126,6 +130,7 @@ func New(id, agentName string, sessionState *service.SessionState) *Model {
 		expanded:     sessionState == nil || sessionState.ExpandThinking(),
 		width:        80,
 		sessionState: sessionState,
+		now:          defaultNow,
 	}
 }
 
@@ -268,7 +273,7 @@ func (m *Model) UpdateToolResult(toolCallID, content string, status types.ToolSt
 		var animCmd tea.Cmd
 		if wasInProgress && isCompleted {
 			totalDuration := completedToolVisibleDuration + completedToolFadeDuration
-			entry.collapsedVisibleUntil = nowFunc().Add(totalDuration)
+			entry.collapsedVisibleUntil = m.now().Add(totalDuration)
 			entry.fadeProgress = 0
 			// Register with animation coordinator if not already
 			if !m.animationRegistered {
@@ -433,7 +438,7 @@ func (m *Model) Update(msg tea.Msg) (layout.Model, tea.Cmd) {
 		m.cache = nil
 	case animation.TickMsg:
 		// Compute fade levels based on elapsed time (tick-rate independent)
-		m.computeFadeProgressAt(nowFunc())
+		m.computeFadeProgressAt(m.now())
 		// Unregister if no more fading tools (uses fadeProgress computed above)
 		if m.animationRegistered && !m.hasFadingTools() {
 			m.animationRegistered = false

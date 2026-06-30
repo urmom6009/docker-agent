@@ -441,18 +441,14 @@ func TestReasoningBlockUpdateToolResult(t *testing.T) {
 }
 
 func TestReasoningBlockCompletedToolGracePeriod(t *testing.T) {
-	// Not parallel - modifies package-level nowFunc
+	t.Parallel()
 
-	// Save original nowFunc and restore after test
-	originalNowFunc := nowFunc
-	t.Cleanup(func() { nowFunc = originalNowFunc })
-
-	// Set up a fixed "now" time
+	// Set up a fixed "now" time, injected per-instance.
 	fakeNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
-	nowFunc = func() time.Time { return fakeNow }
 
 	sessionState := &service.SessionState{}
 	block := New("test-1", "root", sessionState)
+	block.now = func() time.Time { return fakeNow }
 	block.SetSize(80, 24)
 
 	block.SetReasoning("Thinking...")
@@ -496,18 +492,14 @@ func TestReasoningBlockCompletedToolGracePeriod(t *testing.T) {
 }
 
 func TestReasoningBlockFadingState(t *testing.T) {
-	// Not parallel - modifies package-level nowFunc
-
-	// Save original nowFunc and restore after test
-	originalNowFunc := nowFunc
-	t.Cleanup(func() { nowFunc = originalNowFunc })
+	t.Parallel()
 
 	completionTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	fakeNow := completionTime
-	nowFunc = func() time.Time { return fakeNow }
 
 	sessionState := &service.SessionState{}
 	block := New("test-1", "root", sessionState)
+	block.now = func() time.Time { return fakeNow }
 	block.SetSize(80, 24)
 
 	block.SetReasoning("Thinking...")
@@ -613,18 +605,14 @@ func TestReasoningBlockID(t *testing.T) {
 }
 
 func TestReasoningBlockNeedsTick(t *testing.T) {
-	// Not parallel - modifies package-level nowFunc
-
-	// Save original nowFunc and restore after test
-	originalNowFunc := nowFunc
-	t.Cleanup(func() { nowFunc = originalNowFunc })
+	t.Parallel()
 
 	completionTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	fakeNow := completionTime
-	nowFunc = func() time.Time { return fakeNow }
 
 	sessionState := &service.SessionState{}
 	block := New("test-1", "root", sessionState)
+	block.now = func() time.Time { return fakeNow }
 	block.SetSize(80, 24)
 
 	block.SetReasoning("Thinking...")

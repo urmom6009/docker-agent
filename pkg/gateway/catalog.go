@@ -42,7 +42,7 @@ func RequiredEnvVars(ctx context.Context, serverName string) ([]Secret, error) {
 }
 
 func ServerSpec(ctx context.Context, serverName string) (Server, error) {
-	catalog, err := loadCatalog(ctx)
+	catalog, err := loaderFrom(ctx).load(ctx)
 	if err != nil {
 		return Server{}, err
 	}
@@ -66,34 +66,89 @@ type cachedCatalog struct {
 	ETag    string  `json:"etag,omitempty"`
 }
 
-// catalogOnce guards one-shot catalog loading: the catalog is fetched at
-// most once per process and the result is memoized for every later caller.
-var (
-	catalogOnce   sync.Once
-	catalogCached struct {
+// Loader fetches and memoizes the MCP catalog. A single Loader fetches the
+// catalog at most once and reuses the memoized result for every later call,
+// so callers should share one instance.
+//
+// The zero value is not usable; construct with [NewLoader] (production, fetches
+// from the network) or [NewStaticLoader] (tests, serves a fixed catalog with no
+// network access). A Loader is carried on the context via [WithLoader] and
+// retrieved with [loaderFrom]; call sites that don't inject one transparently
+// use the shared [defaultLoader].
+type Loader struct {
+	// fetch loads the catalog. Production uses fetchAndCache; tests inject a
+	// stub that serves a fixed catalog without touching the network.
+	fetch func(context.Context) (Catalog, error)
+
+	once   sync.Once
+	cached struct {
 		catalog Catalog
 		err     error
 	}
+}
 
-	// catalogOverride, when set, replaces the real loader entirely. It is
-	// only assigned from test setup via OverrideCatalogForTesting.
-	catalogOverride func(context.Context) (Catalog, error)
-)
+// NewLoader returns a Loader that fetches the catalog from the network (with
+// on-disk cache fallback) on first use and memoizes the result.
+func NewLoader() *Loader {
+	return &Loader{fetch: fetchAndCache}
+}
 
-// loadCatalog fetches and caches the catalog on the first call, reusing the
-// memoized result afterwards. The first caller's context is honoured for
-// tracing (and threads the fetch onto the program's context), but its
-// cancellation is detached via WithoutCancel so a cancelled first caller
-// cannot permanently cache a context-cancellation error for everyone else.
-// On every subsequent call ctx is unused — the work has already run.
-func loadCatalog(ctx context.Context) (Catalog, error) {
-	if catalogOverride != nil {
-		return catalogOverride(ctx)
+// NewStaticLoader returns a Loader that always serves catalog without touching
+// the network. It is the test seam that replaces the old global override: a
+// test injects it via [WithLoader] so its goroutines never race a shared
+// package-level variable.
+func NewStaticLoader(catalog Catalog) *Loader {
+	return &Loader{
+		fetch: func(context.Context) (Catalog, error) { return catalog, nil },
 	}
-	catalogOnce.Do(func() {
-		catalogCached.catalog, catalogCached.err = fetchAndCache(context.WithoutCancel(ctx))
+}
+
+// load fetches and caches the catalog on the first call, reusing the memoized
+// result afterwards. The first caller's context is honoured for tracing (and
+// threads the fetch onto the program's context), but its cancellation is
+// detached via WithoutCancel so a cancelled first caller cannot permanently
+// cache a context-cancellation error for everyone else. On every subsequent
+// call ctx is unused — the work has already run.
+func (l *Loader) load(ctx context.Context) (Catalog, error) {
+	// Default the fetcher so a zero-value Loader degrades to the production
+	// fetch path instead of panicking inside once.Do (which would also wedge
+	// the sync.Once into a permanently-done state).
+	fetch := l.fetch
+	if fetch == nil {
+		fetch = fetchAndCache
+	}
+	l.once.Do(func() {
+		l.cached.catalog, l.cached.err = fetch(context.WithoutCancel(ctx))
 	})
-	return catalogCached.catalog, catalogCached.err
+	return l.cached.catalog, l.cached.err
+}
+
+// defaultLoader backs every call site that doesn't inject its own Loader via
+// [WithLoader]. It preserves the historical behaviour of a single
+// process-wide, fetched-once catalog.
+var defaultLoader = NewLoader()
+
+type loaderContextKey struct{}
+
+// WithLoader returns a copy of ctx that carries loader, so calls to
+// [ServerSpec] / [RequiredEnvVars] made with the returned context resolve
+// against it instead of the shared [defaultLoader]. Tests use it together with
+// [NewStaticLoader] to serve a fixed catalog without global state. A nil
+// loader is ignored so callers fall back to the [defaultLoader].
+func WithLoader(ctx context.Context, loader *Loader) context.Context {
+	if loader == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, loaderContextKey{}, loader)
+}
+
+// loaderFrom returns the Loader carried by ctx, or the shared [defaultLoader]
+// when none was injected.
+func loaderFrom(ctx context.Context) *Loader {
+	if l, ok := ctx.Value(loaderContextKey{}).(*Loader); ok && l != nil {
+		return l
+	}
+	return defaultLoader
 }
 
 // fetchAndCache tries to fetch the catalog from the network (using ETag for

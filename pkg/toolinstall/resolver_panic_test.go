@@ -9,24 +9,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// withPanickingInstaller swaps doInstallFn for a panicking stub for the
-// duration of the test, restoring the original on cleanup.
-func withPanickingInstaller(t *testing.T, panicValue any) {
-	t.Helper()
-	original := doInstallFn
-	doInstallFn = func(context.Context, string, string) (string, error) {
+// panickingInstaller returns an installFunc that always panics with the
+// given value. Injected into resolve/safeInstall so tests never mutate
+// package-level state.
+func panickingInstaller(panicValue any) installFunc {
+	return func(context.Context, string, string) (string, error) {
 		panic(panicValue)
 	}
-	t.Cleanup(func() { doInstallFn = original })
 }
 
 // TestSafeInstall_RecoversFromStringPanic verifies that a string panic
 // inside doInstall is converted to an error rather than crashing the
 // process via singleflight's re-panic.
 func TestSafeInstall_RecoversFromStringPanic(t *testing.T) {
-	withPanickingInstaller(t, "boom")
+	t.Parallel()
 
-	path, err := safeInstall(t.Context(), "fake-tool", "")
+	path, err := safeInstall(t.Context(), "fake-tool", "", panickingInstaller("boom"))
 
 	require.Error(t, err)
 	assert.Empty(t, path)
@@ -39,15 +37,15 @@ func TestSafeInstall_RecoversFromStringPanic(t *testing.T) {
 // nil-pointer dereference, which is the failure mode described in the
 // original issue (downstream HTTP/YAML code dereferencing a nil result).
 func TestSafeInstall_RecoversFromNilDeref(t *testing.T) {
-	original := doInstallFn
-	doInstallFn = func(context.Context, string, string) (string, error) {
+	t.Parallel()
+
+	install := func(context.Context, string, string) (string, error) {
 		var p *struct{ X int }
 		_ = p.X // forces a runtime panic
 		return "", nil
 	}
-	t.Cleanup(func() { doInstallFn = original })
 
-	path, err := safeInstall(t.Context(), "fake-tool", "")
+	path, err := safeInstall(t.Context(), "fake-tool", "", install)
 
 	require.Error(t, err)
 	assert.Empty(t, path)
@@ -60,7 +58,7 @@ func TestSafeInstall_RecoversFromNilDeref(t *testing.T) {
 // process crashing via singleflight's `go panic(...)` re-raise.
 func TestResolve_ConcurrentPanic_DoesNotCrash(t *testing.T) {
 	t.Setenv("DOCKER_AGENT_TOOLS_DIR", t.TempDir())
-	withPanickingInstaller(t, "simulated network failure")
+	install := panickingInstaller("simulated network failure")
 
 	const numGoroutines = 10
 	var wg sync.WaitGroup
@@ -68,7 +66,7 @@ func TestResolve_ConcurrentPanic_DoesNotCrash(t *testing.T) {
 
 	for i := range numGoroutines {
 		wg.Go(func() {
-			_, errs[i] = resolve(t.Context(), "concurrent-panic-tool", "")
+			_, errs[i] = resolve(t.Context(), "concurrent-panic-tool", "", install)
 		})
 	}
 	wg.Wait()

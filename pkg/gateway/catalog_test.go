@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,17 +32,17 @@ var testCatalog = Catalog{
 	},
 }
 
-func TestMain(m *testing.M) {
-	// Override the production loader so that tests never hit the network.
-	catalogOverride = func(context.Context) (Catalog, error) {
-		return testCatalog, nil
-	}
-	os.Exit(m.Run())
+// testContext returns a context carrying a static loader that serves
+// testCatalog, so the package functions never hit the network and tests stay
+// parallel-safe (no shared global).
+func testContext(t *testing.T) context.Context {
+	t.Helper()
+	return WithLoader(t.Context(), NewStaticLoader(testCatalog))
 }
 
 func TestRequiredEnvVars_local(t *testing.T) {
 	t.Parallel()
-	secrets, err := RequiredEnvVars(t.Context(), "github-official")
+	secrets, err := RequiredEnvVars(testContext(t), "github-official")
 	require.NoError(t, err)
 
 	assert.Len(t, secrets, 1)
@@ -53,7 +52,7 @@ func TestRequiredEnvVars_local(t *testing.T) {
 
 func TestRequiredEnvVars_remote(t *testing.T) {
 	t.Parallel()
-	secrets, err := RequiredEnvVars(t.Context(), "apify")
+	secrets, err := RequiredEnvVars(testContext(t), "apify")
 	require.NoError(t, err)
 
 	assert.Empty(t, secrets)
@@ -61,7 +60,7 @@ func TestRequiredEnvVars_remote(t *testing.T) {
 
 func TestServerSpec_local(t *testing.T) {
 	t.Parallel()
-	server, err := ServerSpec(t.Context(), "fetch")
+	server, err := ServerSpec(testContext(t), "fetch")
 	require.NoError(t, err)
 
 	assert.Equal(t, "server", server.Type)
@@ -69,7 +68,7 @@ func TestServerSpec_local(t *testing.T) {
 
 func TestServerSpec_remote(t *testing.T) {
 	t.Parallel()
-	server, err := ServerSpec(t.Context(), "apify")
+	server, err := ServerSpec(testContext(t), "apify")
 	require.NoError(t, err)
 
 	assert.Equal(t, "remote", server.Type)
@@ -79,7 +78,7 @@ func TestServerSpec_remote(t *testing.T) {
 
 func TestServerSpec_notFound(t *testing.T) {
 	t.Parallel()
-	_, err := ServerSpec(t.Context(), "nonexistent")
+	_, err := ServerSpec(testContext(t), "nonexistent")
 	require.Error(t, err)
 
 	assert.Contains(t, err.Error(), "not found in MCP catalog")

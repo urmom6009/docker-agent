@@ -218,7 +218,7 @@ func TestCreateLSPTool_WorkingDir_ReachesHandler(t *testing.T) {
 // returns a clear error rather than silently discarding the field.
 func TestCreateMCPTool_RefRemote_WorkingDir_ReturnsError(t *testing.T) {
 	t.Parallel()
-	// The "docker:remote-server" ref is seeded as type "remote" in TestMain.
+	// The "docker:remote-server" ref is seeded as type "remote" in testCatalog.
 	toolset := latest.Toolset{
 		Type:       "mcp",
 		Ref:        "docker:remote-server",
@@ -231,7 +231,7 @@ func TestCreateMCPTool_RefRemote_WorkingDir_ReturnsError(t *testing.T) {
 		EnvProviderForTests: environment.NewOsEnvProvider(),
 	}
 
-	_, err := registry.CreateTool(t.Context(), toolset, ".", runConfig, "test-agent")
+	_, err := registry.CreateTool(catalogContext(t), toolset, ".", runConfig, "test-agent")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "working_dir is not supported")
 	assert.Contains(t, err.Error(), "remote server")
@@ -242,7 +242,7 @@ func TestCreateMCPTool_RefRemote_WorkingDir_ReturnsError(t *testing.T) {
 // not set (the common case — regression guard).
 func TestCreateMCPTool_RefRemote_NoWorkingDir_Succeeds(t *testing.T) {
 	t.Parallel()
-	// The "docker:remote-server" ref is seeded as type "remote" in TestMain.
+	// The "docker:remote-server" ref is seeded as type "remote" in testCatalog.
 	toolset := latest.Toolset{
 		Type: "mcp",
 		Ref:  "docker:remote-server",
@@ -254,7 +254,7 @@ func TestCreateMCPTool_RefRemote_NoWorkingDir_Succeeds(t *testing.T) {
 		EnvProviderForTests: environment.NewOsEnvProvider(),
 	}
 
-	tool, err := registry.CreateTool(t.Context(), toolset, ".", runConfig, "test-agent")
+	tool, err := registry.CreateTool(catalogContext(t), toolset, ".", runConfig, "test-agent")
 	require.NoError(t, err)
 	require.NotNil(t, tool)
 }

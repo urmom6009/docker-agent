@@ -69,11 +69,12 @@ func TestSnapshotDateIsFresh(t *testing.T) {
 // is cold and the network is unreachable, a known-provider lookup resolves
 // against the embedded snapshot instead of erroring out.
 func TestColdCacheFallsBackToSnapshot(t *testing.T) {
-	cacheFile := filepath.Join(t.TempDir(), "models_dev.json")
-	store, err := NewStore(WithCache(cacheFile))
-	require.NoError(t, err)
+	t.Parallel()
 
-	fetched := trackFetch(t)
+	cacheFile := filepath.Join(t.TempDir(), "models_dev.json")
+	fetched, fetch := trackingFetcher()
+	store, err := NewStore(WithCache(cacheFile), WithFetcher(fetch))
+	require.NoError(t, err)
 
 	// gpt-4o is present in the embedded snapshot; the fetch fails, so the
 	// resolution must come from the snapshot.
@@ -88,26 +89,18 @@ func TestColdCacheFallsBackToSnapshot(t *testing.T) {
 // the snapshot, but a later lookup (once the network recovers) must retry the
 // fetch and serve the fresh catalog rather than the stale build-time snapshot.
 func TestSnapshotFallbackIsNotMemoized(t *testing.T) {
+	t.Parallel()
+
 	cacheFile := filepath.Join(t.TempDir(), "models_dev.json")
-	store, err := NewStore(WithCache(cacheFile))
-	require.NoError(t, err)
 
 	// First lookup: the network is down, so the fetch fails and we fall back
 	// to the embedded snapshot without memoizing it.
-	orig := fetchCatalog
-	var firstFetched bool
-	fetchCatalog = func(context.Context, string) (*Database, string, error) {
-		firstFetched = true
-		return nil, "", errors.New("fetch from API: network unreachable")
-	}
-	_, err = store.GetModel(t.Context(), NewID("openai", "gpt-4o"))
-	require.NoError(t, err)
-	assert.True(t, firstFetched)
-
-	// Network recovers: a second lookup must retry the fetch (the fallback was
-	// not pinned) and serve the freshly fetched catalog.
-	var secondFetched bool
-	fetchCatalog = func(context.Context, string) (*Database, string, error) {
+	var firstFetched, secondFetched bool
+	fetch := func(context.Context, string) (*Database, string, error) {
+		if !firstFetched {
+			firstFetched = true
+			return nil, "", errors.New("fetch from API: network unreachable")
+		}
 		secondFetched = true
 		return &Database{Providers: map[string]Provider{
 			"openai": {Models: map[string]Model{
@@ -115,8 +108,15 @@ func TestSnapshotFallbackIsNotMemoized(t *testing.T) {
 			}},
 		}}, "etag-1", nil
 	}
-	t.Cleanup(func() { fetchCatalog = orig })
+	store, err := NewStore(WithCache(cacheFile), WithFetcher(fetch))
+	require.NoError(t, err)
 
+	_, err = store.GetModel(t.Context(), NewID("openai", "gpt-4o"))
+	require.NoError(t, err)
+	assert.True(t, firstFetched)
+
+	// Network recovers: a second lookup must retry the fetch (the fallback was
+	// not pinned) and serve the freshly fetched catalog.
 	m, err := store.GetModel(t.Context(), NewID("openai", "fresh-model"))
 	require.NoError(t, err)
 	assert.True(t, secondFetched, "a fetch failure must not be memoized; the next lookup must retry")

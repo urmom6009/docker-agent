@@ -69,12 +69,40 @@ import (
 	"github.com/docker/docker-agent/pkg/hooks"
 )
 
+// Option configures the builtin registration. The zero options install the
+// production defaults; tests use the exported With… helpers to inject
+// alternatives (e.g. an SSRF-unsafe HTTP client) without mutating any
+// package-level state.
+type Option func(*options)
+
+type options struct {
+	httpPostClient httpDoer
+}
+
+// WithHTTPPostClient overrides the HTTP client used by the http_post builtin.
+// Tests pass an SSRF-unsafe client so http_post can reach httptest.NewServer
+// (which binds to 127.0.0.1); production callers omit it and get the safe
+// dial-time-protected client.
+func WithHTTPPostClient(client httpDoer) Option {
+	return func(o *options) {
+		o.httpPostClient = client
+	}
+}
+
 // Register installs the stock builtin hooks on r.
 //
 // Note: the snapshot builtin is NOT installed by Register. It ships
 // its own entry point ([RegisterSnapshot]) so the embedder receives a
 // [SnapshotController] for driving /undo, /snapshots, /reset.
-func Register(r *hooks.Registry) error {
+func Register(r *hooks.Registry, opts ...Option) error {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+	if o.httpPostClient == nil {
+		o.httpPostClient = defaultHTTPPostClient()
+	}
+
 	return errors.Join(
 		r.RegisterBuiltin(AddDate, addDate),
 		r.RegisterBuiltin(AddEnvironmentInfo, addEnvironmentInfo),
@@ -88,7 +116,7 @@ func Register(r *hooks.Registry) error {
 		r.RegisterBuiltin(RedactSecrets, redactSecrets),
 		r.RegisterBuiltin(LimitLargeToolResults, limitLargeToolResults),
 		r.RegisterBuiltin(SaferShell, saferShell),
-		r.RegisterBuiltin(HTTPPost, httpPost),
+		r.RegisterBuiltin(HTTPPost, newHTTPPost(o.httpPostClient)),
 		r.RegisterBuiltin(Unload, unload),
 	)
 }

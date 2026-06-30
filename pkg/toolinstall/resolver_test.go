@@ -97,7 +97,7 @@ func TestResolve_FoundInPath(t *testing.T) {
 		t.Skipf("skipping: %q not in PATH", command)
 	}
 
-	path, err := resolve(t.Context(), command, "")
+	path, err := resolve(t.Context(), command, "", doInstall)
 	require.NoError(t, err)
 	assert.NotEmpty(t, path)
 }
@@ -111,7 +111,7 @@ func TestResolve_FoundInBinDir(t *testing.T) {
 	fakeBin := filepath.Join(binDir, "my-custom-tool")
 	require.NoError(t, os.WriteFile(fakeBin, []byte("#!/bin/sh\necho ok"), 0o755))
 
-	path, err := resolve(t.Context(), "my-custom-tool", "")
+	path, err := resolve(t.Context(), "my-custom-tool", "", doInstall)
 	require.NoError(t, err)
 	assert.Equal(t, fakeBin, path)
 }
@@ -119,7 +119,7 @@ func TestResolve_FoundInBinDir(t *testing.T) {
 func TestResolve_NotFoundAnywhere(t *testing.T) {
 	t.Setenv("DOCKER_AGENT_TOOLS_DIR", t.TempDir())
 
-	_, err := resolve(t.Context(), "definitely-nonexistent-tool-xyz123", "")
+	_, err := resolve(t.Context(), "definitely-nonexistent-tool-xyz123", "", doInstall)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "looking up command")
 }
@@ -127,7 +127,7 @@ func TestResolve_NotFoundAnywhere(t *testing.T) {
 func TestResolve_InvalidAquaRef(t *testing.T) {
 	t.Setenv("DOCKER_AGENT_TOOLS_DIR", t.TempDir())
 
-	_, err := resolve(t.Context(), "sometool", "invalid-ref")
+	_, err := resolve(t.Context(), "sometool", "invalid-ref", doInstall)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parsing aqua reference")
 }
