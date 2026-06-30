@@ -75,6 +75,13 @@ func (r *Registry) createDirectProvider(ctx context.Context, cfg *latest.ModelCo
 	if err := expandModelConfigEnv(ctx, enhancedCfg, env); err != nil {
 		return nil, err
 	}
+	// A model may opt out of the models gateway and dial its provider directly.
+	// Clearing the gateway option makes the leaf provider take its direct-auth
+	// path (provider API key / token_key) instead of the gateway path.
+	if enhancedCfg.BypassModelsGateway && globalOptions.Gateway() != "" {
+		slog.DebugContext(ctx, "Bypassing models gateway for model", "provider", enhancedCfg.Provider, "model", enhancedCfg.Model)
+		opts = append(opts, options.WithGateway(""))
+	}
 	providerType := resolveProviderType(enhancedCfg)
 	factory, ok := r.factories[providerType]
 	if !ok {

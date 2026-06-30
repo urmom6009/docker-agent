@@ -1,0 +1,30 @@
+# Demonstrates `bypass_models_gateway`, which forces a specific model to
+# connect directly to its provider instead of routing through a models gateway
+# (configured via --models-gateway / CAGENT_MODELS_GATEWAY).
+#
+# This is useful when most models should go through a central gateway (for
+# billing, auditing, or shared credentials) but one model must talk to its
+# provider directly — for example a model the gateway does not proxy, or one
+# that needs a dedicated API key.
+#
+# A bypassed model authenticates with the provider's own credentials
+# (OPENAI_API_KEY, ANTHROPIC_API_KEY, or an explicit token_key) rather than the
+# gateway's short-lived token.
+models:
+  # Routed through the gateway when one is configured.
+  gateway-model:
+    provider: openai
+    model: gpt-5
+
+  # Always talks directly to Anthropic, even when a gateway is configured.
+  # Requires ANTHROPIC_API_KEY to be set.
+  direct-model:
+    provider: anthropic
+    model: claude-sonnet-4-5
+    bypass_models_gateway: true
+
+agents:
+  root:
+    model: direct-model
+    description: Assistant whose model bypasses the models gateway
+    instruction: You are a helpful assistant.

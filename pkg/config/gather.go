@@ -26,6 +26,14 @@ func gatherMissingEnvVars(ctx context.Context, cfg *latest.Config, modelsGateway
 		for _, e := range names {
 			requiredEnv[e] = true
 		}
+	} else {
+		// A gateway supplies credentials for routed models, but models that
+		// bypass it dial their provider directly and still need their own
+		// credentials present.
+		names := gatherEnvVarsForModels(ctx, cfg, env, true)
+		for _, e := range names {
+			requiredEnv[e] = true
+		}
 	}
 
 	// Tools
@@ -51,6 +59,14 @@ func gatherMissingEnvVars(ctx context.Context, cfg *latest.Config, modelsGateway
 }
 
 func GatherEnvVarsForModels(ctx context.Context, cfg *latest.Config, env environment.Provider) []string {
+	return gatherEnvVarsForModels(ctx, cfg, env, false)
+}
+
+// gatherEnvVarsForModels collects the env vars required by model-backed agents.
+// When bypassOnly is true, only models that set bypass_models_gateway are
+// inspected — used to require direct provider credentials for those models even
+// when a models gateway would otherwise supply credentials for the rest.
+func gatherEnvVarsForModels(ctx context.Context, cfg *latest.Config, env environment.Provider, bypassOnly bool) []string {
 	requiredEnv := map[string]bool{}
 
 	// Inspect only the models that are actually used by docker-agent model-backed agents.
@@ -61,6 +77,9 @@ func GatherEnvVarsForModels(ctx context.Context, cfg *latest.Config, env environ
 		modelNames := strings.SplitSeq(agent.Model, ",")
 		for modelName := range modelNames {
 			modelName = strings.TrimSpace(modelName)
+			if bypassOnly && !cfg.Models[modelName].BypassModelsGateway {
+				continue
+			}
 			gatherEnvVarsForModel(ctx, cfg, modelName, requiredEnv, env)
 		}
 	}

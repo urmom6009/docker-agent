@@ -350,6 +350,29 @@ func TestCheckRequiredEnvVarsWithModelGateway(t *testing.T) {
 	})
 }
 
+func TestCheckRequiredEnvVars_BypassModelsGateway(t *testing.T) {
+	t.Parallel()
+
+	cfg := &latest.Config{
+		Agents: []latest.AgentConfig{{Name: "root", Model: "direct"}},
+		Models: map[string]latest.ModelConfig{
+			"direct": {Provider: "anthropic", Model: "claude-sonnet-4-5", BypassModelsGateway: true},
+		},
+	}
+
+	env := &fakeEnvProvider{vars: map[string]string{
+		environment.DockerDesktopTokenEnv: "some-jwt-token",
+	}}
+
+	// Even with a gateway configured, a bypassing model dials its provider
+	// directly and must have its own credentials present.
+	err := CheckRequiredEnvVars(t.Context(), cfg, "https://models.docker.com", env)
+	require.Error(t, err)
+	var reqErr *environment.RequiredEnvError
+	require.ErrorAs(t, err, &reqErr)
+	assert.Equal(t, []string{"ANTHROPIC_API_KEY"}, reqErr.Missing)
+}
+
 func TestApplyModelOverrides(t *testing.T) {
 	t.Parallel()
 

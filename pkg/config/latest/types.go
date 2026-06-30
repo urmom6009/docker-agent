@@ -929,6 +929,12 @@ type ModelConfig struct {
 	BaseURL           string   `json:"base_url,omitempty"`
 	ParallelToolCalls *bool    `json:"parallel_tool_calls,omitempty"`
 	TokenKey          string   `json:"token_key,omitempty"`
+	// BypassModelsGateway, when true, forces this model to connect directly to
+	// its provider, ignoring any configured models gateway (the --models-gateway
+	// flag / CAGENT_MODELS_GATEWAY env var). The model then authenticates with
+	// the provider's own credentials (e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY, or
+	// token_key) instead of routing through the gateway.
+	BypassModelsGateway bool `json:"bypass_models_gateway,omitempty"`
 	// ProviderOpts allows provider-specific options.
 	ProviderOpts map[string]any `json:"provider_opts,omitempty"`
 	TrackUsage   *bool          `json:"track_usage,omitempty"`

@@ -174,3 +174,46 @@ func TestCreateDirectProvider_AppliesProviderDefaults(t *testing.T) {
 	assert.Equal(t, "GW_TOKEN", got.TokenKey)
 	assert.Equal(t, "openai_chatcompletions", got.ProviderOpts["api_type"])
 }
+
+// TestCreateDirectProvider_BypassModelsGateway verifies that a model with
+// bypass_models_gateway set clears the gateway option before the leaf factory
+// runs, so the provider dials its endpoint directly. Models without the flag
+// keep the gateway.
+func TestCreateDirectProvider_BypassModelsGateway(t *testing.T) {
+	t.Parallel()
+
+	const gateway = "https://gateway.example.com"
+
+	tests := []struct {
+		name        string
+		bypass      bool
+		wantGateway string
+	}{
+		{name: "bypass clears gateway", bypass: true, wantGateway: ""},
+		{name: "no bypass keeps gateway", bypass: false, wantGateway: gateway},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var gotOpts options.ModelOptions
+			r := NewRegistry(map[string]providerFactory{
+				"openai": func(_ context.Context, _ *latest.ModelConfig, _ environment.Provider, opts ...options.Opt) (Provider, error) {
+					for _, opt := range opts {
+						opt(&gotOpts)
+					}
+					return &fakeProvider{id: modelsdev.NewID("test", "captured")}, nil
+				},
+			})
+
+			cfg := &latest.ModelConfig{Provider: "openai", Model: "gpt-4o", BypassModelsGateway: tt.bypass}
+
+			_, err := r.createDirectProvider(
+				t.Context(), cfg, environment.NewNoEnvProvider(),
+				options.WithGateway(gateway),
+			)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantGateway, gotOpts.Gateway())
+		})
+	}
+}
