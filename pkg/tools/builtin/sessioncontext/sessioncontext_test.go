@@ -1,7 +1,6 @@
 package sessioncontext
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +14,7 @@ import (
 
 func TestToolsMetadata(t *testing.T) {
 	ts := New()
-	defs, err := ts.Tools(context.Background())
+	defs, err := ts.Tools(t.Context())
 	require.NoError(t, err)
 
 	names := make([]string, 0, len(defs))

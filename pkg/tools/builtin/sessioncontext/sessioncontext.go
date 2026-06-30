@@ -11,6 +11,7 @@ package sessioncontext
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -160,8 +161,8 @@ func RenderTranscript(h Header, msgs []chat.Message, maxChars int) string {
 	budget := maxChars - head.Len()
 	kept := 0
 	used := 0
-	for i := len(blocks) - 1; i >= 0; i-- {
-		cost := len(blocks[i]) + 1 // +1 for the joining newline
+	for _, b := range slices.Backward(blocks) {
+		cost := len(b) + 1 // +1 for the joining newline
 		if used+cost > budget && kept > 0 {
 			break
 		}
