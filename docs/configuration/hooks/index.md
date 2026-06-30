@@ -451,7 +451,7 @@ hooks:
 
 `pre_tool_use` is fail-closed for safety: a failed pre-tool hook blocks the tool call regardless of `on_error`.
 
-`working_dir` and `env` apply to all three hook types (`command`, `builtin`, and `model`). For `builtin` hooks, `working_dir` is resolved with the same logic as `command` hooks (absolute path wins; relative paths join onto the executor directory). For `model` hooks, both fields are accepted but have no effect.
+`working_dir` and `env` apply to `command` and `builtin` hooks. For `builtin` hooks, `working_dir` is resolved with the same logic as `command` hooks (absolute path wins; relative paths join onto the executor directory). For `model` hooks, both fields are accepted by the schema but have no effect: model hooks render a prompt template and call the LLM API directly — no subprocess is spawned and no file I/O is performed, so working directory and environment variables have no applicable semantics.
 
 <div class="callout callout-warning" markdown="1">
 <div class="callout-title">Performance
