@@ -15,6 +15,7 @@ import (
 func newTestFilePickerDialog(dir string) *filePickerDialog {
 	d := &filePickerDialog{
 		pickerCore: newPickerCore(filePickerLayout, "Type to filter files…"),
+		fpKeyMap:   defaultFilePickerKeyMap(),
 		currentDir: dir,
 	}
 	d.loadDirectory()
@@ -129,6 +130,72 @@ func TestFilePickerToggleIgnoredViaAltI(t *testing.T) {
 	updated, _ = d.Update(altI)
 	d = updated.(*filePickerDialog)
 	require.False(t, d.showIgnored)
+}
+
+// On macOS the OS substitutes a Unicode character for Option+key before the
+// terminal sees it, so the file picker also accepts those characters as
+// aliases for the alt+h / alt+i toggles. See issue #2611.
+func TestFilePickerToggleHiddenViaMacOSOptionChar(t *testing.T) {
+	t.Parallel()
+	dir := setupTestDir(t)
+
+	d := newTestFilePickerDialog(dir)
+	d.SetSize(100, 50)
+
+	require.False(t, d.showHidden)
+	names := entryNames(d.filtered)
+	require.NotContains(t, names, ".hidden_file")
+
+	// macOS emits "˙" (U+02D9) for Option+H.
+	optionH := tea.KeyPressMsg{Code: '˙', Text: "˙"}
+	updated, _ := d.Update(optionH)
+	d = updated.(*filePickerDialog)
+
+	require.True(t, d.showHidden)
+	names = entryNames(d.filtered)
+	assert.Contains(t, names, ".hidden_dir/")
+	assert.Contains(t, names, ".hidden_file")
+
+	// Pressing it again toggles hidden files back off.
+	updated, _ = d.Update(optionH)
+	d = updated.(*filePickerDialog)
+
+	require.False(t, d.showHidden)
+	names = entryNames(d.filtered)
+	assert.NotContains(t, names, ".hidden_file")
+}
+
+func TestFilePickerToggleIgnoredViaMacOSOptionChar(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		msg  tea.KeyPressMsg
+	}{
+		{name: "standalone circumflex", msg: tea.KeyPressMsg{Code: 'ˆ', Text: "ˆ"}},
+		{name: "escaped circumflex dead key", msg: tea.KeyPressMsg{Code: 'ˆ', Mod: tea.ModAlt}},
+		{name: "combining circumflex dead key", msg: tea.KeyPressMsg{Code: '\u0302', Text: "\u0302"}},
+		{name: "escaped combining circumflex dead key", msg: tea.KeyPressMsg{Code: '\u0302', Mod: tea.ModAlt}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := setupTestDir(t)
+
+			d := newTestFilePickerDialog(dir)
+			d.SetSize(100, 50)
+
+			require.False(t, d.showIgnored)
+
+			updated, _ := d.Update(tc.msg)
+			d = updated.(*filePickerDialog)
+			require.True(t, d.showIgnored)
+
+			updated, _ = d.Update(tc.msg)
+			d = updated.(*filePickerDialog)
+			require.False(t, d.showIgnored)
+		})
+	}
 }
 
 func TestFilePickerShowIgnoredInGitRepo(t *testing.T) {
