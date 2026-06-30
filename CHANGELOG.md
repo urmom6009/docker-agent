@@ -3,6 +3,59 @@
 All notable changes to this project will be documented in this file.
 
 
+## [v1.92.0] - 2026-06-30
+
+This release adds session context referencing and 1Password secret caching, fixes silent failures on empty/reasoning-only agent turns, and resolves environment variable substitution in model configuration fields.
+
+## What's New
+
+- Adds a `session_context` toolset with `list_sessions` and `read_session` tools, allowing agents to reference previous sessions as context
+- Adds `WithRoot` option to worktree creation to decouple from the global data directory
+- Caches `op://` secret resolutions and coalesces concurrent lookups to avoid redundant `op` CLI invocations
+
+## Bug Fixes
+
+- Fixes silent failure when the runtime receives empty or reasoning-only turns; these are now surfaced instead of dropped
+- Fixes whitespace-only turns being treated as valid output, which could cause re-entry loops
+- Fixes `${env.X}` references in `model` and `base_url` config fields not being substituted before being sent to providers
+- Fixes `${env.X}` placeholders not being accepted in the `base_url` schema validation
+- Fixes empty agent responses on OpenAI-compatible providers caused by multiple consecutive system messages; consecutive system messages are now merged on the `openai_chatcompletions` path (scoped to `openai_chatcompletions` endpoints)
+- Fixes `os.Chmod` in `Registry.Write` breaking non-owner callers by making the permission tightening best-effort
+- Fixes a data race on the `defaultRegistry` pointer by switching to `atomic.Pointer`
+- Fixes `${env.VAR}` not being normalized before `os.ExpandEnv` in filesystem path expansion
+- Fixes a transient failure when promoting a worktree directory under concurrency
+
+## Technical Changes
+
+- Extracts `themeRegistry` struct to eliminate global state and enable parallel-safe tests
+- Introduces `Registry` struct in `runregistry` to replace process-global directory state
+- Removes process-global clock and ID variables from `pkg/session`, moving them into per-session fields
+- Introduces `Resolver` type in `userid` and injects cagent ID source in `httpclient` for parallel-safe tests
+- Replaces package-level globals with dependency injection across multiple packages to enable parallel-safe tests
+- Enables `t.Parallel()` across ~337 test functions in the test suite
+- Makes `${env.X}` the canonical variable-expansion syntax in documentation and example YAML files
+### Pull Requests
+
+- [#3145](https://github.com/docker/docker-agent/pull/3145) - Merge pull request #3327 from docker/fix/3145-surface-empty-reasoning-only-turns
+- [#3304](https://github.com/docker/docker-agent/pull/3304) - fix(config): substitute ${env.X} in model and base_url fields
+- [#3314](https://github.com/docker/docker-agent/pull/3314) - docs: update CHANGELOG.md for v1.91.0
+- [#3315](https://github.com/docker/docker-agent/pull/3315) - chore: bump direct Go dependencies
+- [#3316](https://github.com/docker/docker-agent/pull/3316) - refactor: extract themeRegistry struct for parallel-safe tests
+- [#3317](https://github.com/docker/docker-agent/pull/3317) - refactor(runregistry): introduce Registry struct and tighten dir permissions
+- [#3318](https://github.com/docker/docker-agent/pull/3318) - feat(worktree): add WithRoot option to decouple from global data dir
+- [#3319](https://github.com/docker/docker-agent/pull/3319) - refactor: remove process-global clock/ID vars from pkg/session
+- [#3320](https://github.com/docker/docker-agent/pull/3320) - feat(session_context): reference previous sessions as context
+- [#3321](https://github.com/docker/docker-agent/pull/3321) - refactor: introduce Resolver type in userid and inject cagent ID source in httpclient for parallel-safe tests
+- [#3322](https://github.com/docker/docker-agent/pull/3322) - feat(1password): cache op:// resolutions and coalesce concurrent lookups
+- [#3323](https://github.com/docker/docker-agent/pull/3323) - fix: make chmod in Registry.Write best-effort to avoid breaking non-owner callers
+- [#3324](https://github.com/docker/docker-agent/pull/3324) - fix: eliminate themeRegistry data race and TOCTOU window
+- [#3325](https://github.com/docker/docker-agent/pull/3325) - docs: make ${env.X} the canonical variable-expansion syntax (+ fixes)
+- [#3326](https://github.com/docker/docker-agent/pull/3326) - refactor: replace test-mutated globals with dependency injection
+- [#3327](https://github.com/docker/docker-agent/pull/3327) - fix(#3145): empty agent response from multiple system messages on OpenAI-compatible providers
+- [#3328](https://github.com/docker/docker-agent/pull/3328) - test: enable t.Parallel() across the test suite
+- [#3329](https://github.com/docker/docker-agent/pull/3329) - test: enable t.Parallel() in environment, config, and sessioncontext tests
+
+
 ## [v1.91.0] - 2026-06-30
 
 This release adds per-session markdown plan toolset support, extends `instruction_file` to accept multiple files, and includes several bug fixes and documentation updates.
@@ -4058,3 +4111,5 @@ This release improves the terminal user interface with better error handling and
 [v1.90.0]: https://github.com/docker/docker-agent/releases/tag/v1.90.0
 
 [v1.91.0]: https://github.com/docker/docker-agent/releases/tag/v1.91.0
+
+[v1.92.0]: https://github.com/docker/docker-agent/releases/tag/v1.92.0
