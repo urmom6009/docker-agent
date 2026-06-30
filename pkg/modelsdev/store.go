@@ -28,15 +28,15 @@ const (
 	refreshInterval = 24 * time.Hour
 )
 
+// fetcher fetches the models.dev catalog. If etag is non-empty it is sent as
+// If-None-Match; a 304 response returns (nil, etag, nil) to indicate no change.
+type fetcher func(ctx context.Context, etag string) (*Database, string, error)
+
 // Store manages access to the models.dev data.
 // All methods are safe for concurrent use.
 //
 // The database is loaded on first access via GetDatabase and
 // then cached in memory for the lifetime of the Store.
-// fetcher fetches the models.dev catalog. If etag is non-empty it is sent as
-// If-None-Match; a 304 response returns (nil, etag, nil) to indicate no change.
-type fetcher func(ctx context.Context, etag string) (*Database, string, error)
-
 type Store struct {
 	cacheFile     string
 	knownProvider func(string) bool
@@ -167,12 +167,12 @@ func (s *Store) getDatabase(ctx context.Context, allowFetch bool) (*Database, er
 		// network. Kept out of s.db so it can never satisfy a later
 		// fetch-eligible lookup for a known provider.
 		if s.cacheDB == nil {
-			s.cacheDB, _ = loadDatabase(ctx, s.cacheFile, false, s.fetch)
+			s.cacheDB, _ = loadDatabase(ctx, s.cacheFile, false, s.fetcher())
 		}
 		return s.cacheDB, nil
 	}
 
-	db, authoritative := loadDatabase(ctx, s.cacheFile, true, s.fetch)
+	db, authoritative := loadDatabase(ctx, s.cacheFile, true, s.fetcher())
 	// Only memoize a result that came from the on-disk cache or a live fetch.
 	// The embedded fallback snapshot is deliberately NOT pinned, so a later
 	// lookup retries the fetch once the network (or cache) recovers instead of
@@ -181,6 +181,16 @@ func (s *Store) getDatabase(ctx context.Context, allowFetch bool) (*Database, er
 		s.db = db
 	}
 	return db, nil
+}
+
+// fetcher returns the Store's catalog fetcher, defaulting to fetchFromAPI when
+// unset. The constructors always populate s.fetch, but defaulting here guards
+// against a zero-value or partially-constructed Store panicking on a nil call.
+func (s *Store) fetcher() fetcher {
+	if s.fetch != nil {
+		return s.fetch
+	}
+	return fetchFromAPI
 }
 
 // getProvider returns a specific provider by ID. A provider the Store's

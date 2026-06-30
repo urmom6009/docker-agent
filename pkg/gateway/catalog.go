@@ -110,8 +110,15 @@ func NewStaticLoader(catalog Catalog) *Loader {
 // cache a context-cancellation error for everyone else. On every subsequent
 // call ctx is unused — the work has already run.
 func (l *Loader) load(ctx context.Context) (Catalog, error) {
+	// Default the fetcher so a zero-value Loader degrades to the production
+	// fetch path instead of panicking inside once.Do (which would also wedge
+	// the sync.Once into a permanently-done state).
+	fetch := l.fetch
+	if fetch == nil {
+		fetch = fetchAndCache
+	}
 	l.once.Do(func() {
-		l.cached.catalog, l.cached.err = l.fetch(context.WithoutCancel(ctx))
+		l.cached.catalog, l.cached.err = fetch(context.WithoutCancel(ctx))
 	})
 	return l.cached.catalog, l.cached.err
 }
@@ -126,15 +133,19 @@ type loaderContextKey struct{}
 // WithLoader returns a copy of ctx that carries loader, so calls to
 // [ServerSpec] / [RequiredEnvVars] made with the returned context resolve
 // against it instead of the shared [defaultLoader]. Tests use it together with
-// [NewStaticLoader] to serve a fixed catalog without global state.
+// [NewStaticLoader] to serve a fixed catalog without global state. A nil
+// loader is ignored so callers fall back to the [defaultLoader].
 func WithLoader(ctx context.Context, loader *Loader) context.Context {
+	if loader == nil {
+		return ctx
+	}
 	return context.WithValue(ctx, loaderContextKey{}, loader)
 }
 
 // loaderFrom returns the Loader carried by ctx, or the shared [defaultLoader]
 // when none was injected.
 func loaderFrom(ctx context.Context) *Loader {
-	if l, ok := ctx.Value(loaderContextKey{}).(*Loader); ok {
+	if l, ok := ctx.Value(loaderContextKey{}).(*Loader); ok && l != nil {
 		return l
 	}
 	return defaultLoader
