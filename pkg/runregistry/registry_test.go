@@ -75,6 +75,31 @@ func TestWrite_RestrictsDirectoryPermissions(t *testing.T) {
 	assert.Equal(t, os.FileMode(0o700), info.Mode().Perm(), "registry dir must not be world- or group-readable")
 }
 
+// TestWrite_TightensExistingDirectoryPermissions ensures Write fixes the
+// permissions of a pre-existing, too-permissive registry dir (MkdirAll only
+// applies its mode when creating the directory).
+func TestWrite_TightensExistingDirectoryPermissions(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix mode bits are not enforced on Windows")
+	}
+	r := newTestRegistry(t)
+	require.NoError(t, os.MkdirAll(r.Dir(), 0o755))
+
+	cleanup, err := r.Write(Record{
+		PID:       1,
+		Addr:      "http://127.0.0.1:1",
+		SessionID: "s",
+		StartedAt: time.Now(),
+	})
+	require.NoError(t, err)
+	t.Cleanup(cleanup)
+
+	info, err := os.Stat(r.Dir())
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o700), info.Mode().Perm(), "registry dir must be tightened to 0o700")
+}
+
 func TestList_DropsStaleRecords(t *testing.T) {
 	t.Parallel()
 	r := newTestRegistry(t)

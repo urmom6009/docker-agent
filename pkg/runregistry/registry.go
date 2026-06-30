@@ -66,6 +66,12 @@ func (r *Registry) Write(rec Record) (func(), error) {
 	if err := os.MkdirAll(r.dir, 0o700); err != nil {
 		return nil, fmt.Errorf("creating run registry dir: %w", err)
 	}
+	// MkdirAll only applies the mode to directories it creates, so an
+	// already-existing dir may be group/world-readable. Tighten it explicitly
+	// to keep live PIDs/addresses unreadable by other local users.
+	if err := os.Chmod(r.dir, 0o700); err != nil {
+		return nil, fmt.Errorf("restricting run registry dir: %w", err)
+	}
 
 	path := filepath.Join(r.dir, strconv.Itoa(rec.PID)+".json")
 	buf, err := json.MarshalIndent(rec, "", "  ")
