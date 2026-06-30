@@ -42,7 +42,7 @@ All endpoints are under the `/api` prefix.
 | Method   | Path                                | Description                                             |
 | -------- | ----------------------------------- | ------------------------------------------------------- |
 | `GET`    | `/api/sessions`                     | List all sessions                                       |
-| `POST`   | `/api/sessions`                     | Create a new session                                    |
+| `POST`   | `/api/sessions`                     | Create a new session. Accepts an optional `title` field — when set, it is stored and LLM title generation is skipped. |
 | `GET`    | `/api/sessions/:id`                 | Get a session by ID (messages, tokens, permissions)     |
 | `GET`    | `/api/sessions/:id/status`          | Lightweight runtime state (streaming, title, agent, tokens). Requires an attached runtime. |
 | `GET`    | `/api/sessions/:id/snapshot`        | Full state in one call (stored fields + runtime state + `last_event_seq`) for gapless resync — see [Reconnecting without gaps](#reconnecting-without-gaps). |
@@ -157,6 +157,12 @@ $ curl http://localhost:8080/api/agents
 $ curl -X POST http://localhost:8080/api/sessions \
   -H "Content-Type: application/json" -d '{}'
 {"id":"abc-123","title":"","created_at":"..."}
+
+# Create a session with a pre-supplied title (skips LLM title generation)
+$ curl -X POST http://localhost:8080/api/sessions \
+  -H "Content-Type: application/json" -d '{"title":"deploy check"}'
+{"id":"def-456","title":"deploy check","created_at":"..."}
+# title preserved; LLM title generation skipped
 
 # 3. Run the agent with a message
 $ curl -N -X POST http://localhost:8080/api/sessions/abc-123/agent/my-agent \
