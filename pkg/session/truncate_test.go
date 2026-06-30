@@ -12,6 +12,7 @@ import (
 )
 
 func TestApproximateTokens(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   string
@@ -26,6 +27,7 @@ func TestApproximateTokens(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := approximateTokens(tt.in); got != tt.want {
 				t.Errorf("approximateTokens(%d chars) = %d, want %d", len(tt.in), got, tt.want)
 			}
@@ -34,7 +36,9 @@ func TestApproximateTokens(t *testing.T) {
 }
 
 func TestTruncateOldToolContent(t *testing.T) {
+	t.Parallel()
 	t.Run("keeps recent tool content within budget", func(t *testing.T) {
+		t.Parallel()
 		messages := []chat.Message{
 			{Role: chat.MessageRoleUser, Content: "hello"},
 			{
@@ -53,6 +57,7 @@ func TestTruncateOldToolContent(t *testing.T) {
 	})
 
 	t.Run("truncates oldest tool content when budget exceeded", func(t *testing.T) {
+		t.Parallel()
 		oldArgs := strings.Repeat("a", 400)   // 100 tokens
 		oldResult := strings.Repeat("b", 400) // 100 tokens
 		newArgs := strings.Repeat("c", 200)   // 50 tokens
@@ -86,6 +91,7 @@ func TestTruncateOldToolContent(t *testing.T) {
 	})
 
 	t.Run("does not modify non-tool messages", func(t *testing.T) {
+		t.Parallel()
 		messages := []chat.Message{
 			{Role: chat.MessageRoleUser, Content: strings.Repeat("x", 1000)},
 			{Role: chat.MessageRoleAssistant, Content: strings.Repeat("y", 1000)},
@@ -100,6 +106,7 @@ func TestTruncateOldToolContent(t *testing.T) {
 	})
 
 	t.Run("returns original messages when maxTokens is zero", func(t *testing.T) {
+		t.Parallel()
 		messages := []chat.Message{
 			{
 				Role: chat.MessageRoleAssistant,
@@ -116,6 +123,7 @@ func TestTruncateOldToolContent(t *testing.T) {
 	})
 
 	t.Run("returns original messages when maxTokens is negative", func(t *testing.T) {
+		t.Parallel()
 		messages := []chat.Message{
 			{
 				Role: chat.MessageRoleAssistant,
@@ -132,6 +140,7 @@ func TestTruncateOldToolContent(t *testing.T) {
 	})
 
 	t.Run("does not modify original slice", func(t *testing.T) {
+		t.Parallel()
 		originalContent := strings.Repeat("y", 400)
 		messages := []chat.Message{
 			{
@@ -153,6 +162,7 @@ func TestTruncateOldToolContent(t *testing.T) {
 	})
 
 	t.Run("handles empty messages slice", func(t *testing.T) {
+		t.Parallel()
 		result := truncateOldToolContent(nil, 1000)
 		assert.Nil(t, result)
 

@@ -43,6 +43,7 @@ func assertToolPairingInvariant(t *testing.T, messages []chat.Message) {
 // sanitizeToolCalls is the final guard before the request hits the provider and
 // must drop that orphaned result so the request stays valid.
 func TestSanitizeToolCalls_DropsOrphanedToolResult(t *testing.T) {
+	t.Parallel()
 	// History as reconstructed on resume after compaction: the toolUse-bearing
 	// assistant message is gone (folded into the summary), only its result and
 	// the following turn survive.
@@ -68,6 +69,7 @@ func TestSanitizeToolCalls_DropsOrphanedToolResult(t *testing.T) {
 // TestSanitizeToolCalls_KeepsMissingResultBalanced pins the opposite direction:
 // a dangling toolUse (no result) gets a synthetic result and stays balanced.
 func TestSanitizeToolCalls_KeepsMissingResultBalanced(t *testing.T) {
+	t.Parallel()
 	messages := []chat.Message{
 		{Role: chat.MessageRoleUser, Content: "hi"},
 		{Role: chat.MessageRoleAssistant, ToolCalls: []tools.ToolCall{{ID: "tc1"}}},
@@ -86,6 +88,7 @@ func TestSanitizeToolCalls_KeepsMissingResultBalanced(t *testing.T) {
 // family as #1676 and #1593. Only the first result for a given tool_use should
 // survive.
 func TestSanitizeToolCalls_DropsDuplicateToolResult(t *testing.T) {
+	t.Parallel()
 	messages := []chat.Message{
 		{Role: chat.MessageRoleUser, Content: "hi"},
 		{Role: chat.MessageRoleAssistant, ToolCalls: []tools.ToolCall{{ID: "tc1"}}},
@@ -118,6 +121,7 @@ func TestSanitizeToolCalls_DropsDuplicateToolResult(t *testing.T) {
 // tool_result, so buildSessionSummaryMessages emits the conversation starting at
 // the orphaned tool_result. GetMessages must return a provider-valid sequence.
 func TestGetMessages_ResumeAfterCompaction_NoOrphanedToolResult(t *testing.T) {
+	t.Parallel()
 	testAgent := &agent.Agent{}
 	s := New()
 

@@ -9,6 +9,7 @@ import (
 )
 
 func TestRenderComposite(t *testing.T) {
+	t.Parallel()
 	// Define a parent style with a background color and Bold
 	// Blue background, White text, Bold
 	parent := lipgloss.NewStyle().
@@ -81,6 +82,7 @@ func TestRenderComposite(t *testing.T) {
 }
 
 func TestRenderComposite_FastPath(t *testing.T) {
+	t.Parallel()
 	// Test fast path when content has no ANSI sequences
 	parent := lipgloss.NewStyle().
 		Background(lipgloss.Color("#0000FF")).

@@ -29,6 +29,7 @@ func openMigrationsDB(t *testing.T) *sql.DB {
 }
 
 func TestMigrationManager_RunPendingMigrations_AppliesAllAndIsIdempotent(t *testing.T) {
+	t.Parallel()
 	db := openMigrationsDB(t)
 	migrations := []Migration{
 		{
@@ -65,6 +66,7 @@ func TestMigrationManager_RunPendingMigrations_AppliesAllAndIsIdempotent(t *test
 }
 
 func TestMigrationManager_RunPendingMigrations_OnlyAppliesNewMigrations(t *testing.T) {
+	t.Parallel()
 	db := openMigrationsDB(t)
 	first := []Migration{{ID: 1, Name: "001_a", UpSQL: `CREATE TABLE a (id INTEGER)`}}
 	require.NoError(t, NewMigrationManagerWithMigrations(db, first).RunPendingMigrations(t.Context()))
@@ -89,6 +91,7 @@ func TestMigrationManager_RunPendingMigrations_OnlyAppliesNewMigrations(t *testi
 }
 
 func TestMigrationManager_BadUpSQL_RollsBackAndIsRetryable(t *testing.T) {
+	t.Parallel()
 	db := openMigrationsDB(t)
 	bad := []Migration{{
 		ID:    1,
@@ -109,6 +112,7 @@ func TestMigrationManager_BadUpSQL_RollsBackAndIsRetryable(t *testing.T) {
 }
 
 func TestMigrationManager_UpFuncFailure_DoesNotRetryButReturnsError(t *testing.T) {
+	t.Parallel()
 	db := openMigrationsDB(t)
 	wantErr := errors.New("boom")
 	mgr := NewMigrationManagerWithMigrations(db, []Migration{{
@@ -133,6 +137,7 @@ func TestMigrationManager_UpFuncFailure_DoesNotRetryButReturnsError(t *testing.T
 }
 
 func TestMigrationManager_CheckForUnknownMigrations_RejectsNewerDB(t *testing.T) {
+	t.Parallel()
 	db := openMigrationsDB(t)
 	// Apply two migrations as a "newer" docker-agent would.
 	full := []Migration{
@@ -149,6 +154,7 @@ func TestMigrationManager_CheckForUnknownMigrations_RejectsNewerDB(t *testing.T)
 }
 
 func TestMigrationManager_CheckForUnknownMigrations_AllowsEqualOrOlderDB(t *testing.T) {
+	t.Parallel()
 	db := openMigrationsDB(t)
 	migrations := []Migration{{ID: 1, Name: "001_a", UpSQL: `CREATE TABLE a (id INTEGER)`}}
 	require.NoError(t, NewMigrationManagerWithMigrations(db, migrations).RunPendingMigrations(t.Context()))
@@ -163,6 +169,7 @@ func TestMigrationManager_CheckForUnknownMigrations_AllowsEqualOrOlderDB(t *test
 }
 
 func TestMigrationManager_EmptyMigrations_NoOp(t *testing.T) {
+	t.Parallel()
 	db := openMigrationsDB(t)
 	mgr := NewMigrationManagerWithMigrations(db, nil)
 

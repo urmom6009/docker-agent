@@ -8,6 +8,7 @@ import (
 )
 
 func TestSchemaToMap_Nil(t *testing.T) {
+	t.Parallel()
 	m, err := SchemaToMap(nil)
 	require.NoError(t, err)
 
@@ -18,6 +19,7 @@ func TestSchemaToMap_Nil(t *testing.T) {
 }
 
 func TestSchemaToMap_MissingType(t *testing.T) {
+	t.Parallel()
 	m, err := SchemaToMap(map[string]any{
 		"properties": map[string]any{},
 	})
@@ -30,6 +32,7 @@ func TestSchemaToMap_MissingType(t *testing.T) {
 }
 
 func TestSchemaToMap_MissingEmptyProperties(t *testing.T) {
+	t.Parallel()
 	m, err := SchemaToMap(map[string]any{
 		"type": "object",
 	})
@@ -42,6 +45,7 @@ func TestSchemaToMap_MissingEmptyProperties(t *testing.T) {
 }
 
 func TestSchemaToMap_PropertyWithoutType(t *testing.T) {
+	t.Parallel()
 	m, err := SchemaToMap(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -70,6 +74,7 @@ func TestSchemaToMap_PropertyWithoutType(t *testing.T) {
 }
 
 func TestSchemaToMap_NestedPropertyWithoutType(t *testing.T) {
+	t.Parallel()
 	m, err := SchemaToMap(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -108,6 +113,7 @@ func TestSchemaToMap_NestedPropertyWithoutType(t *testing.T) {
 }
 
 func TestSchemaToMap_ArrayItemsPropertyWithoutType(t *testing.T) {
+	t.Parallel()
 	m, err := SchemaToMap(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -146,6 +152,7 @@ func TestSchemaToMap_ArrayItemsPropertyWithoutType(t *testing.T) {
 }
 
 func TestSchemaToMap_DeeplyNestedPropertyWithoutType(t *testing.T) {
+	t.Parallel()
 	m, err := SchemaToMap(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -188,6 +195,7 @@ func TestSchemaToMap_DeeplyNestedPropertyWithoutType(t *testing.T) {
 }
 
 func TestSchemaToMap_StripsNullFromRequiredArrayTypes(t *testing.T) {
+	t.Parallel()
 	m, err := SchemaToMap(map[string]any{
 		"type": "object",
 		"properties": map[string]any{

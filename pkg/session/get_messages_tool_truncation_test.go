@@ -13,6 +13,7 @@ import (
 )
 
 func TestGetMessagesMaxOldToolCallTokensDefaultDoesNotTruncate(t *testing.T) {
+	t.Parallel()
 	oldResult := strings.Repeat("old-result-", 15000)
 	newResult := "new result"
 
@@ -27,6 +28,7 @@ func TestGetMessagesMaxOldToolCallTokensDefaultDoesNotTruncate(t *testing.T) {
 }
 
 func TestGetMessagesMaxOldToolCallTokensPositiveTruncatesOldContent(t *testing.T) {
+	t.Parallel()
 	oldResult := strings.Repeat("old-result-", 15000)
 	newResult := "new result"
 

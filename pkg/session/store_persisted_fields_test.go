@@ -8,6 +8,7 @@ import (
 )
 
 func TestSessionPersistedFieldsOf_Defaults(t *testing.T) {
+	t.Parallel()
 	got, err := sessionPersistedFieldsOf(&Session{ID: "x"})
 	require.NoError(t, err)
 
@@ -18,6 +19,7 @@ func TestSessionPersistedFieldsOf_Defaults(t *testing.T) {
 }
 
 func TestSessionPersistedFieldsOf_PopulatedValues(t *testing.T) {
+	t.Parallel()
 	session := &Session{
 		ID:       "x",
 		ParentID: "parent-1",
@@ -38,6 +40,7 @@ func TestSessionPersistedFieldsOf_PopulatedValues(t *testing.T) {
 }
 
 func TestSessionPersistedFieldsOf_EmptyMapsAndSlicesUseDefaults(t *testing.T) {
+	t.Parallel()
 	// len() == 0 for non-nil empty values must take the default branch
 	// because JSON encoding "{}" / "[]" matches what the schema expects.
 	got, err := sessionPersistedFieldsOf(&Session{
