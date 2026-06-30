@@ -1,8 +1,11 @@
 package paths
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
 	"sync/atomic"
 )
 
@@ -18,6 +21,9 @@ func (o *overridable) Set(dir string) {
 		o.p.Store(&dir)
 	}
 }
+
+// isSet reports whether an override is currently in effect.
+func (o *overridable) isSet() bool { return o.p.Load() != nil }
 
 // get returns the override if set, or falls back to the result of defaultFn.
 func (o *overridable) get(defaultFn func() string) string {
@@ -70,52 +76,55 @@ func SetRoot(root string) {
 //
 // If an override has been set via [SetCacheDir] it is returned instead.
 //
-// On Linux this follows XDG: $XDG_CACHE_HOME/cagent (default ~/.cache/cagent).
-// On macOS this uses ~/Library/Caches/cagent.
-// On Windows this uses %LocalAppData%/cagent.
-//
-// If the cache directory cannot be determined, it falls back to a directory
-// under the system temporary directory.
+// The default follows the XDG Base Directory Specification, honouring
+// $XDG_CACHE_HOME on every platform and otherwise using the OS-native
+// location:
+//   - $XDG_CACHE_HOME/cagent, default ~/.cache/cagent (Linux)
+//   - ~/Library/Caches/cagent (macOS)
+//   - %LocalAppData%\cagent (Windows)
 func GetCacheDir() string {
 	return cacheDirOverride.get(func() string {
-		cacheDir, err := os.UserCacheDir()
-		if err != nil {
-			return filepath.Clean(filepath.Join(os.TempDir(), ".cagent-cache"))
-		}
-		return filepath.Clean(filepath.Join(cacheDir, "cagent"))
+		return filepath.Clean(xdgCacheDir())
 	})
 }
 
-// GetConfigDir returns the user's config directory for docker agent.
+// GetConfigDir returns the user's config directory for docker agent
+// (config.yaml, aliases, user id, MCP OAuth tokens, sandbox tokens).
 //
 // If an override has been set via [SetConfigDir] it is returned instead.
 //
-// If the home directory cannot be determined, it falls back to a directory
-// under the system temporary directory. This is a best-effort fallback and
-// not intended to be a security boundary.
+// The default follows the XDG Base Directory Specification, honouring
+// $XDG_CONFIG_HOME on every platform and otherwise using the OS-native
+// location:
+//   - $XDG_CONFIG_HOME/cagent, default ~/.config/cagent (Linux)
+//   - ~/Library/Application Support/cagent (macOS)
+//   - %AppData%\cagent (Windows)
+//
+// Until the new location exists, an existing legacy ~/.config/cagent is used so
+// installs keep working until [MigrateLegacy] relocates it.
 func GetConfigDir() string {
 	return configDirOverride.get(func() string {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return filepath.Clean(filepath.Join(os.TempDir(), ".cagent-config"))
-		}
-		return filepath.Clean(filepath.Join(homeDir, ".config", "cagent"))
+		return resolveDefault(xdgConfigDir(), legacyConfigDir())
 	})
 }
 
-// GetDataDir returns the user's data directory for docker agent (caches, content, logs).
+// GetDataDir returns the user's data directory for docker agent (sessions,
+// history, installed tools, OCI store, memory, worktrees, snapshots, ...).
 //
 // If an override has been set via [SetDataDir] it is returned instead.
 //
-// If the home directory cannot be determined, it falls back to a directory
-// under the system temporary directory.
+// The default follows the XDG Base Directory Specification, honouring
+// $XDG_DATA_HOME on every platform and otherwise using the OS-native
+// location:
+//   - $XDG_DATA_HOME/cagent, default ~/.local/share/cagent (Linux)
+//   - ~/Library/Application Support/cagent (macOS)
+//   - %LocalAppData%\cagent (Windows)
+//
+// Until the new location exists, an existing legacy ~/.cagent is used so
+// installs keep working until [MigrateLegacy] relocates it.
 func GetDataDir() string {
 	return dataDirOverride.get(func() string {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return filepath.Clean(filepath.Join(os.TempDir(), ".cagent"))
-		}
-		return filepath.Clean(filepath.Join(homeDir, ".cagent"))
+		return resolveDefault(xdgDataDir(), legacyDataDir())
 	})
 }
 
@@ -128,4 +137,149 @@ func GetHomeDir() string {
 		return ""
 	}
 	return filepath.Clean(homeDir)
+}
+
+// --- default directory resolution ---
+//
+// XDG_* env vars are honoured on every platform (not just Linux); otherwise the
+// OS-native dir is used. Mirrors github.com/adrg/xdg.
+
+func xdgConfigDir() string {
+	if dir := os.Getenv("XDG_CONFIG_HOME"); dir != "" {
+		return filepath.Join(dir, "cagent")
+	}
+	if dir, err := os.UserConfigDir(); err == nil {
+		return filepath.Join(dir, "cagent")
+	}
+	return filepath.Join(os.TempDir(), ".cagent-config")
+}
+
+func xdgCacheDir() string {
+	if dir := os.Getenv("XDG_CACHE_HOME"); dir != "" {
+		return filepath.Join(dir, "cagent")
+	}
+	if dir, err := os.UserCacheDir(); err == nil {
+		return filepath.Join(dir, "cagent")
+	}
+	return filepath.Join(os.TempDir(), ".cagent-cache")
+}
+
+// xdgDataDir derives the data dir per platform since Go has no os.UserDataDir.
+func xdgDataDir() string {
+	if dir := os.Getenv("XDG_DATA_HOME"); dir != "" {
+		return filepath.Join(dir, "cagent")
+	}
+	home := GetHomeDir()
+	if home == "" {
+		return filepath.Join(os.TempDir(), ".cagent")
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		return filepath.Join(home, "Library", "Application Support", "cagent")
+	case "windows":
+		if dir := os.Getenv("LocalAppData"); dir != "" {
+			return filepath.Join(dir, "cagent")
+		}
+		return filepath.Join(home, "AppData", "Local", "cagent")
+	default:
+		return filepath.Join(home, ".local", "share", "cagent")
+	}
+}
+
+func legacyConfigDir() string {
+	if home := GetHomeDir(); home != "" {
+		return filepath.Join(home, ".config", "cagent")
+	}
+	return ""
+}
+
+func legacyDataDir() string {
+	if home := GetHomeDir(); home != "" {
+		return filepath.Join(home, ".cagent")
+	}
+	return ""
+}
+
+// resolveDefault returns dst, except while dst does not yet exist and the
+// legacy location does, in which case legacy is returned so existing installs
+// keep reading their state until [MigrateLegacy] relocates it.
+func resolveDefault(dst, legacy string) string {
+	if legacy != "" && legacy != dst && !pathExists(dst) && dirExists(legacy) {
+		return filepath.Clean(legacy)
+	}
+	return filepath.Clean(dst)
+}
+
+// --- one-time legacy migration ---
+
+var migrateOnce sync.Once
+
+// MigrateLegacy relocates state from the historical layout (~/.cagent for data,
+// ~/.config/cagent for config) to the resolved XDG/native directories. It runs
+// once per process and is idempotent across runs. Overridden directories
+// (via [SetConfigDir]/[SetDataDir]/[SetRoot] or the CLI flags) are skipped, so
+// embedders and explicit --data-dir/--config-dir users are untouched.
+func MigrateLegacy() {
+	migrateOnce.Do(func() {
+		if !configDirOverride.isSet() {
+			migrateDir(legacyConfigDir(), xdgConfigDir())
+		}
+		if !dataDirOverride.isSet() {
+			migrateDir(legacyDataDir(), xdgDataDir())
+		}
+	})
+}
+
+// migrateDir moves src's entries into dst with os.Rename. Existing dst entries
+// are never clobbered (on macOS config and data share one dir, so it must
+// merge), and src is removed only once empty. A failed move is left in place;
+// the getters' legacy fallback then keeps the data reachable, no loss.
+func migrateDir(src, dst string) {
+	if src == "" || src == dst || !dirExists(src) {
+		return
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		slog.Warn("xdg migration: cannot read legacy directory", "dir", src, "error", err)
+		return
+	}
+	if err := os.MkdirAll(dst, 0o700); err != nil {
+		slog.Warn("xdg migration: cannot create destination directory", "dir", dst, "error", err)
+		return
+	}
+
+	var moved int
+	for _, e := range entries {
+		from := filepath.Join(src, e.Name())
+		to := filepath.Join(dst, e.Name())
+		if pathExists(to) {
+			continue
+		}
+		if err := os.Rename(from, to); err != nil {
+			slog.Warn("xdg migration: could not move entry, leaving it in place",
+				"from", from, "to", to, "error", err)
+			continue
+		}
+		moved++
+	}
+
+	if rem, err := os.ReadDir(src); err == nil && len(rem) == 0 {
+		_ = os.Remove(src)
+	}
+	if moved > 0 {
+		slog.Info("relocated docker-agent state to XDG directory", "from", src, "to", dst, "entries", moved)
+	}
+}
+
+// dirExists reports whether p exists and is a directory.
+func dirExists(p string) bool {
+	info, err := os.Stat(p)
+	return err == nil && info.IsDir()
+}
+
+// pathExists reports whether p exists (file, directory or symlink).
+func pathExists(p string) bool {
+	_, err := os.Lstat(p)
+	return err == nil
 }

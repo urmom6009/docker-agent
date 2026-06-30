@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/docker-agent/pkg/paths"
 	"github.com/docker/docker-agent/pkg/remote"
 )
 
@@ -101,8 +102,8 @@ func WithKnownProvider(fn func(string) bool) Opt {
 }
 
 // NewStore creates a new Store backed by an on-disk cache. By default the
-// cache lives at ~/.cagent/models_dev.json; use WithCache to override the
-// location.
+// cache lives in the user cache directory (e.g. ~/.cache/cagent/models_dev.json
+// on Linux); use WithCache to override the location.
 // Callers should create one Store and share it rather than calling NewStore
 // repeatedly. RuntimeConfig.ModelsDevStore() is the standard way to obtain
 // a shared instance.
@@ -114,11 +115,7 @@ func NewStore(opts ...Opt) (*Store, error) {
 
 	cacheFile := options.cacheFile
 	if cacheFile == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get user home directory: %w", err)
-		}
-		cacheFile = filepath.Join(homeDir, ".cagent", CacheFileName)
+		cacheFile = filepath.Join(paths.GetCacheDir(), CacheFileName)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(cacheFile), 0o700); err != nil {

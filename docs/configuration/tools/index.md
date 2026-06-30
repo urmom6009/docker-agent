@@ -136,7 +136,7 @@ When configuring MCP or LSP tools that require a binary command, docker agent ca
 ### How It Works
 
 1. When a toolset with a `command` is loaded, docker agent checks if the command is available in your `PATH`
-2. If not found, it checks the docker agent tools directory (`~/.cagent/tools/bin/`)
+2. If not found, it checks the docker agent tools directory (`~/.local/share/cagent/tools/bin/`)
 3. If still not found, it looks up the command in the aqua registry and installs it automatically
 
 ### Explicit Package Reference
@@ -202,10 +202,10 @@ export DOCKER_AGENT_AUTO_INSTALL=false
 | Variable                     | Default            | Description                                      |
 | ---------------------------- | ------------------ | ------------------------------------------------ |
 | `DOCKER_AGENT_AUTO_INSTALL`  | (enabled)          | Set to `false` to disable all auto-installation  |
-| `DOCKER_AGENT_TOOLS_DIR`     | `~/.cagent/tools/` | Base directory for installed tools               |
+| `DOCKER_AGENT_TOOLS_DIR`     | `<data-dir>/tools/` | Base directory for installed tools               |
 | `GITHUB_TOKEN`               | —                  | GitHub token to raise API rate limits (optional) |
 
-Installed binaries are placed in `~/.cagent/tools/bin/` and cached so they are only downloaded once.
+Installed binaries are placed in `~/.local/share/cagent/tools/bin/` and cached so they are only downloaded once.
 
 <div class="callout callout-tip" markdown="1">
 <div class="callout-title">Tip

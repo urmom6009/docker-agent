@@ -1,14 +1,11 @@
 package root
 
 import (
-	"path/filepath"
-
 	"github.com/spf13/cobra"
 
 	"github.com/docker/docker-agent/pkg/a2a"
 	"github.com/docker/docker-agent/pkg/cli"
 	"github.com/docker/docker-agent/pkg/config"
-	"github.com/docker/docker-agent/pkg/paths"
 	"github.com/docker/docker-agent/pkg/telemetry"
 )
 
@@ -34,7 +31,7 @@ func newA2ACmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&flags.agentName, "agent", "a", "", "Name of the agent to run (defaults to the team's first agent)")
 	cmd.PersistentFlags().StringVarP(&flags.listenAddr, "listen", "l", "127.0.0.1:8082", "Address to listen on")
-	cmd.PersistentFlags().StringVarP(&flags.sessionDB, "session-db", "s", filepath.Join(paths.GetHomeDir(), ".cagent", "session.db"), "Path to the session database")
+	cmd.PersistentFlags().StringVarP(&flags.sessionDB, "session-db", "s", "", "Path to the session database (default: <data-dir>/session.db)")
 	addRuntimeConfigFlags(cmd, &flags.runConfig)
 
 	return cmd
@@ -57,5 +54,5 @@ func (f *a2aFlags) runA2ACommand(cmd *cobra.Command, args []string) (commandErr 
 	defer cleanup()
 
 	out.Println("Listening on", ln.Addr().String())
-	return a2a.Run(ctx, agentFilename, f.agentName, f.sessionDB, &f.runConfig, ln)
+	return a2a.Run(ctx, agentFilename, f.agentName, defaultSessionDB(f.sessionDB), &f.runConfig, ln)
 }

@@ -333,7 +333,7 @@ agents:
 Use the `--debug` flag to see detailed execution logs:
 
 ```bash
-# Default log location: ~/.cagent/cagent.debug.log
+# Default log location: <data-dir>/cagent.debug.log
 $ docker agent run agent.yaml --debug
 
 # Custom log location

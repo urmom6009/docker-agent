@@ -17,7 +17,7 @@ Different from the [`plan` toolset](/tools/plan/) — `plan` is for shared, name
 Plans live as Markdown files under:
 
 ```
-~/.cagent/session_plans/<session-id>.md
+~/.local/share/cagent/session_plans/<session-id>.md
 ```
 
 The tool surface is three tools:

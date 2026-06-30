@@ -1,14 +1,11 @@
 package root
 
 import (
-	"path/filepath"
-
 	"github.com/spf13/cobra"
 
 	"github.com/docker/docker-agent/pkg/acp"
 	"github.com/docker/docker-agent/pkg/config"
 	pathx "github.com/docker/docker-agent/pkg/path"
-	"github.com/docker/docker-agent/pkg/paths"
 	"github.com/docker/docker-agent/pkg/telemetry"
 )
 
@@ -31,7 +28,7 @@ func newACPCmd() *cobra.Command {
 		RunE: flags.runACPCommand,
 	}
 
-	cmd.Flags().StringVarP(&flags.sessionDB, "session-db", "s", filepath.Join(paths.GetHomeDir(), ".cagent", "session.db"), "Path to the session database")
+	cmd.Flags().StringVarP(&flags.sessionDB, "session-db", "s", "", "Path to the session database (default: <data-dir>/session.db)")
 	addRuntimeConfigFlags(cmd, &flags.runConfig)
 
 	return cmd
@@ -47,7 +44,7 @@ func (f *acpFlags) runACPCommand(cmd *cobra.Command, args []string) (commandErr 
 	agentFilename := args[0]
 
 	// Expand tilde in session database path
-	sessionDB, err := pathx.ExpandHomeDir(f.sessionDB)
+	sessionDB, err := pathx.ExpandHomeDir(defaultSessionDB(f.sessionDB))
 	if err != nil {
 		return err
 	}

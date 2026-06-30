@@ -146,10 +146,8 @@ func TestHistory_MultilineMessage(t *testing.T) {
 func TestHistory_MigrateOldFormat(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	err := os.MkdirAll(filepath.Join(tmpDir, ".cagent"), 0o755)
-	require.NoError(t, err)
-	oldHistFile := filepath.Join(tmpDir, ".cagent", "history.json")
-	newHistFile := filepath.Join(tmpDir, ".cagent", "history")
+	oldHistFile := filepath.Join(tmpDir, "history.json")
+	newHistFile := filepath.Join(tmpDir, "history")
 
 	require.NoError(t, os.WriteFile(oldHistFile, []byte(`{"messages":["old1","old2","old3"]}`), 0o644))
 
@@ -497,7 +495,7 @@ func TestHistory_RedactsOnAdd(t *testing.T) {
 	assert.Contains(t, stored, portcullis.Marker)
 
 	// On-disk file must also be redacted.
-	data, err := os.ReadFile(filepath.Join(tmpDir, ".cagent", "history"))
+	data, err := os.ReadFile(filepath.Join(tmpDir, "history"))
 	require.NoError(t, err)
 	assert.NotContains(t, string(data), pat, "persisted history must not contain the secret")
 	assert.Contains(t, string(data), portcullis.Marker)
@@ -506,8 +504,7 @@ func TestHistory_RedactsOnAdd(t *testing.T) {
 func TestHistory_RedactsOnLoad(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, ".cagent"), 0o700))
-	histFile := filepath.Join(tmpDir, ".cagent", "history")
+	histFile := filepath.Join(tmpDir, "history")
 
 	pat := portcullistest.FakeGitHubPAT("cxLeRrvbJfmYdUtr70xnNE3Q7Gvli4")
 	// Simulate a pre-existing history file written before redaction was wired in.
@@ -524,8 +521,7 @@ func TestHistory_RedactsOnLoad(t *testing.T) {
 func TestHistory_RedactsOnMigrate(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, ".cagent"), 0o700))
-	oldHistFile := filepath.Join(tmpDir, ".cagent", "history.json")
+	oldHistFile := filepath.Join(tmpDir, "history.json")
 
 	pat := portcullistest.FakeGitHubPAT("cxLeRrvbJfmYdUtr70xnNE3Q7Gvli4")
 	require.NoError(t, os.WriteFile(oldHistFile, []byte(`{"messages":["leak `+pat+`"]}`), 0o600))
@@ -537,7 +533,7 @@ func TestHistory_RedactsOnMigrate(t *testing.T) {
 	assert.NotContains(t, h.Messages[0], pat, "migrated history must not expose the secret")
 	assert.Contains(t, h.Messages[0], portcullis.Marker)
 
-	data, err := os.ReadFile(filepath.Join(tmpDir, ".cagent", "history"))
+	data, err := os.ReadFile(filepath.Join(tmpDir, "history"))
 	require.NoError(t, err)
 	assert.NotContains(t, string(data), pat, "migrated on-disk history must not contain the secret")
 }

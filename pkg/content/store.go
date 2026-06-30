@@ -17,6 +17,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+
+	"github.com/docker/docker-agent/pkg/paths"
 )
 
 // ErrInvalidDigest indicates that an identifier shaped like a digest
@@ -73,12 +75,7 @@ func NewStore(opts ...Opt) (*Store, error) {
 	}
 
 	if store.baseDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("getting home directory: %w", err)
-		}
-
-		store.baseDir = filepath.Join(homeDir, ".cagent", "store")
+		store.baseDir = filepath.Join(paths.GetDataDir(), "store")
 	}
 
 	if err := os.MkdirAll(store.baseDir, 0o700); err != nil {

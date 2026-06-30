@@ -98,7 +98,7 @@ docker agent run agent.yaml --otel
 
 ## Inspecting traces locally
 
-Use `--debug` to print telemetry activity to the debug log (`~/.cagent/cagent.debug.log` by default) without standing up a backend:
+Use `--debug` to print telemetry activity to the debug log (`<data-dir>/cagent.debug.log` by default) without standing up a backend:
 
 ```bash
 docker agent run agent.yaml --otel --debug

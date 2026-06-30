@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/docker/portcullis"
+
+	"github.com/docker/docker-agent/pkg/paths"
 )
 
 // History is the in-memory view of a persistent message history. The cursor
@@ -23,18 +25,15 @@ type History struct {
 	current int
 }
 
-// New loads the history stored under baseDir/.cagent/history. If baseDir is
-// empty, the user's home directory is used.
-func New(baseDir string) (*History, error) {
-	if baseDir == "" {
-		var err error
-		if baseDir, err = os.UserHomeDir(); err != nil {
-			return nil, err
-		}
+// New loads the history stored under dir/history. If dir is empty, the
+// docker-agent data directory ([paths.GetDataDir]) is used.
+func New(dir string) (*History, error) {
+	if dir == "" {
+		dir = paths.GetDataDir()
 	}
 
-	h := &History{path: filepath.Join(baseDir, ".cagent", "history")}
-	if err := h.migrateOldHistory(baseDir); err != nil {
+	h := &History{path: filepath.Join(dir, "history")}
+	if err := h.migrateOldHistory(dir); err != nil {
 		return nil, err
 	}
 	if err := h.load(); err != nil && !os.IsNotExist(err) {
@@ -44,10 +43,11 @@ func New(baseDir string) (*History, error) {
 	return h, nil
 }
 
-// NewAtDir loads the history stored at dir/history, without the ".cagent"
-// path segment New inserts. It is for embedders that keep the agent's
-// state under their own directory layout and must not mix prompt history
-// with a docker-agent installation on the same machine.
+// NewAtDir loads the history stored at dir/history from an explicit directory,
+// skipping both the [paths.GetDataDir] default and the legacy history.json
+// import that New performs. It is for embedders that keep the agent's state
+// under their own directory layout and must not mix prompt history with a
+// docker-agent installation on the same machine.
 func NewAtDir(dir string) (*History, error) {
 	h := &History{path: filepath.Join(dir, "history")}
 	if err := h.load(); err != nil && !os.IsNotExist(err) {
@@ -191,8 +191,8 @@ func (h *History) load() error {
 
 // migrateOldHistory imports messages from the legacy history.json file (if it
 // exists) into the new line-oriented format and removes the old file.
-func (h *History) migrateOldHistory(baseDir string) error {
-	oldPath := filepath.Join(baseDir, ".cagent", "history.json")
+func (h *History) migrateOldHistory(dir string) error {
+	oldPath := filepath.Join(dir, "history.json")
 
 	data, err := os.ReadFile(oldPath)
 	if os.IsNotExist(err) {

@@ -31,7 +31,7 @@ $ docker agent run [config] [message...] [flags]
 | `--yolo`                                | Auto-approve all tool calls                                                                                                               |
 | `--model <ref>`                         | Override model(s). Use `provider/model` for all agents, or `agent=provider/model` for specific agents. Comma-separate multiple overrides. |
 | `--session <id>`                        | Resume a previous session. Supports relative refs (`-1` = last, `-2` = second to last). An explicit ID that does not exist yet is created with that ID, so a supervisor can own the session ID upfront and reuse it across runs. |
-| `-s, --session-db <path>`               | Path to the SQLite session database (default: `~/.cagent/session.db`)                                                                     |
+| `-s, --session-db <path>`               | Path to the SQLite session database (default: `<data-dir>/session.db`)                                                                     |
 | `--session-read-only`                   | Open the TUI in read-only mode: conversation history is displayed but no new messages can be sent to the LLM. Cannot be used with `--exec`. |
 | `--prompt-file <path>`                  | Include file contents as additional system context (repeatable)                                                                           |
 | `--attach <path>`                       | Attach an image file to the initial message                                                                                               |
@@ -294,7 +294,7 @@ $ docker agent serve acp <config> [flags]
 
 | Flag                      | Default                     | Description                                       |
 | ------------------------- | --------------------------- | ------------------------------------------------- |
-| `-s, --session-db <path>` | `~/.cagent/session.db`      | Path to the SQLite session database.              |
+| `-s, --session-db <path>` | `<data-dir>/session.db`      | Path to the SQLite session database.              |
 
 All [runtime configuration flags](#runtime-configuration-flags) are also accepted.
 
@@ -521,13 +521,15 @@ These flags are available on every `docker agent` command:
 
 | Flag                      | Description                                                                            |
 | ------------------------- | -------------------------------------------------------------------------------------- |
-| `-d, --debug`             | Enable debug logging (default location: `~/.cagent/cagent.debug.log`)                  |
+| `-d, --debug`             | Enable debug logging (default location: `<data-dir>/cagent.debug.log`)                  |
 | `--log-file <path>`       | Custom debug log location (only used with `--debug`)                                   |
 | `-o, --otel`              | Enable OpenTelemetry observability: traces, metrics, and logs. Requires `OTEL_EXPORTER_OTLP_ENDPOINT` to export to a collector. |
 | `--cache-dir <path>`      | Override the cache directory (default: `~/Library/Caches/cagent` on macOS)             |
-| `--config-dir <path>`     | Override the config directory (default: `~/.config/cagent`)                            |
-| `--data-dir <path>`       | Override the data directory (default: `~/.cagent`)                                     |
+| `--config-dir <path>`     | Override the config directory (default: `$XDG_CONFIG_HOME/cagent (or OS-native config dir)`)                            |
+| `--data-dir <path>`       | Override the data directory (default: `$XDG_DATA_HOME/cagent (or OS-native data dir)`)                                     |
 | `--help`                  | Show help for any command                                                              |
+
+docker-agent follows the XDG Base Directory Specification: set `XDG_DATA_HOME`/`XDG_CONFIG_HOME`/`XDG_CACHE_HOME` to relocate state; otherwise the OS-native directories are used.
 
 ### OpenTelemetry environment variables
 

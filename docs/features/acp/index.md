@@ -69,7 +69,7 @@ docker agent serve acp <agent-file>|<registry-ref> [flags]
 
 | Flag                              | Default                | Description                                                                                                          |
 | --------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `-s, --session-db <path>`         | `~/.cagent/session.db` | Path to the SQLite session database.                                                                                 |
+| `-s, --session-db <path>`         | `<data-dir>/session.db` | Path to the SQLite session database.                                                                                 |
 | `--working-dir <path>`            | current dir            | Working directory the agent runs in.                                                                                 |
 | `--env-from-file <file>`          | (none)                 | Load additional environment variables from a `.env` file (repeatable).                                               |
 | `--models-gateway <url>`          | (none)                 | Route all provider traffic through a models gateway URL.                                                             |

@@ -58,6 +58,10 @@ func NewRootCmd() *cobra.Command {
 				paths.SetDataDir(dir)
 			}
 
+			// Relocate legacy ~/.cagent and ~/.config/cagent to the
+			// XDG/native dirs. After the overrides above so they're honoured.
+			paths.MigrateLegacy()
+
 			// Set the version for automatic telemetry initialization
 			telemetry.SetGlobalTelemetryVersion(version.Version)
 
@@ -143,10 +147,10 @@ We collect anonymous usage data to help improve docker agent. To disable:
 	// Add persistent debug flag available to all commands
 	cmd.PersistentFlags().BoolVarP(&flags.debugMode, "debug", "d", false, "Enable debug logging")
 	cmd.PersistentFlags().BoolVarP(&flags.enableOtel, "otel", "o", false, "Enable OpenTelemetry tracing")
-	cmd.PersistentFlags().StringVar(&flags.logFilePath, "log-file", "", "Path to debug log file (default: ~/.cagent/cagent.debug.log; only used with --debug)")
-	cmd.PersistentFlags().StringVar(&flags.cacheDir, "cache-dir", "", "Override the cache directory (default: ~/Library/Caches/cagent on macOS)")
-	cmd.PersistentFlags().StringVar(&flags.configDir, "config-dir", "", "Override the config directory (default: ~/.config/cagent)")
-	cmd.PersistentFlags().StringVar(&flags.dataDir, "data-dir", "", "Override the data directory (default: ~/.cagent)")
+	cmd.PersistentFlags().StringVar(&flags.logFilePath, "log-file", "", "Path to debug log file (default: <data-dir>/cagent.debug.log; only used with --debug)")
+	cmd.PersistentFlags().StringVar(&flags.cacheDir, "cache-dir", "", "Override the cache directory (default: $XDG_CACHE_HOME/cagent, or the OS-native cache dir)")
+	cmd.PersistentFlags().StringVar(&flags.configDir, "config-dir", "", "Override the config directory (default: $XDG_CONFIG_HOME/cagent, or the OS-native config dir)")
+	cmd.PersistentFlags().StringVar(&flags.dataDir, "data-dir", "", "Override the data directory (default: $XDG_DATA_HOME/cagent, or the OS-native data dir)")
 
 	// Define groups
 	cmd.AddGroup(

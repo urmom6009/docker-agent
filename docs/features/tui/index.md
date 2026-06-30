@@ -334,10 +334,10 @@ Customize the TUI appearance with built-in or custom themes:
 
 ### Custom Themes
 
-Create theme files in `~/.cagent/themes/` as YAML. Theme files are **partial overrides** — you only need to specify the colors you want to change. Any omitted keys fall back to the built-in default theme values.
+Create theme files in `~/.local/share/cagent/themes/` as YAML. Theme files are **partial overrides** — you only need to specify the colors you want to change. Any omitted keys fall back to the built-in default theme values.
 
 ```yaml
-# ~/.cagent/themes/my-theme.yaml
+# ~/.local/share/cagent/themes/my-theme.yaml
 name: "My Custom Theme"
 
 colors:
@@ -380,7 +380,7 @@ markdown:
 
 ```yaml
 settings:
-  theme: my-theme # References ~/.cagent/themes/my-theme.yaml
+  theme: my-theme # References ~/.local/share/cagent/themes/my-theme.yaml
 ```
 
 **At launch:** Pass `--theme <name>` to `docker agent run` to preselect a theme for that session. This overrides `settings.theme` in your config but is not saved. Invalid theme names print an error at startup listing the available options. Has no effect in `--exec` mode.
@@ -397,7 +397,7 @@ settings:
 <div class="callout callout-warning" markdown="1">
 <div class="callout-title">Partial overrides
 </div>
-  <p>All user themes are applied on top of the <code>default</code> theme. If you want to customize a built-in theme (e.g., <code>dracula</code>), copy its full YAML from the <a href="https://github.com/docker/docker-agent/tree/main/pkg/tui/styles/themes">built-in themes on GitHub</a> into <code>~/.cagent/themes/</code> and edit the copy. Otherwise, omitted values will use <code>default</code> colors, not the original theme's colors.</p>
+  <p>All user themes are applied on top of the <code>default</code> theme. If you want to customize a built-in theme (e.g., <code>dracula</code>), copy its full YAML from the <a href="https://github.com/docker/docker-agent/tree/main/pkg/tui/styles/themes">built-in themes on GitHub</a> into <code>~/.local/share/cagent/themes/</code> and edit the copy. Otherwise, omitted values will use <code>default</code> colors, not the original theme's colors.</p>
 
 </div>
 

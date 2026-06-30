@@ -52,7 +52,7 @@ agents:
 The first step for any issue is enabling debug logging. This provides detailed information about what docker-agent is doing internally.
 
 ```bash
-# Enable debug logging (writes to ~/.cagent/cagent.debug.log)
+# Enable debug logging (writes to <data-dir>/cagent.debug.log)
 $ docker agent run config.yaml --debug
 
 # Write debug logs to a custom file
@@ -68,6 +68,10 @@ $ docker agent run config.yaml --otel
   <p>Always enable <code>--debug</code> when reporting issues. The log file contains detailed traces of API calls, tool executions, and agent interactions.</p>
 
 </div>
+
+### Where docker-agent stores files
+
+State moved out of `~/.cagent` (data) into the XDG data directory (`~/.local/share/cagent` on Linux; the OS-native data dir on macOS and Windows). On first run docker-agent automatically relocates existing `~/.cagent` and `~/.config/cagent` contents to the new locations. The `--data-dir`, `--config-dir`, and `--cache-dir` flags and the `XDG_*` environment variables override these defaults.
 
 ## Agent Not Responding
 

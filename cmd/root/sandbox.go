@@ -260,6 +260,10 @@ func dockerAgentArgs(cmd *cobra.Command, args []string, configDir string) []stri
 		"sbx":        true,
 		"config-dir": true,
 		"no-kit":     true,
+		// Only the config dir is bind-mounted into the sandbox. Forwarding a
+		// host data/cache path would point the inner agent at a missing mount.
+		"data-dir":  true,
+		"cache-dir": true,
 	}
 
 	var dockerAgentArgs []string

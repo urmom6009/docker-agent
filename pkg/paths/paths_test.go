@@ -1,13 +1,49 @@
 package paths_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/docker/docker-agent/pkg/paths"
 )
+
+// These tests mutate process-global state (HOME/XDG env and the directory
+// overrides), so they must not run in parallel.
+
+func TestDefaultDirsHonourXDGEnv(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "cfg"))
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, "data"))
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, "cache"))
+
+	paths.SetConfigDir("")
+	paths.SetDataDir("")
+	paths.SetCacheDir("")
+
+	assert.Equal(t, filepath.Join(home, "cfg", "cagent"), paths.GetConfigDir())
+	assert.Equal(t, filepath.Join(home, "data", "cagent"), paths.GetDataDir())
+	assert.Equal(t, filepath.Join(home, "cache", "cagent"), paths.GetCacheDir())
+}
+
+func TestGetDataDirLegacyFallback(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, "data"))
+	paths.SetDataDir("")
+
+	// While the new location is absent, an existing ~/.cagent is still used.
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".cagent"), 0o755))
+	assert.Equal(t, filepath.Join(home, ".cagent"), paths.GetDataDir())
+
+	// Once the new location exists it takes over.
+	require.NoError(t, os.MkdirAll(filepath.Join(home, "data", "cagent"), 0o755))
+	assert.Equal(t, filepath.Join(home, "data", "cagent"), paths.GetDataDir())
+}
 
 func TestOverrides(t *testing.T) {
 	t.Parallel()
