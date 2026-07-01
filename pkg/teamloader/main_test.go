@@ -2,10 +2,21 @@ package teamloader
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/docker/docker-agent/pkg/gateway"
+	"github.com/docker/docker-agent/pkg/internal/xdgtest"
 )
+
+// TestMain restores $HOME-based isolation for this package's tests. They load
+// the "default" agent, whose resolution goes through userconfig; clearing the
+// XDG variables keeps it anchored to the test's temporary $HOME instead of a
+// real, shared config dir. See pkg/internal/xdgtest.
+func TestMain(m *testing.M) {
+	xdgtest.Clear()
+	os.Exit(m.Run())
+}
 
 // testCatalog seeds a fake MCP catalog so teamloader tests that load configs
 // with MCP `ref:` toolsets run without a live network call.
