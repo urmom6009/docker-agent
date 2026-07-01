@@ -1078,15 +1078,8 @@ func TestOAuthTransportCoalescesConcurrentAuthorization(t *testing.T) {
 		errCh <- err
 	}()
 
-	deadline := time.After(time.Second)
-	for unauthenticatedRequests.Load() < 2 {
-		select {
-		case <-deadline:
-			t.Fatalf("second request did not reach 401 path; unauthenticated requests = %d", unauthenticatedRequests.Load())
-		default:
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
+	require.Eventually(t, func() bool { return unauthenticatedRequests.Load() >= 2 },
+		time.Second, 10*time.Millisecond, "second request did not reach 401 path")
 
 	close(finishElicitation)
 

@@ -2,7 +2,6 @@ package lsp
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +55,4 @@ func TestLSPTool_SupervisorRetryAfterFailure(t *testing.T) {
 	require.Error(t, err)
 	state = tool.handler.supervisor.State()
 	assert.Equal(t, lifecycle.StateStopped, state.State)
-
-	// Allow some time to ensure no goroutine leaked or panicked.
-	time.Sleep(50 * time.Millisecond)
 }

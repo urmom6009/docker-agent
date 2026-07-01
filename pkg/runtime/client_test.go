@@ -21,6 +21,10 @@ import (
 func TestClient_StreamSessionEvents_DeliversMultipleEvents(t *testing.T) {
 	t.Parallel()
 
+	// proceed gates each subsequent event on the client having consumed
+	// the previous one, guaranteeing the events arrive in separate reads
+	// (the one-shot-read regression) without timing dependence.
+	proceed := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -31,12 +35,17 @@ func TestClient_StreamSessionEvents_DeliversMultipleEvents(t *testing.T) {
 		}
 
 		for i := 1; i <= 3; i++ {
+			if i > 1 {
+				if _, ok := <-proceed; !ok {
+					return
+				}
+			}
 			fmt.Fprintf(w, "data: {\"type\":\"session_title\",\"session_id\":\"s\",\"title\":\"t%d\"}\n\n", i)
 			flusher.Flush()
-			time.Sleep(20 * time.Millisecond)
 		}
 	}))
 	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(proceed) })
 
 	c, err := NewClient(srv.URL)
 	require.NoError(t, err)
@@ -51,6 +60,9 @@ func TestClient_StreamSessionEvents_DeliversMultipleEvents(t *testing.T) {
 			continue
 		}
 		titles = append(titles, titleEv.Title)
+		if len(titles) < 3 {
+			proceed <- struct{}{}
+		}
 	}
 
 	assert.Equal(t, []string{"t1", "t2", "t3"}, titles)

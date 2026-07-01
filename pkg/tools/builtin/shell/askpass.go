@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -80,6 +81,11 @@ type askpassServer struct {
 	// runtime elicitation pipe carries a single request, so two concurrent sudo
 	// calls (e.g. `sudo a & sudo b`) must not raise two dialogs at once.
 	promptSem chan struct{}
+
+	// promptWaiters counts requests that reached askUser (whether prompting
+	// or queued on promptSem). Only used by tests to synchronize on "both
+	// concurrent prompts are in flight" without sleeping.
+	promptWaiters atomic.Int32
 
 	closeOnce sync.Once
 	closed    chan struct{} // closed by close() to cancel in-flight prompts
@@ -278,6 +284,7 @@ func (s *askpassServer) askUser(ctx context.Context, prompt string) (string, boo
 	if handler == nil {
 		return "", false
 	}
+	s.promptWaiters.Add(1)
 
 	// Only one prompt at a time. If a concurrent prompt is already open, wait
 	// for it (unless this request's helper goes away first, ctx cancellation).

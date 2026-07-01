@@ -346,6 +346,10 @@ func TestFallbackCooldownState(t *testing.T) {
 		// Initially no cooldown
 		assert.Nil(t, rt.fallback.cooldowns.Get(agentName), "should have no cooldown initially")
 
+		// Fake clock so cooldown expiry needs no sleeping.
+		current := time.Now()
+		rt.fallback.cooldowns.now = func() time.Time { return current }
+
 		// Set cooldown with short duration for testing
 		rt.fallback.cooldowns.Set(agentName, 0, 100*time.Millisecond)
 		state := rt.fallback.cooldowns.Get(agentName)
@@ -353,7 +357,7 @@ func TestFallbackCooldownState(t *testing.T) {
 		assert.Equal(t, 0, state.fallbackIndex)
 
 		// Advance fake time past the cooldown
-		time.Sleep(101 * time.Millisecond)
+		current = current.Add(101 * time.Millisecond)
 		assert.Nil(t, rt.fallback.cooldowns.Get(agentName), "cooldown should have expired")
 
 		// Set cooldown again and then clear it

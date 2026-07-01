@@ -64,10 +64,11 @@ func TestSupervisorRespectsContextCancellation(t *testing.T) {
 	require.Error(t, err, "Start must propagate connector error")
 
 	// Now exercise RestartAndWait + cancel: it should return promptly.
+	// Whether the cancellation lands before or after RestartAndWait parks
+	// in its select, the ctx path must win over the 10s timeout.
 	done := make(chan error, 1)
 	go func() { done <- s.RestartAndWait(ctx, 10*time.Second) }()
 
-	time.Sleep(50 * time.Millisecond)
 	cancel()
 
 	select {

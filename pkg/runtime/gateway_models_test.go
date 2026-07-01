@@ -322,9 +322,12 @@ func TestListGatewayModels_ConcurrentCallersCoalesce(t *testing.T) {
 		})
 	}
 
-	// Let all goroutines reach the fetch, then release the single
-	// in-flight request they should all be coalesced onto.
-	time.Sleep(100 * time.Millisecond)
+	// Once the fetch is in flight (the handler is blocked on release),
+	// every other caller must coalesce onto it or hit the cache; a
+	// non-coalescing bug would show up as extra blocked requests either
+	// way, since the handler holds all of them until release.
+	require.Eventually(t, func() bool { return requests.Load() >= 1 },
+		time.Second, time.Millisecond, "fetch never reached the gateway")
 	close(release)
 	wg.Wait()
 

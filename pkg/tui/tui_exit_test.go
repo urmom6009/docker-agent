@@ -3,6 +3,7 @@ package tui
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -199,9 +200,11 @@ func TestExitConfirmedMsg_ExitsImmediately(t *testing.T) {
 	assert.True(t, hasMsg[tea.QuitMsg](msgs), "should produce tea.QuitMsg")
 }
 
-// blockingWriter is an io.Writer whose Write blocks until unblocked.
+// blockingWriter is an io.Writer whose Write blocks until unblocked. It
+// records everything written so tests can sync on rendered content.
 type blockingWriter struct {
 	mu      sync.Mutex
+	buf     bytes.Buffer
 	blocked chan struct{} // closed once the first Write starts blocking
 	gate    chan struct{} // Write blocks until this is closed
 }
@@ -215,16 +218,27 @@ func newBlockingWriter() *blockingWriter {
 
 func (w *blockingWriter) Write(p []byte) (int, error) {
 	w.mu.Lock()
+	// Capture the gate before publishing the bytes: once a test observes
+	// this write's content, the write is guaranteed to complete even if
+	// reblock() swaps the gate right after.
+	gate := w.gate
+	w.buf.Write(p)
 	select {
 	case <-w.blocked:
 	default:
 		close(w.blocked)
 	}
-	gate := w.gate
 	w.mu.Unlock()
 
 	<-gate
 	return len(p), nil
+}
+
+// contains reports whether the accumulated output includes s.
+func (w *blockingWriter) contains(s string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return strings.Contains(w.buf.String(), s)
 }
 
 // reblock installs a new gate so that subsequent writes block again.
@@ -298,10 +312,13 @@ func initBlockingBubbletea(t *testing.T, model tea.Model) (*tea.Program, *blocki
 		t.Fatal("timed out waiting for initial write to block")
 	}
 
-	// Let the initial writes through so the event loop starts, then re-block
-	// so the next flush stalls.
+	// Let the initial writes through so the event loop starts. The setup
+	// burst ends with clear-screen (ESC[2J); once it lands the renderer is
+	// idle (no frame renders without a window size), so re-block to make
+	// the next flush stall.
 	w.unblock()
-	time.Sleep(200 * time.Millisecond)
+	require.Eventually(t, func() bool { return w.contains("\x1b[2J") },
+		5*time.Second, time.Millisecond, "terminal setup was not flushed")
 	w.reblock()
 
 	return p, w, runDone
@@ -340,8 +357,8 @@ func TestCleanupAll_GracefulShutdownSkipsExit(t *testing.T) {
 	m, _ := newTestModel(t)
 	m.shutdownTimeout = 2 * time.Second
 
-	var exitCalled atomic.Bool
-	m.exitFunc = func(int) { exitCalled.Store(true) }
+	exitFired := make(chan struct{}, 1)
+	m.exitFunc = func(int) { exitFired <- struct{}{} }
 
 	var in, out bytes.Buffer
 	p := tea.NewProgram(&quitModel{},
@@ -371,10 +388,13 @@ func TestCleanupAll_GracefulShutdownSkipsExit(t *testing.T) {
 		t.Fatal("p.Run() did not return within deadline")
 	}
 
-	// Let the safety-net goroutine observe Wait() returning.
-	time.Sleep(100 * time.Millisecond)
-	assert.False(t, exitCalled.Load(),
-		"exitFunc must not fire on prompt shutdown")
+	// Give the safety-net goroutine a window to (wrongly) fire after
+	// Wait() returned.
+	select {
+	case <-exitFired:
+		t.Fatal("exitFunc must not fire on prompt shutdown")
+	case <-time.After(100 * time.Millisecond):
+	}
 }
 
 // syncMsg pings the program's event loop to confirm Run() has started.
@@ -388,14 +408,17 @@ func TestCleanupAll_NilProgramIsSafe(t *testing.T) {
 	m, _ := newTestModel(t)
 	m.shutdownTimeout = 20 * time.Millisecond
 
-	var exitCalled atomic.Bool
-	m.exitFunc = func(int) { exitCalled.Store(true) }
+	exitFired := make(chan struct{}, 1)
+	m.exitFunc = func(int) { exitFired <- struct{}{} }
 
 	m.program = nil
 	assert.NotPanics(t, func() { m.cleanupAll() })
 
-	time.Sleep(m.shutdownTimeout + 50*time.Millisecond)
-	assert.False(t, exitCalled.Load(), "exitFunc must not fire without a program")
+	select {
+	case <-exitFired:
+		t.Fatal("exitFunc must not fire without a program")
+	case <-time.After(m.shutdownTimeout + 50*time.Millisecond):
+	}
 }
 
 // TestCleanupAll_WedgedStdoutFiresExit: the realistic case. The renderer is
@@ -441,8 +464,8 @@ func TestCleanupAll_MultipleCallsFireExitOnce(t *testing.T) {
 	m, _ := newTestModel(t)
 	m.shutdownTimeout = 100 * time.Millisecond
 
-	var exitCount atomic.Int32
-	m.exitFunc = func(int) { exitCount.Add(1) }
+	exitFired := make(chan struct{}, 3)
+	m.exitFunc = func(int) { exitFired <- struct{}{} }
 
 	m.program = tea.NewProgram(&quitModel{})
 
@@ -450,9 +473,18 @@ func TestCleanupAll_MultipleCallsFireExitOnce(t *testing.T) {
 	m.cleanupAll()
 	m.cleanupAll()
 
-	time.Sleep(m.shutdownTimeout + 200*time.Millisecond)
-	assert.Equal(t, int32(1), exitCount.Load(),
-		"only the first cleanupAll should arm a safety net")
+	// Exactly one safety net must fire: wait for it, then make sure no
+	// second one follows.
+	select {
+	case <-exitFired:
+	case <-time.After(m.shutdownTimeout + 2*time.Second):
+		t.Fatal("no safety net fired")
+	}
+	select {
+	case <-exitFired:
+		t.Fatal("only the first cleanupAll should arm a safety net")
+	case <-time.After(m.shutdownTimeout + 200*time.Millisecond):
+	}
 }
 
 // TestExitDeadlock_BlockedStdout proves the underlying bubbletea bug: Run()
@@ -489,10 +521,7 @@ func TestExitSafetyNet_BlockedStdout(t *testing.T) {
 
 	model := &quitModel{
 		onQuit: func() {
-			go func() {
-				time.Sleep(safetyNetTimeout)
-				testExitFunc(0)
-			}()
+			time.AfterFunc(safetyNetTimeout, func() { testExitFunc(0) })
 		},
 	}
 	p, w, runDone := initBlockingBubbletea(t, model)
@@ -530,10 +559,7 @@ func TestExitSafetyNet_GracefulShutdown(t *testing.T) {
 			mu.Lock()
 			cleanupCalled = true
 			mu.Unlock()
-			go func() {
-				time.Sleep(safetyNetTimeout)
-				testExitFunc(0)
-			}()
+			time.AfterFunc(safetyNetTimeout, func() { testExitFunc(0) })
 		},
 	}
 	var buf bytes.Buffer
@@ -551,7 +577,9 @@ func TestExitSafetyNet_GracefulShutdown(t *testing.T) {
 		runDone <- err
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	// Send blocks until the program is running, so the quit message below
+	// is processed by a fully started event loop.
+	p.Send(syncMsg{})
 
 	p.Send(triggerQuitMsg{})
 

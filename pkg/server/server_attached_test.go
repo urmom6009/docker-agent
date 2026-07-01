@@ -312,7 +312,8 @@ func TestAttachedServer_DeleteWithWaitBlocksUntilStreamStops(t *testing.T) {
 	require.NoError(t, store.AddSession(ctx, sess))
 
 	sm := NewSessionManager(ctx, config.Sources{}, store, 0, &config.RuntimeConfig{})
-	fake := &fakeRuntime{streamDelay: 200 * time.Millisecond}
+	// The stream stays open until DELETE cancels the session context.
+	fake := &fakeRuntime{release: make(chan struct{})}
 	sm.AttachRuntime(t.Context(), sess.ID, fake, sess)
 
 	srv := NewWithManager(sm, "")
@@ -327,8 +328,49 @@ func TestAttachedServer_DeleteWithWaitBlocksUntilStreamStops(t *testing.T) {
 	ch, err := sm.RunSession(ctx, sess.ID, "agent", "root", []api.Message{{Content: "hello"}}, "")
 	require.NoError(t, err)
 
-	// DELETE with wait should block until stream finishes (200ms).
-	resp := httpDoTCP(t, ctx, http.MethodDelete, addr+"/api/sessions/"+sess.ID+"?wait=true&timeout=5s", nil)
+	// Fire DELETE with wait; it must not respond until the stream exits.
+	// Plain http here: assertions must stay on the test goroutine.
+	respCh := make(chan []byte, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, addr+"/api/sessions/"+sess.ID+"?wait=true&timeout=5s", http.NoBody)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		defer resp.Body.Close()
+		out, err := io.ReadAll(resp.Body)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		respCh <- out
+	}()
+
+	// Once the session is deregistered, the DELETE is parked in WaitStopped.
+	require.Eventually(t, func() bool {
+		_, ok := sm.runtimeSessions.Load(sess.ID)
+		return !ok
+	}, 2*time.Second, time.Millisecond)
+	select {
+	case <-respCh:
+		t.Fatal("DELETE returned before the stream goroutine exited")
+	default:
+	}
+
+	// Let the stream finish; the DELETE response must follow.
+	close(fake.release)
+	var resp []byte
+	select {
+	case resp = <-respCh:
+	case err := <-errCh:
+		t.Fatalf("DELETE failed: %v", err)
+	}
 	assert.Contains(t, string(resp), "deleted")
 
 	// Stream channel should be drained by now.
@@ -560,11 +602,11 @@ func TestAttachedServer_DeleteEmitsSessionExited(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// Give the SSE handler a moment to register, then delete the session.
+	// Wait for the SSE handler to register, then delete the session; the
+	// event log replays missed events, so ordering past this point is safe.
 	require.Eventually(t, func() bool {
 		return sm.HasEventSource(sess.ID)
 	}, 2*time.Second, time.Millisecond)
-	time.Sleep(50 * time.Millisecond)
 	require.NoError(t, sm.DeleteSession(ctx, sess.ID))
 
 	// The client must receive a terminal session_exited event.
@@ -647,11 +689,10 @@ func TestAttachedServer_StatusWaitBlocksUntilAttached(t *testing.T) {
 	go func() { _ = srv.Serve(ctx, ln) }()
 	addr := "http://" + ln.Addr().String()
 
-	// Attach a little later, while the request is already waiting.
-	go func() {
-		time.Sleep(80 * time.Millisecond)
-		sm.AttachRuntime(t.Context(), sess.ID, &fakeRuntime{}, sess)
-	}()
+	// Attach concurrently: whether the request is already parked in
+	// WaitSessionAttached or the attach lands first, the response must
+	// carry the session.
+	go sm.AttachRuntime(t.Context(), sess.ID, &fakeRuntime{}, sess)
 
 	resp := httpDoTCP(t, ctx, http.MethodGet, addr+"/api/sessions/"+sess.ID+"/status?wait=5s", nil)
 	var status api.SessionStatusResponse

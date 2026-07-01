@@ -196,17 +196,25 @@ func TestHandleStream_WhitespaceOnlyContentStops(t *testing.T) {
 type stalledStream struct {
 	// unblock is closed to release a blocked Recv call.
 	unblock chan struct{}
+	// recvStarted is closed once the first Recv call is in flight, so
+	// tests can cancel a context while Recv is provably blocked.
+	recvStarted chan struct{}
+	recvOnce    sync.Once
 	// closeOnce guards unblock so Close is safe to call concurrently from
 	// both the test goroutine and handleStream's deferred Close.
 	closeOnce sync.Once
 }
 
 func newStalledStream() *stalledStream {
-	return &stalledStream{unblock: make(chan struct{})}
+	return &stalledStream{
+		unblock:     make(chan struct{}),
+		recvStarted: make(chan struct{}),
+	}
 }
 
 // Recv blocks until unblock is closed, then returns io.EOF.
 func (s *stalledStream) Recv() (chat.MessageStreamResponse, error) {
+	s.recvOnce.Do(func() { close(s.recvStarted) })
 	<-s.unblock
 	return chat.MessageStreamResponse{}, io.EOF
 }
@@ -256,9 +264,9 @@ func TestHandleStream_ContextCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(t.Context())
 
-	// Cancel the context shortly after handleStream starts.
+	// Cancel the context once handleStream is provably blocked in Recv.
 	go func() {
-		time.Sleep(20 * time.Millisecond)
+		<-stream.recvStarted
 		cancel()
 		stream.Close() // unblock the stalled Recv so the reader goroutine can exit
 	}()

@@ -787,6 +787,18 @@ func TestCreateEventTelemetryTags(t *testing.T) {
 	})
 }
 
+// awaitBodies waits for the async Track dispatch to reach the mock HTTP
+// client and returns the captured request bodies.
+func awaitBodies(t *testing.T, mockHTTP *MockHTTPClient) [][]byte {
+	t.Helper()
+	var bodies [][]byte
+	require.Eventually(t, func() bool {
+		bodies = mockHTTP.GetBodies()
+		return len(bodies) > 0
+	}, time.Second, time.Millisecond, "expected the tracked event to be posted")
+	return bodies
+}
+
 func TestTelemetryTags(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	mockHTTP := NewMockHTTPClient()
@@ -803,10 +815,7 @@ func TestTelemetryTags(t *testing.T) {
 		client.httpClient = mockHTTP
 
 		client.Track(t.Context(), &CommandEvent{Action: "test", Success: true})
-		time.Sleep(20 * time.Millisecond)
-
-		bodies := mockHTTP.GetBodies()
-		require.NotEmpty(t, bodies)
+		bodies := awaitBodies(t, mockHTTP)
 
 		var requestBody map[string]any
 		require.NoError(t, json.Unmarshal(bodies[0], &requestBody))
@@ -826,10 +835,7 @@ func TestTelemetryTags(t *testing.T) {
 		client.httpClient = mockHTTP
 
 		client.Track(t.Context(), &CommandEvent{Action: "test", Success: true})
-		time.Sleep(20 * time.Millisecond)
-
-		bodies := mockHTTP.GetBodies()
-		require.NotEmpty(t, bodies)
+		bodies := awaitBodies(t, mockHTTP)
 
 		var requestBody map[string]any
 		require.NoError(t, json.Unmarshal(bodies[0], &requestBody))
@@ -848,10 +854,7 @@ func TestTelemetryTags(t *testing.T) {
 		client.httpClient = mockHTTP
 
 		client.Track(t.Context(), &CommandEvent{Action: "test", Success: true})
-		time.Sleep(20 * time.Millisecond)
-
-		bodies := mockHTTP.GetBodies()
-		require.NotEmpty(t, bodies)
+		bodies := awaitBodies(t, mockHTTP)
 
 		var requestBody map[string]any
 		require.NoError(t, json.Unmarshal(bodies[0], &requestBody))
@@ -871,10 +874,7 @@ func TestTelemetryTags(t *testing.T) {
 		client.httpClient = mockHTTP
 
 		client.Track(t.Context(), &CommandEvent{Action: "test", Success: true})
-		time.Sleep(20 * time.Millisecond)
-
-		bodies := mockHTTP.GetBodies()
-		require.NotEmpty(t, bodies)
+		bodies := awaitBodies(t, mockHTTP)
 
 		var requestBody map[string]any
 		require.NoError(t, json.Unmarshal(bodies[0], &requestBody))
@@ -895,10 +895,7 @@ func TestTelemetryTags(t *testing.T) {
 		client.httpClient = mockHTTP
 
 		client.Track(t.Context(), &CommandEvent{Action: "test", Success: true})
-		time.Sleep(20 * time.Millisecond)
-
-		bodies := mockHTTP.GetBodies()
-		require.NotEmpty(t, bodies)
+		bodies := awaitBodies(t, mockHTTP)
 
 		var requestBody map[string]any
 		require.NoError(t, json.Unmarshal(bodies[0], &requestBody))

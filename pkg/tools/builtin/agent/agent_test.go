@@ -396,13 +396,24 @@ func TestStopAll_WaitsForGoroutines(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	tk.cancel = cancel
 
+	// The goroutine only finishes once the test releases it, so StopAll
+	// returning proves it waited rather than raced ahead.
+	release := make(chan struct{})
 	h.wg.Go(func() {
 		<-ctx.Done()
-		time.Sleep(10 * time.Millisecond) // simulate teardown work
+		<-release
 		goroutineExited.Store(true)
 	})
 
-	h.StopAll()
+	stopDone := make(chan struct{})
+	go func() {
+		h.StopAll()
+		close(stopDone)
+	}()
+
+	<-ctx.Done() // StopAll has cancelled the task
+	close(release)
+	<-stopDone
 	assert.True(t, goroutineExited.Load(), "StopAll should wait for goroutine to exit")
 }
 

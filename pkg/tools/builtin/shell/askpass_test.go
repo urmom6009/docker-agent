@@ -158,6 +158,7 @@ func TestAskpass_PromptsSerialized(t *testing.T) {
 	}
 
 	var active, maxActive int32
+	release := make(chan struct{})
 	srv, err := startAskpassServer(t.Context(), func() tools.ElicitationHandler {
 		return func(_ context.Context, _ *mcp.ElicitParams) (tools.ElicitationResult, error) {
 			n := atomic.AddInt32(&active, 1)
@@ -167,7 +168,9 @@ func TestAskpass_PromptsSerialized(t *testing.T) {
 					break
 				}
 			}
-			time.Sleep(50 * time.Millisecond)
+			// Hold the prompt open until both requests are in flight, so an
+			// unserialized server would run two handlers concurrently.
+			<-release
 			atomic.AddInt32(&active, -1)
 			return tools.ElicitationResult{Action: tools.ElicitationActionAccept, Content: map[string]any{"password": "pw"}}, nil
 		}
@@ -185,6 +188,12 @@ func TestAskpass_PromptsSerialized(t *testing.T) {
 			assert.NoError(t, RunAskpassClient(t.Context(), "p", &out))
 		})
 	}
+
+	// Wait until both requests have reached askUser (one prompting, one
+	// queued on promptSem), then let the prompts finish.
+	require.Eventually(t, func() bool { return srv.promptWaiters.Load() == 2 },
+		time.Second, time.Millisecond, "both askpass requests should reach askUser")
+	close(release)
 	wg.Wait()
 
 	assert.Equal(t, int32(1), atomic.LoadInt32(&maxActive), "prompts must be serialized to one at a time")

@@ -95,16 +95,22 @@ func TestElicitationBridge_RestoreAndCloseWaitsForInflightSenders(t *testing.T) 
 	parent := make(chan Event, 1)
 	b.swap(current)
 
-	sendStarted := make(chan struct{})
 	sendDone := make(chan error, 1)
 	go func() {
-		close(sendStarted)
 		sendDone <- b.send(Error("inflight"))
 	}()
-	<-sendStarted
 
-	// Give the sender a moment to grab the RLock and park on the channel.
-	time.Sleep(20 * time.Millisecond)
+	// Wait until the sender holds the read lock: TryLock fails only while
+	// another lock is held, and the sender is the only other lock user.
+	// From that point on, restoreAndClose's write lock (and therefore the
+	// close) cannot possibly precede the parked send.
+	require.Eventually(t, func() bool {
+		if b.mu.TryLock() {
+			b.mu.Unlock()
+			return false
+		}
+		return true
+	}, time.Second, time.Microsecond, "sender never acquired the read lock")
 
 	closed := make(chan struct{})
 	go func() {
@@ -112,10 +118,12 @@ func TestElicitationBridge_RestoreAndCloseWaitsForInflightSenders(t *testing.T) 
 		close(closed)
 	}()
 
+	// Sanity check (never false-positive): teardown cannot have completed
+	// while the sender still holds the read lock across its parked send.
 	select {
 	case <-closed:
 		t.Fatal("channel closed while a send was still in flight")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 
 	select {

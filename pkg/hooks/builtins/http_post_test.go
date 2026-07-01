@@ -147,12 +147,14 @@ func TestHTTPPostRejectsNonHTTPSchemes(t *testing.T) {
 func TestHTTPPostHonoursContextCancellation(t *testing.T) {
 	t.Parallel()
 
-	// Bounded sleep so the client must abandon before the response,
-	// while keeping httptest.Server.Close() cleanup quick.
-	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-		time.Sleep(300 * time.Millisecond)
+	// Hold the response hostage until the test releases it, so the
+	// client's ctx timeout is what ends the request.
+	done := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		<-done
 	}))
 	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(done) })
 
 	fn := lookup(t, builtins.HTTPPost)
 

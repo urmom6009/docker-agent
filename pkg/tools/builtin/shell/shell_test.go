@@ -2,6 +2,7 @@ package shell
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"runtime"
@@ -396,9 +397,12 @@ func TestReapSpawnedChild_HandlesAlreadyExited(t *testing.T) {
 	}
 
 	cmd := exec.CommandContext(t.Context(), "/bin/sh", "-c", "exit 0")
+	stdout, err := cmd.StdoutPipe()
+	require.NoError(t, err)
 	require.NoError(t, cmd.Start())
-	// Give the child a moment to exit on its own.
-	time.Sleep(50 * time.Millisecond)
+	// EOF on stdout means the child has exited (its fds are closed on exit).
+	_, err = io.ReadAll(stdout)
+	require.NoError(t, err)
 
 	done := make(chan struct{})
 	go func() {

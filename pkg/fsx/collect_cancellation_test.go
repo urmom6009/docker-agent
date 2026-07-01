@@ -41,8 +41,8 @@ func TestCollectFiles_ContextCancellation(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), 1*time.Nanosecond)
 		defer cancel()
 
-		// Give time for timeout to trigger
-		time.Sleep(10 * time.Millisecond)
+		// Wait for the timeout to trigger
+		<-ctx.Done()
 
 		_, err := CollectFiles(ctx, []string{tmpDir}, nil)
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
@@ -78,8 +78,8 @@ func TestDirectoryTree_ContextCancellation(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), 1*time.Nanosecond)
 		defer cancel()
 
-		// Give time for timeout to trigger
-		time.Sleep(10 * time.Millisecond)
+		// Wait for the timeout to trigger
+		<-ctx.Done()
 
 		_, err := DirectoryTree(ctx, tmpDir, func(string) error { return nil }, nil, 0)
 		assert.ErrorIs(t, err, context.DeadlineExceeded)

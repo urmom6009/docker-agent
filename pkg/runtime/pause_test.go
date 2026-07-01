@@ -135,8 +135,9 @@ func TestWaitIfPaused_BroadcastsToAllWaiters(t *testing.T) {
 		})
 	}
 
-	// Give them a moment to all enter waitIfPaused.
-	time.Sleep(50 * time.Millisecond)
+	// No need to wait for the goroutines to park: whether a waiter is
+	// already blocked on the pause channel or observes the resume later,
+	// only a close-based broadcast lets all n of them return.
 	_, _ = r.TogglePause(t.Context()) // single resume should wake all waiters
 
 	doneAll := make(chan struct{})

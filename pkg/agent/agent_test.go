@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -501,12 +500,13 @@ func TestAgentWarningsConcurrentAccess(t *testing.T) {
 	const drainers = 4
 	const perWriter = 200
 
-	var wg sync.WaitGroup
-	wg.Add(writers + drainers)
+	var writersWg, drainersWg sync.WaitGroup
+	writersWg.Add(writers)
+	drainersWg.Add(drainers)
 
 	for range writers {
 		go func() {
-			defer wg.Done()
+			defer writersWg.Done()
 			for range perWriter {
 				a.AddToolWarning("boom")
 			}
@@ -516,7 +516,7 @@ func TestAgentWarningsConcurrentAccess(t *testing.T) {
 	stop := make(chan struct{})
 	for range drainers {
 		go func() {
-			defer wg.Done()
+			defer drainersWg.Done()
 			for {
 				select {
 				case <-stop:
@@ -530,10 +530,10 @@ func TestAgentWarningsConcurrentAccess(t *testing.T) {
 		}()
 	}
 
-	// Give writers a little time to finish, then signal drainers to stop.
-	time.Sleep(20 * time.Millisecond)
+	// Keep drainers racing until every writer has finished, then stop them.
+	writersWg.Wait()
 	close(stop)
-	wg.Wait()
+	drainersWg.Wait()
 
 	// A successful run means no data race and no panic; we don't assert a
 	// specific number of warnings drained because drainers run concurrently

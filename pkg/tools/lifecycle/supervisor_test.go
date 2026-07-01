@@ -10,6 +10,7 @@ import (
 
 	"gotest.tools/v3/assert"
 	is "gotest.tools/v3/assert/cmp"
+	"gotest.tools/v3/poll"
 
 	"github.com/docker/docker-agent/pkg/tools/lifecycle"
 )
@@ -19,6 +20,7 @@ import (
 type fakeSession struct {
 	mu       sync.Mutex
 	closed   bool
+	closedCh chan struct{} // closed once Close has run
 	waitDone atomic.Bool   // set true after Wait returns
 	waiting  chan struct{} // closed once Wait has parked on failCh
 	waitOnce sync.Once
@@ -27,8 +29,9 @@ type fakeSession struct {
 
 func newFakeSession() *fakeSession {
 	return &fakeSession{
-		waiting: make(chan struct{}),
-		failCh:  make(chan error, 1),
+		waiting:  make(chan struct{}),
+		closedCh: make(chan struct{}),
+		failCh:   make(chan error, 1),
 	}
 }
 
@@ -57,6 +60,7 @@ func (f *fakeSession) Close(context.Context) error {
 	defer f.mu.Unlock()
 	if !f.closed {
 		f.closed = true
+		close(f.closedCh)
 		// Closed sessions return nil from Wait by convention.
 		select {
 		case f.failCh <- nil:
@@ -64,6 +68,16 @@ func (f *fakeSession) Close(context.Context) error {
 		}
 	}
 	return nil
+}
+
+// waitClosed blocks until Close has been called on the session.
+func (f *fakeSession) waitClosed(t *testing.T) {
+	t.Helper()
+	select {
+	case <-f.closedCh:
+	case <-time.After(time.Second):
+		t.Fatal("session was not closed")
+	}
 }
 
 func (f *fakeSession) fail(err error) {
@@ -251,19 +265,7 @@ func TestSupervisor_StopReapsLateConnect(t *testing.T) {
 	close(c.release)
 
 	// The reaper must close the late session.
-	deadline := time.Now().Add(time.Second)
-	for {
-		sess.mu.Lock()
-		closed := sess.closed
-		sess.mu.Unlock()
-		if closed {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("late session was not closed after Stop")
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
+	sess.waitClosed(t)
 }
 
 // TestSupervisor_StartWithinTimeoutSucceeds verifies that a Connect that
@@ -450,8 +452,9 @@ func TestSupervisor_StopWakesRestartAndWait(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- s.RestartAndWait(t.Context(), 30*time.Second) }()
 
-	// Give RestartAndWait time to enter its select.
-	time.Sleep(20 * time.Millisecond)
+	// RestartAndWait force-closes the current session before parking in
+	// its select; once the close is observed it is safe to Stop.
+	sess.waitClosed(t)
 	assert.NilError(t, s.Stop(t.Context()))
 
 	select {
@@ -485,8 +488,9 @@ func TestSupervisor_FailedWakesRestartAndWait(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- s.RestartAndWait(t.Context(), 30*time.Second) }()
 
-	// Give RestartAndWait time to enter its select, then crash the session.
-	time.Sleep(20 * time.Millisecond)
+	// RestartAndWait force-closes the current session before parking in
+	// its select; once that close lands, crash the session.
+	sess1.waitClosed(t)
 	sess1.fail(errors.New("crash"))
 
 	select {
@@ -524,13 +528,12 @@ func TestSupervisor_RecoverFromFailedViaStart(t *testing.T) {
 
 	// Drive into Failed.
 	sess1.fail(errors.New("crash"))
-	deadline := time.Now().Add(2 * time.Second)
-	for s.State().State != lifecycle.StateFailed {
-		if time.Now().After(deadline) {
-			t.Fatalf("supervisor did not reach Failed; state=%s", s.State().State)
+	poll.WaitOn(t, func(poll.LogT) poll.Result {
+		if s.State().State == lifecycle.StateFailed {
+			return poll.Success()
 		}
-		time.Sleep(5 * time.Millisecond)
-	}
+		return poll.Continue("supervisor state=%s", s.State().State)
+	}, poll.WithTimeout(2*time.Second), poll.WithDelay(5*time.Millisecond))
 
 	// Recovery: Start should refresh the done channel and bring us back
 	// to Ready without RestartAndWait wedging on a stale close.

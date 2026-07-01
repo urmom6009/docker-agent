@@ -118,11 +118,21 @@ func TestMemoizeExpires(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, v)
 
-	time.Sleep(20 * time.Millisecond)
+	expireEntry(m, "key")
 
 	v, err = m.Memoize("key", compute)
 	require.NoError(t, err)
 	assert.Equal(t, 2, v)
+}
+
+// expireEntry backdates the cached entry for key so it is already expired,
+// which lets TTL tests run without sleeping.
+func expireEntry[T any](m *Memoizer[T], key string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e := m.entries[key]
+	e.expires = time.Now().Add(-time.Nanosecond)
+	m.entries[key] = e
 }
 
 // TestMemoizeZeroTTLNeverExpires verifies the go-cache compatible behavior that
@@ -142,8 +152,6 @@ func TestMemoizeZeroTTLNeverExpires(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 7, v)
 
-		time.Sleep(5 * time.Millisecond)
-
 		v, err = m.Memoize("key", compute)
 		require.NoError(t, err)
 		assert.Equal(t, 7, v)
@@ -161,7 +169,7 @@ func TestMemoizeEvictsExpiredEntry(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, m.entries, 1)
 
-	time.Sleep(10 * time.Millisecond)
+	expireEntry(m, "key")
 
 	_, ok := m.load("key")
 	assert.False(t, ok)
@@ -206,12 +214,18 @@ func TestMemoizeConcurrentSingleFlight(t *testing.T) {
 
 	var calls atomic.Int32
 
+	// Hold the in-flight compute open until every caller has launched, so
+	// they all pile onto the same flight (or hit the cache afterwards).
+	var started sync.WaitGroup
+	started.Add(50)
+
 	var wg sync.WaitGroup
 	for range 50 {
 		wg.Go(func() {
+			started.Done()
 			v, err := m.Memoize("key", func() (int, error) {
 				calls.Add(1)
-				time.Sleep(20 * time.Millisecond)
+				started.Wait()
 				return 7, nil
 			})
 			require.NoError(t, err)

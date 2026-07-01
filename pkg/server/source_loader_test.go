@@ -94,7 +94,7 @@ func TestSourceLoader_Read_WithRefreshInterval_AfterExpiry(t *testing.T) {
 		sl := newSourceLoader(ctx, inner, refreshInterval)
 
 		synctest.Wait()
-		time.Sleep(110 * time.Millisecond)
+		time.Sleep(110 * time.Millisecond) //nolint:forbidigo // fake time inside a synctest bubble; returns instantly
 		synctest.Wait()
 
 		// Read should refresh
@@ -150,7 +150,7 @@ func TestSourceLoader_Read_DataChanges(t *testing.T) {
 		assert.Equal(t, []byte("initial data"), data)
 
 		synctest.Wait()
-		time.Sleep(60 * time.Millisecond)
+		time.Sleep(60 * time.Millisecond) //nolint:forbidigo // fake time inside a synctest bubble; returns instantly
 		synctest.Wait()
 
 		// Read after interval should get updated data from background refresh
@@ -202,7 +202,7 @@ func TestSourceLoader_SuccessThenError(t *testing.T) {
 		inner.setErr(errors.New("refresh error"))
 
 		synctest.Wait()
-		time.Sleep(60 * time.Millisecond)
+		time.Sleep(60 * time.Millisecond) //nolint:forbidigo // fake time inside a synctest bubble; returns instantly
 		synctest.Wait()
 
 		// Should still return old cached data despite refresh error
