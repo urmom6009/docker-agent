@@ -350,6 +350,7 @@ metadata:
   readme: | # Displayed in registries
     This agent helps with coding tasks.
   version: "1.0.0"
+  tags: [coding, review]
 ```
 
 | Field         | Description                                |
@@ -359,6 +360,7 @@ metadata:
 | `description` | Short description for the agent            |
 | `readme`      | Longer markdown description                |
 | `version`     | Semantic version string                    |
+| `tags`        | Tags for categorization and discovery      |
 
 See [Agent Distribution]({{ '/concepts/distribution/' | relative_url }}) for publishing agents to registries.
 

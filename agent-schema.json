@@ -1684,6 +1684,13 @@
         "version": {
           "type": "string",
           "description": "Version of the agent configuration (used for OCI registry publishing)"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags describing the agent configuration (e.g. for categorization and discovery)",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false

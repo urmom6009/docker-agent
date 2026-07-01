@@ -4,6 +4,10 @@ metadata:
     It defines an agent that repeats back exactly what the user says, without any modifications or additional commentary.
 
     For example, run it with `echo "TEST" | docker agent run echo-agent.yaml -`
+  tags:
+    - example
+    - echo
+    - demo
 
 agents:
   root:

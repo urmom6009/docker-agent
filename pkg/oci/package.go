@@ -76,6 +76,9 @@ func PackageFileAsOCIToStore(ctx context.Context, agentSource config.Source, art
 	if revision := cfg.Metadata.Version; revision != "" {
 		annotations["org.opencontainers.image.revision"] = revision
 	}
+	if len(cfg.Metadata.Tags) > 0 {
+		annotations["io.docker.agent.tags"] = strings.Join(cfg.Metadata.Tags, ",")
+	}
 
 	layer := static.NewLayer(data, "application/yaml")
 	img, err := mutate.AppendLayers(empty.Image, layer)

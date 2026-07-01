@@ -1147,11 +1147,12 @@ type RoutingRule struct {
 }
 
 type Metadata struct {
-	Author      string `json:"author,omitempty"`
-	License     string `json:"license,omitempty"`
-	Description string `json:"description,omitempty"`
-	Readme      string `json:"readme,omitempty"`
-	Version     string `json:"version,omitempty"`
+	Author      string   `json:"author,omitempty"`
+	License     string   `json:"license,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Readme      string   `json:"readme,omitempty"`
+	Version     string   `json:"version,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
 }
 
 // Commands represents a set of named prompts for quick-starting conversations.
