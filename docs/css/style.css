@@ -663,7 +663,7 @@ details.sidebar-section[open] > summary.sidebar-heading::after {
 
 /* Rouge / highlighter-rouge overrides */
 .content pre[class*="language-"],
-.content code[class*="language-"],
+.content pre code[class*="language-"],
 .content .highlighter-rouge pre.highlight,
 .content .highlighter-rouge pre.highlight code {
   background: var(--bg-code-block);
