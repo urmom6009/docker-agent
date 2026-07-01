@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"math"
 	"math/rand/v2"
@@ -106,6 +107,14 @@ type Policy struct {
 	Restart     Restart // see Restart constants; default RestartOnFailure
 	MaxAttempts int     // 0 = default (5); negative = unlimited
 	Backoff     Backoff // zero fields use Backoff defaults
+
+	// StartupTimeout bounds the initial Connect performed by Start. Zero
+	// means no timeout. It is enforced by racing Connect against a timer
+	// rather than via a context deadline, so it still interrupts connectors
+	// (notably MCP) that detach the context they are handed with
+	// context.WithoutCancel. On expiry Start returns ErrInitTimeout and the
+	// toolset stays in StateStopped so the caller can retry.
+	StartupTimeout time.Duration
 
 	// OnDisconnect is called when the session ends, with Wait()'s result.
 	// Useful for cache invalidation.
@@ -211,6 +220,9 @@ func (s *Supervisor) Restarted() <-chan struct{} {
 // stays in StateStopped and the caller is expected to retry. On success
 // the watcher goroutine is launched (if not already alive) and state moves
 // to Ready. Concurrent Start calls serialize.
+//
+// When policy.StartupTimeout is non-zero the connect is bounded by it; on
+// expiry Start returns ErrInitTimeout and stays in StateStopped.
 func (s *Supervisor) Start(ctx context.Context) error {
 	s.startMu.Lock()
 	defer s.startMu.Unlock()
@@ -228,7 +240,7 @@ func (s *Supervisor) Start(ctx context.Context) error {
 
 	s.tracker.Set(StateStarting)
 
-	sess, err := s.connector.Connect(ctx)
+	sess, err := s.connect(ctx)
 	if err != nil {
 		s.tracker.Fail(StateStopped, err)
 		return err
@@ -269,6 +281,48 @@ func (s *Supervisor) Start(ctx context.Context) error {
 
 	s.policy.logger().Debug("supervisor: ready", "name", s.name)
 	return nil
+}
+
+// connect performs connector.Connect bounded by policy.StartupTimeout. When
+// the timeout is zero it calls Connect directly. Otherwise it races Connect
+// against a timer: on timeout it returns ErrInitTimeout immediately and, in a
+// background goroutine, closes any Session that Connect eventually produces so
+// a slow-but-successful handshake does not leak a live connection. The timer
+// approach (rather than a ctx deadline) is deliberate: the MCP connector
+// detaches its ctx with context.WithoutCancel, so a deadline on ctx would be
+// stripped before it could interrupt a wedged initialize handshake.
+func (s *Supervisor) connect(ctx context.Context) (Session, error) {
+	if s.policy.StartupTimeout <= 0 {
+		return s.connector.Connect(ctx)
+	}
+
+	type connectResult struct {
+		sess Session
+		err  error
+	}
+	resultCh := make(chan connectResult, 1) // buffered so a late send never blocks
+	go func() {
+		sess, err := s.connector.Connect(ctx)
+		resultCh <- connectResult{sess: sess, err: err}
+	}()
+
+	timer := time.NewTimer(s.policy.StartupTimeout)
+	defer timer.Stop()
+
+	select {
+	case res := <-resultCh:
+		return res.sess, res.err
+	case <-timer.C:
+		// Reap the orphaned Connect so a session that arrives after the
+		// timeout is closed instead of leaked.
+		go func() {
+			res := <-resultCh
+			if res.sess != nil {
+				_ = res.sess.Close(context.WithoutCancel(ctx))
+			}
+		}()
+		return nil, wrap(ErrInitTimeout, fmt.Errorf("%q did not connect within %s", s.name, s.policy.StartupTimeout))
+	}
 }
 
 // Stop tears the supervisor down. Idempotent. Blocks until the underlying

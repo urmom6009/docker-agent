@@ -114,6 +114,29 @@ func (c *scriptedConnector) Connect(context.Context) (lifecycle.Session, error) 
 
 func (c *scriptedConnector) Calls() int { return int(c.calls.Load()) }
 
+// blockingConnector blocks in Connect until release is closed, then returns
+// the configured session/err. It lets tests exercise the startup-timeout path
+// where Connect is slow rather than failing outright.
+type blockingConnector struct {
+	release chan struct{}
+	session *fakeSession
+	err     error
+	calls   atomic.Int32
+}
+
+func (c *blockingConnector) Connect(ctx context.Context) (lifecycle.Session, error) {
+	c.calls.Add(1)
+	select {
+	case <-c.release:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	if c.err != nil {
+		return nil, c.err
+	}
+	return c.session, nil
+}
+
 // fastBackoff is a minimal backoff for tests so we don't sit in time.Sleep.
 var fastBackoff = lifecycle.Backoff{
 	Initial:    1 * time.Millisecond,
@@ -145,6 +168,50 @@ func TestSupervisor_StartSucceedsAndReadies(t *testing.T) {
 	assert.Check(t, s.IsReady())
 	assert.NilError(t, s.Stop(t.Context()))
 	assert.Check(t, is.Equal(s.State().State, lifecycle.StateStopped))
+}
+
+// TestSupervisor_StartTimesOutOnSlowConnect verifies that a Connect that
+// hangs past StartupTimeout causes Start to return ErrInitTimeout and leaves
+// the supervisor in StateStopped so the caller can retry.
+func TestSupervisor_StartTimesOutOnSlowConnect(t *testing.T) {
+	t.Parallel()
+
+	c := &blockingConnector{release: make(chan struct{}), session: newFakeSession()}
+	s := lifecycle.New("test", c, lifecycle.Policy{StartupTimeout: 20 * time.Millisecond})
+
+	err := s.Start(t.Context())
+	assert.Check(t, errors.Is(err, lifecycle.ErrInitTimeout))
+	assert.Check(t, is.Equal(s.State().State, lifecycle.StateStopped))
+
+	// A late-arriving session must be closed, not leaked.
+	close(c.release)
+	deadline := time.Now().Add(time.Second)
+	for {
+		c.session.mu.Lock()
+		closed := c.session.closed
+		c.session.mu.Unlock()
+		if closed {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("late session was not closed after startup timeout")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// TestSupervisor_StartWithinTimeoutSucceeds verifies that a Connect that
+// completes before StartupTimeout readies the supervisor normally.
+func TestSupervisor_StartWithinTimeoutSucceeds(t *testing.T) {
+	t.Parallel()
+
+	c := &blockingConnector{release: make(chan struct{}), session: newFakeSession()}
+	close(c.release) // Connect returns immediately
+	s := lifecycle.New("test", c, lifecycle.Policy{StartupTimeout: time.Second})
+
+	assert.NilError(t, s.Start(t.Context()))
+	assert.Check(t, is.Equal(s.State().State, lifecycle.StateReady))
+	assert.NilError(t, s.Stop(t.Context()))
 }
 
 func TestSupervisor_StartIsIdempotent(t *testing.T) {
