@@ -279,8 +279,9 @@ const (
 	detailsDialogHeight = 36
 
 	// detailsChromeRows is the number of rows used by the dialog around the
-	// scrollable content: border (2) + padding (2) + title (1) + help (1).
-	detailsChromeRows = 6
+	// scrollable content: border (2) + padding (2) + title (1) + blank (1) +
+	// help (1).
+	detailsChromeRows = 7
 	// detailsChromeCols is the number of columns used by the dialog around
 	// the content: border (2) + padding (4) + scrollbar (1).
 	detailsChromeCols = 2 + 4 + scrollbar.Width
@@ -438,9 +439,8 @@ const (
 	// border on the top and bottom.
 	agentPickerCardHeight = 7
 
-	// agentPickerCardGap is the number of blank rows between adjacent cards,
-	// giving the list room to breathe.
-	agentPickerCardGap = 1
+	// agentPickerCardGap is the number of blank rows between adjacent cards.
+	agentPickerCardGap = 0
 
 	// agentPickerCardsTop is the number of rows from the panel's top edge to
 	// the first card: border (1) + padding (1) + title (1) + blank (1) +
@@ -541,7 +541,7 @@ func (m *agentPickerModel) render() string {
 	cardWidth := m.cardWidth()
 	blocks := make([]string, 0, len(m.choices)*2)
 	for i, choice := range m.choices {
-		if i > 0 {
+		if i > 0 && agentPickerCardGap > 0 {
 			blocks = append(blocks, strings.Repeat("\n", agentPickerCardGap-1))
 		}
 		blocks = append(blocks, m.renderCard(choice, cardWidth, i == m.cursor))
@@ -588,14 +588,19 @@ func (m *agentPickerModel) renderDetails() string {
 		bar,
 	)
 
-	help := styles.DialogHelpStyle.
+	help := styles.MutedStyle.
 		Width(contentWidth).
-		Render("↑↓ scroll  •  " + percentLabel(m.details.ScrollPercent()) + "   esc/? close")
+		Render(strings.Join([]string{
+			"↑↓ scroll",
+			percentLabel(m.details.ScrollPercent()),
+			"esc/? close",
+		}, "   "))
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
 		title,
 		body,
+		"",
 		help,
 	)
 
