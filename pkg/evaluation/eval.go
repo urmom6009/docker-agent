@@ -257,11 +257,8 @@ func (r *Runner) preBuildImages(ctx context.Context, out io.Writer, evals []Inpu
 	// Count unique images to report an accurate number.
 	unique := make(map[imageKey]struct{})
 	for _, eval := range evals {
-		var key imageKey
-		if eval.Evals != nil {
-			key = imageKey{workingDir: eval.Evals.WorkingDir, image: eval.Evals.Image}
-		}
-		unique[key] = struct{}{}
+		criteria := eval.criteria()
+		unique[imageKey{workingDir: criteria.WorkingDir, image: criteria.Image}] = struct{}{}
 	}
 
 	fmt.Fprintf(out, "Pre-building %d Docker image(s)...\n", len(unique))
