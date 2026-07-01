@@ -176,8 +176,8 @@ func TestFilePickerHelpKeysRows(t *testing.T) {
 
 	d := &filePickerDialog{}
 
-	// Default state: both off.
-	row1, row2 := d.filePickerHelpKeysRows()
+	// Narrow dialog: shortcuts split across two rows.
+	row1, row2 := d.filePickerHelpKeysRows(20)
 	assert.Equal(t, []string{
 		"↑/↓", "navigate",
 		"enter", "select",
@@ -188,20 +188,31 @@ func TestFilePickerHelpKeysRows(t *testing.T) {
 		"alt+i", "show ignored",
 	}, row2)
 
+	// Wide dialog: every shortcut fits on a single row.
+	row1, row2 = d.filePickerHelpKeysRows(200)
+	assert.Equal(t, []string{
+		"↑/↓", "navigate",
+		"enter", "select",
+		"esc", "close",
+		"alt+h", "show hidden",
+		"alt+i", "show ignored",
+	}, row1)
+	assert.Empty(t, row2)
+
 	// showHidden on.
 	d.showHidden = true
-	row1, _ = d.filePickerHelpKeysRows()
+	row1, _ = d.filePickerHelpKeysRows(20)
 	assert.Contains(t, row1, "hide hidden")
 
 	// showIgnored on.
 	d.showIgnored = true
-	_, row2 = d.filePickerHelpKeysRows()
+	_, row2 = d.filePickerHelpKeysRows(20)
 	assert.Contains(t, row2, "hide ignored")
 
 	// Both off again.
 	d.showHidden = false
 	d.showIgnored = false
-	row1, row2 = d.filePickerHelpKeysRows()
+	row1, row2 = d.filePickerHelpKeysRows(20)
 	assert.Contains(t, row1, "show hidden")
 	assert.Contains(t, row2, "show ignored")
 }

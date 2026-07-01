@@ -309,7 +309,7 @@ func (d *filePickerDialog) View() string {
 		scrollableContent = d.scrollview.View()
 	}
 
-	helpRow1, helpRow2 := d.filePickerHelpKeysRows()
+	helpRow1, helpRow2 := d.filePickerHelpKeysRows(d.regionWidth(contentWidth))
 	content := NewContent(d.regionWidth(contentWidth)).
 		AddTitle("Attach File").
 		AddSpace().
@@ -352,7 +352,11 @@ func (d *filePickerDialog) renderEntry(entry fileEntry, selected bool, maxWidth 
 	return line
 }
 
-func (d *filePickerDialog) filePickerHelpKeysRows() (row1, row2 []string) {
+// filePickerHelpKeysRows returns the help key bindings split into two rows.
+// When contentWidth is wide enough to fit every shortcut on a single line,
+// all bindings are returned in row1 and row2 is empty; the second (empty) row
+// keeps the dialog height stable.
+func (d *filePickerDialog) filePickerHelpKeysRows(contentWidth int) (row1, row2 []string) {
 	hiddenLabel := "show hidden"
 	if d.showHidden {
 		hiddenLabel = "hide hidden"
@@ -361,14 +365,15 @@ func (d *filePickerDialog) filePickerHelpKeysRows() (row1, row2 []string) {
 	if d.showIgnored {
 		ignoredLabel = "hide ignored"
 	}
-	row1 = []string{
+	all := []string{
 		"↑/↓", "navigate",
 		"enter", "select",
 		"esc", "close",
 		"alt+h", hiddenLabel,
-	}
-	row2 = []string{
 		"alt+i", ignoredLabel,
 	}
-	return row1, row2
+	if HelpKeysWidth(all...) <= contentWidth {
+		return all, nil
+	}
+	return all[:8], all[8:]
 }
