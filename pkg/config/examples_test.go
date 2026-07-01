@@ -23,6 +23,7 @@ var modelsDevAbsentProviders = map[string]bool{
 	"opencode-zen": true, // not yet registered in models.dev
 	"ovhcloud":     true, // OVHcloud AI Endpoints (not yet in models.dev)
 	"fireworks":    true, // models.dev catalogs Fireworks under the "fireworks-ai" id, not "fireworks"
+	"together":     true, // models.dev catalogs Together AI under the "togetherai" id, not "together"
 }
 
 func collectExamples(t *testing.T) []string {

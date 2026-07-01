@@ -243,6 +243,7 @@ var openModelHostProviders = map[string]bool{
 	"nebius":     true,
 	"cerebras":   true,
 	"fireworks":  true,
+	"together":   true,
 }
 
 // shouldMergeConsecutiveMessages reports whether the chat-completions request

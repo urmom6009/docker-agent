@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../agent-schema.json
+
+models:
+  together_model:
+    provider: together
+    model: meta-llama/Llama-3.3-70B-Instruct-Turbo
+
+agents:
+  root:
+    model: together_model
+    description: Assistant using Together AI
+    instruction: |
+      You are a helpful assistant.
+    toolsets:
+      - type: filesystem
+      - type: shell
+      - type: think

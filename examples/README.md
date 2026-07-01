@@ -199,6 +199,7 @@ remote MCP endpoints.
 | [`fireworks.yaml`](fireworks.yaml) | Fireworks AI open-model inference provider. |
 | [`deepseek.yaml`](deepseek.yaml) | DeepSeek chat and reasoning provider. |
 | [`cerebras.yaml`](cerebras.yaml) | Cerebras fast-inference provider. |
+| [`together.yaml`](together.yaml) | Together AI open-model inference provider. |
 | [`grok.yaml`](grok.yaml) | xAI Grok model. |
 | [`github-copilot.yaml`](github-copilot.yaml) | GitHub Copilot models via OAuth device-flow. |
 | [`fallback_models.yaml`](fallback_models.yaml) | Automatic fallback to a secondary model when the primary fails. |

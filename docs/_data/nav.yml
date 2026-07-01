@@ -173,6 +173,8 @@
       url: /providers/openrouter/
     - title: OVHcloud
       url: /providers/ovhcloud/
+    - title: Together AI
+      url: /providers/together/
     - title: "xAI (Grok)"
       url: /providers/xai/
     - title: Provider Definitions

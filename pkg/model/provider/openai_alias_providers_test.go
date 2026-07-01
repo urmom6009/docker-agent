@@ -66,6 +66,14 @@ var openAIAliasProviders = []openAIAliasProvider{
 		greeting:             "Hello from Fireworks",
 		mergesSystemMessages: true,
 	},
+	{
+		provider:             "together",
+		envVar:               "TOGETHER_API_KEY",
+		testKey:              "test-together-key",
+		model:                "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+		greeting:             "Hello from Together",
+		mergesSystemMessages: true,
+	},
 }
 
 // TestOpenAIAliasProvider_EndToEndRequest drives a real request through the full

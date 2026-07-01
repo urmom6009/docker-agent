@@ -43,6 +43,7 @@ func TestCatalogAliases(t *testing.T) {
 		"deepseek":   {APIType: "openai", BaseURL: "https://api.deepseek.com/v1", TokenEnvVar: "DEEPSEEK_API_KEY"},
 		"cerebras":   {APIType: "openai", BaseURL: "https://api.cerebras.ai/v1", TokenEnvVar: "CEREBRAS_API_KEY"},
 		"fireworks":  {APIType: "openai", BaseURL: "https://api.fireworks.ai/inference/v1", TokenEnvVar: "FIREWORKS_API_KEY"},
+		"together":   {APIType: "openai", BaseURL: "https://api.together.xyz/v1", TokenEnvVar: "TOGETHER_API_KEY"},
 	}
 
 	for name, want := range expected {
