@@ -274,6 +274,12 @@ type Input struct {
 	ToolUseID    string         `json:"tool_use_id,omitempty"`
 	ToolInput    map[string]any `json:"tool_input,omitempty"`
 
+	// SafetyPolicy mirrors the session's safety preference (see
+	// [github.com/docker/docker-agent/pkg/session.SafetyPolicy]) on
+	// tool-call events. Empty ⇒ derive from ToolsApproved. Typed as
+	// string to avoid a session dep.
+	SafetyPolicy string `json:"safety_policy,omitempty"`
+
 	// PostToolUse / ToolResponseTransform: the tool's textual output.
 	// On post_tool_use it carries the (already-rewritten) response a
 	// tool_response_transform hook produced — hooks scrubbing secrets

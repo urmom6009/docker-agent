@@ -25,6 +25,32 @@ const (
 	toolContentPlaceholder = "[content truncated]"
 )
 
+// SafetyPolicy is the per-session safety preference. It is data only:
+// the runtime forwards it to hooks via [hooks.Input.SafetyPolicy] and
+// classifiers (e.g. safer_shell) adapt on it. Empty ⇒ derive from
+// ToolsApproved (true ⇒ unsafe, false ⇒ strict).
+type SafetyPolicy string
+
+const (
+	// SafetyPolicyUnsafe: --yolo / ToolsApproved=true equivalent.
+	// Classifiers stay silent, tool calls auto-approve.
+	SafetyPolicyUnsafe SafetyPolicy = "unsafe"
+	// SafetyPolicySafer: auto-approve except classifier-flagged
+	// destructive calls (blast_radius low/medium/high).
+	SafetyPolicySafer SafetyPolicy = "safer"
+	// SafetyPolicyStrict: today's no-yolo CLI default — prompt for
+	// anything not auto-approved by a checker rule.
+	SafetyPolicyStrict SafetyPolicy = "strict"
+)
+
+func (p SafetyPolicy) IsValid() bool {
+	switch p {
+	case "", SafetyPolicyUnsafe, SafetyPolicySafer, SafetyPolicyStrict:
+		return true
+	}
+	return false
+}
+
 // Item represents a message, a sub-session, a summary, or a recorded error.
 type Item struct {
 	// Message holds a regular conversation message
@@ -121,8 +147,13 @@ type Session struct {
 	// CreatedAt is the time the session was created
 	CreatedAt time.Time `json:"created_at"`
 
-	// ToolsApproved is a flag to indicate if the tools have been approved
+	// ToolsApproved is the legacy --yolo signal. New code should
+	// prefer SafetyPolicy; option setters keep the two in sync.
 	ToolsApproved bool `json:"tools_approved"`
+
+	// SafetyPolicy is the per-session safety preference. See the
+	// [SafetyPolicy] type doc for the three modes and empty-value semantics.
+	SafetyPolicy SafetyPolicy `json:"safety_policy,omitempty"`
 
 	// NonInteractive indicates the session is running in a non-interactive context
 	// (e.g. MCP server, A2A adapter, evaluation framework) where there is no user
@@ -777,9 +808,28 @@ func WithMessages(messages []Item) Opt {
 	}
 }
 
+// WithToolsApproved is the legacy --yolo setter. Prefer
+// [WithSafetyPolicy]. With toolsApproved=true and no explicit
+// SafetyPolicy, pins the policy to [SafetyPolicyUnsafe].
 func WithToolsApproved(toolsApproved bool) Opt {
 	return func(s *Session) {
 		s.ToolsApproved = toolsApproved
+		if toolsApproved && s.SafetyPolicy == "" {
+			s.SafetyPolicy = SafetyPolicyUnsafe
+		}
+	}
+}
+
+// WithSafetyPolicy sets the session's safety preference.
+// [SafetyPolicyUnsafe] also flips ToolsApproved=true so legacy branches
+// on ToolsApproved keep working. The other modes leave ToolsApproved
+// alone — set both if you want auto-approve + selective gating.
+func WithSafetyPolicy(policy SafetyPolicy) Opt {
+	return func(s *Session) {
+		s.SafetyPolicy = policy
+		if policy == SafetyPolicyUnsafe {
+			s.ToolsApproved = true
+		}
 	}
 }
 

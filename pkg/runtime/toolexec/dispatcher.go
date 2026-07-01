@@ -618,10 +618,11 @@ func (c *call) runPermissionRequestHook(ctx context.Context, runTool func() Call
 
 	toolName := c.tc.Function.Name
 	result := c.d.Hooks.Dispatch(ctx, c.a, hooks.EventPermissionRequest, &hooks.Input{
-		SessionID: c.sess.ID,
-		ToolName:  toolName,
-		ToolUseID: c.tc.ID,
-		ToolInput: ParseToolInput(c.tc.Function.Arguments),
+		SessionID:    c.sess.ID,
+		ToolName:     toolName,
+		ToolUseID:    c.tc.ID,
+		ToolInput:    ParseToolInput(c.tc.Function.Arguments),
+		SafetyPolicy: string(c.sess.SafetyPolicy),
 	})
 	if result == nil {
 		return CallOutcome{}, false, nil

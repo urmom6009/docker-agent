@@ -3,6 +3,7 @@ package runtime
 import (
 	"github.com/docker/docker-agent/pkg/config"
 	"github.com/docker/docker-agent/pkg/permissions"
+	"github.com/docker/docker-agent/pkg/session"
 )
 
 // LoadTeamRequest is the typed input to a backend's team load. It carries
@@ -41,8 +42,13 @@ type LoadTeamRequest struct {
 // opaque struct without a wire form yet); it'll get a serializable
 // representation in a follow-up.
 type CreateSessionRequest struct {
-	AgentName         string               `json:"agent_name,omitempty"`
-	ToolsApproved     bool                 `json:"tools_approved"`
+	AgentName string `json:"agent_name,omitempty"`
+	// ToolsApproved is the legacy --yolo signal. New callers should
+	// prefer SafetyPolicy; option setters keep both in sync.
+	ToolsApproved bool `json:"tools_approved"`
+	// SafetyPolicy is the per-session safety preference; empty falls
+	// back to the ToolsApproved-derived default. See [session.SafetyPolicy].
+	SafetyPolicy      session.SafetyPolicy `json:"safety_policy,omitempty"`
 	HideToolResults   bool                 `json:"hide_tool_results"`
 	SessionDB         string               `json:"session_db,omitempty"`
 	ResumeSessionID   string               `json:"resume_session_id,omitempty"`
