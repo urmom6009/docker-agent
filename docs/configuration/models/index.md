@@ -38,6 +38,9 @@ models:
       pdf: boolean # Optional: whether the model accepts PDF attachments
     provider_opts: # Optional: provider-specific options
       key: value
+    title_model: string # Optional: model used for session-title generation
+    compaction_model: string # Optional: model used for session-compaction (summary generation)
+    bypass_models_gateway: boolean # Optional: skip the models gateway for this model
 ```
 
 ## Properties Reference
@@ -62,6 +65,8 @@ models:
 | `capabilities`        | object     | ✗        | Override attachment capabilities for this model. See [Attachment Capability Overrides](#attachment-capability-overrides). |
 | `provider_opts`       | object     | ✗        | Provider-specific options (see provider pages)                                        |
 | `title_model`         | string     | ✗        | Model used for session-title generation. Can be a named model from the `models:` section or an inline `provider/model` string. When omitted, the agent's primary model generates titles. Cannot be combined with `first_available`. |
+| `compaction_model`    | string     | ✗        | Model used for session compaction (summary generation). Can be a named model or an inline `provider/model` string. When omitted, the primary model compacts. Cannot be combined with `first_available`. See [Delegating Session Compaction](#delegating-session-compaction). |
+| `bypass_models_gateway` | boolean  | ✗        | When `true`, this model connects directly to its provider even when a models gateway (`--models-gateway` / `CAGENT_MODELS_GATEWAY`) is configured. See [Gateway Bypass](#gateway-bypass). |
 
 ## Attachment Capability Overrides
 
@@ -122,6 +127,79 @@ titles.
 </div>
   <p><code>title_model</code> cannot be combined with <code>first_available</code> model selection — the combination is rejected at validation time.</p>
 </div>
+
+## Delegating Session Compaction
+
+The `compaction_model` field lets a heavyweight primary model hand off the expensive
+compaction (summary generation) call to a smaller, faster model:
+
+```yaml
+models:
+  primary:
+    provider: anthropic
+    model: claude-sonnet-4-5
+    compaction_model: fast
+  fast:
+    provider: anthropic
+    model: claude-haiku-4-5
+```
+
+The value can be a named entry from the `models` stanza or an inline
+`provider/model` string. When omitted, the primary model compacts.
+
+If the compaction model has a **smaller context window** than the primary,
+docker-agent triggers compaction against the smaller window so the summary
+call can always ingest the full conversation. Pair the primary with a
+compaction model whose window is at least as large to keep the proactive
+trigger aligned with the primary's window.
+
+<div class="callout callout-warning" markdown="1">
+<div class="callout-title">Constraint
+</div>
+  <p><code>compaction_model</code> cannot be combined with <code>first_available</code> model selection — the combination is rejected at validation time.</p>
+</div>
+
+See [`examples/compaction_model.yaml`](https://github.com/docker/docker-agent/blob/main/examples/compaction_model.yaml) for a complete example.
+
+## Gateway Bypass
+
+When a models gateway (`--models-gateway` / `CAGENT_MODELS_GATEWAY`) is configured,
+all models route through it by default. Set `bypass_models_gateway: true` on a
+specific model to make it connect directly to its provider instead:
+
+```yaml
+models:
+  gateway-model:
+    provider: openai
+    model: gpt-5
+
+  direct-model:
+    provider: anthropic
+    model: claude-sonnet-4-5
+    bypass_models_gateway: true  # uses ANTHROPIC_API_KEY directly
+```
+
+The bypassed model authenticates with the provider's own credentials
+(`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `token_key`, etc.) rather than the
+gateway's short-lived token. The rest of the agent's models continue routing
+through the gateway as before.
+
+Bypass is propagated transparently through router models: a bypass-flagged routing
+model passes the flag to all of its routed targets automatically.
+
+<div class="callout callout-warning" markdown="1">
+<div class="callout-title">Security note
+</div>
+  <p>On an untrusted config, a malicious <code>base_url</code> combined with <code>bypass_models_gateway: true</code> could route provider credentials to an attacker-controlled endpoint. Only enable this on configs you control.</p>
+</div>
+
+<div class="callout callout-warning" markdown="1">
+<div class="callout-title">Constraint
+</div>
+  <p><code>bypass_models_gateway: true</code> cannot be combined with <code>first_available</code> — the combination is rejected at validation time.</p>
+</div>
+
+See [`examples/bypass_models_gateway.yaml`](https://github.com/docker/docker-agent/blob/main/examples/bypass_models_gateway.yaml) for a complete example.
 
 ## First Available Models
 
