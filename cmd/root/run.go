@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
@@ -34,6 +35,7 @@ import (
 	loaderdefaults "github.com/docker/docker-agent/pkg/teamloader/defaults"
 	"github.com/docker/docker-agent/pkg/telemetry"
 	"github.com/docker/docker-agent/pkg/tui"
+	"github.com/docker/docker-agent/pkg/tui/recorder"
 	"github.com/docker/docker-agent/pkg/tui/styles"
 	"github.com/docker/docker-agent/pkg/userconfig"
 	"github.com/docker/docker-agent/pkg/worktree"
@@ -120,7 +122,7 @@ func newRunCmd() *cobra.Command {
   docker-agent run ./echo.yaml "INSTRUCTIONS"
   docker-agent run ./echo.yaml "First question" "Follow-up question"
   echo "INSTRUCTIONS" | docker-agent run ./echo.yaml -
-  docker-agent run ./agent.yaml --record  # Records session to auto-generated file`,
+  docker-agent run ./agent.yaml --record  # Records session + generates a TUI e2e test`,
 		GroupID:           "core",
 		ValidArgsFunction: completeRunExec,
 		Args:              cobra.ArbitraryArgs,
@@ -147,7 +149,7 @@ func addRunOrExecFlags(cmd *cobra.Command, flags *runExecFlags) {
 	cmd.PersistentFlags().StringVar(&flags.fakeResponses, "fake", "", "Replay AI responses from cassette file (for testing)")
 	cmd.PersistentFlags().IntVar(&flags.fakeStreamDelay, "fake-stream", 0, "Simulate streaming with delay in ms between chunks (default 15ms if no value given)")
 	cmd.Flag("fake-stream").NoOptDefVal = "15" // --fake-stream without value uses 15ms
-	cmd.PersistentFlags().StringVar(&flags.recordPath, "record", "", "Record AI API interactions to cassette file (auto-generates filename if empty)")
+	cmd.PersistentFlags().StringVar(&flags.recordPath, "record", "", "Record AI API interactions to cassette file and generate a TUI e2e test from the session (auto-generates filename if empty)")
 	cmd.PersistentFlags().Lookup("record").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(&flags.exitAfterResponse, "exit-after-response", false, "Exit TUI after first assistant response completes")
 	_ = cmd.PersistentFlags().MarkHidden("exit-after-response")
@@ -461,12 +463,25 @@ func (f *runExecFlags) runOrExec(ctx context.Context, out *cli.Printer, args []s
 		opts = append(opts, hookOpt)
 	}
 
+	var rec *recorder.Recorder
 	runErr := func() error {
 		if f.lean {
 			return f.runLeanTUI(ctx, rt, sess, cleanup, args, opts...)
 		}
+		if cassettePath != "" {
+			// Record keystrokes and clicks alongside the model traffic so a
+			// complete tuitest e2e test can be generated when the session ends.
+			wrap := func(m tea.Model) tea.Model {
+				rec = recorder.New(m)
+				return rec
+			}
+			return runTUIWrapped(ctx, rt, sess, b.Spawner(rt), cleanup, f.tuiOpts(), wrap, opts...)
+		}
 		return runTUI(ctx, rt, sess, b.Spawner(rt), cleanup, f.tuiOpts(), opts...)
 	}()
+	if rec != nil && rec.HasInput() {
+		writeGeneratedTUITest(ctx, out, rec, cassettePath, agentFileName)
+	}
 	if runErr != nil {
 		// On a TUI error we deliberately leave the worktree in place rather
 		// than risk discarding work after an abnormal exit.

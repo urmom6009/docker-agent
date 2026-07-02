@@ -91,6 +91,12 @@ func (f *newFlags) runNewCommand(cmd *cobra.Command, args []string) (commandErr 
 }
 
 func runTUI(ctx context.Context, rt runtime.Runtime, sess *session.Session, spawner tui.SessionSpawner, cleanup func(), tuiOpts []tui.Option, opts ...app.Opt) error {
+	return runTUIWrapped(ctx, rt, sess, spawner, cleanup, tuiOpts, nil, opts...)
+}
+
+// runTUIWrapped is runTUI with an optional model wrapper, used by --record to
+// interpose the input recorder between the terminal and the real model.
+func runTUIWrapped(ctx context.Context, rt runtime.Runtime, sess *session.Session, spawner tui.SessionSpawner, cleanup func(), tuiOpts []tui.Option, wrap func(tea.Model) tea.Model, opts ...app.Opt) error {
 	if gen := rt.TitleGenerator(ctx); gen != nil {
 		opts = append(opts, app.WithTitleGenerator(gen))
 	}
@@ -120,6 +126,9 @@ func runTUI(ctx context.Context, rt runtime.Runtime, sess *session.Session, spaw
 		wd, _ = os.Getwd()
 	}
 	model := tui.New(ctx, spawner, a, wd, cleanup, tuiOpts...)
+	if wrap != nil {
+		model = wrap(model)
+	}
 
 	p := tea.NewProgram(model, tea.WithContext(ctx), tea.WithFilter(filter))
 	coalescer.SetSender(p.Send)
