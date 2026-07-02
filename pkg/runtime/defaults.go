@@ -42,3 +42,15 @@ const toolsChangedTimeout = 5 * time.Second
 // lists its tools again without this startup bound. Tests override it via
 // WithToolListTimeout to exercise the skip path without a real-time wait.
 const defaultToolListTimeout = 10 * time.Second
+
+// defaultToolStartTimeout bounds how long EmitStartupInfo waits for a single
+// toolset to start while populating the sidebar. A toolset whose Start()
+// blocks indefinitely — e.g. an MCP stdio server backed by a wedged Docker
+// daemon that never finishes launching the container — would otherwise stall
+// the loop the same way a hung Tools() does: the terminal
+// ToolsetInfo{Loading:false} event is never emitted and the sidebar animates
+// "tools available…" forever. A timed-out toolset is skipped for this startup
+// pass only; the run loop retries Start on the first user message. It is
+// longer than defaultToolListTimeout because a cold start can legitimately
+// include an image pull. Tests override it via WithToolStartTimeout.
+const defaultToolStartTimeout = 30 * time.Second

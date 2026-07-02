@@ -315,6 +315,11 @@ type LocalRuntime struct {
 	// defaultToolListTimeout; overridden via WithToolListTimeout.
 	toolListTimeout time.Duration
 
+	// toolStartTimeout bounds how long EmitStartupInfo waits for a single
+	// toolset to start before skipping it for the startup sidebar pass.
+	// Defaults to defaultToolStartTimeout; overridden via WithToolStartTimeout.
+	toolStartTimeout time.Duration
+
 	// pauseMu guards pauseCh.
 	pauseMu sync.Mutex
 	// pauseCh is non-nil and open while /pause has paused the run loop;
@@ -482,6 +487,19 @@ func WithToolListTimeout(d time.Duration) Opt {
 	}
 }
 
+// WithToolStartTimeout overrides how long EmitStartupInfo waits for a single
+// toolset to start before skipping it. Defaults to defaultToolStartTimeout.
+// A non-positive value is ignored so the default stands. Tests pass a short
+// timeout to exercise the skip path (a toolset whose Start() blocks) without
+// a real-time wait.
+func WithToolStartTimeout(d time.Duration) Opt {
+	return func(r *LocalRuntime) {
+		if d > 0 {
+			r.toolStartTimeout = d
+		}
+	}
+}
+
 // WithRetryOnRateLimit enables automatic retry with backoff for HTTP 429 (rate limit)
 // errors when no fallback models are available. When enabled, the runtime will honor
 // the Retry-After header from the provider's response to determine wait time before
@@ -570,6 +588,7 @@ func NewLocalRuntime(ctx context.Context, agents *team.Team, opts ...Opt) (*Loca
 		providerRegistry:       provider.DefaultRegistry(),
 		maxOverflowCompactions: defaultMaxOverflowCompactions,
 		toolListTimeout:        defaultToolListTimeout,
+		toolStartTimeout:       defaultToolStartTimeout,
 		dmrModelLister:         dmr.ListModels,
 	}
 	r.bgAgents = agenttool.NewHandler(r)
@@ -1562,8 +1581,19 @@ func (r *LocalRuntime) emitToolsProgressively(ctx context.Context, a *agent.Agen
 		// can fire the targeted re-auth notice. Start() is a no-op when the
 		// toolset is already healthy, so calling it unconditionally is safe.
 		if startable, ok := toolset.(*tools.StartableToolSet); ok {
-			if err := startable.Start(ctx); err != nil {
+			if err := startToolsetWithTimeout(ctx, startable, r.toolStartTimeout); err != nil {
 				desc := tools.DescribeToolSet(startable.ToolSet)
+				// A start that outlived its deadline (e.g. an MCP container
+				// stuck behind a wedged Docker daemon) is reported directly:
+				// the abandoned Start goroutine has not returned, so the
+				// once-per-streak guard below has recorded nothing and would
+				// silently swallow the warning.
+				if errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil {
+					slog.WarnContext(ctx, "Toolset start timed out; skipping",
+						"agent", a.Name(), "toolset", desc, "timeout", r.toolStartTimeout)
+					a.AddToolWarning(fmt.Sprintf("%s is taking too long to start (>%s) — it will be retried on your next message", desc, r.toolStartTimeout))
+					continue
+				}
 				// IsAuthorizationRequired must be checked BEFORE
 				// ShouldReportFailure: this is the first — expected —
 				// failure of a deferred-OAuth toolset, and consuming the
@@ -1665,6 +1695,34 @@ func listToolsWithTimeout(ctx context.Context, toolset tools.ToolSet, timeout ti
 		return nil, toolCtx.Err()
 	case res := <-done:
 		return res.tools, res.err
+	}
+}
+
+// startToolsetWithTimeout starts a toolset under a bounded deadline, mirroring
+// listToolsWithTimeout. The deadline must be enforced by racing the call
+// against the timeout (not only via the context): the MCP connector detaches
+// the context it is handed with context.WithoutCancel, so a wedged initialize
+// handshake (e.g. Docker failing to start the server container) would ignore a
+// ctx deadline and block startup forever. On timeout it returns the context
+// error; the orphaned goroutine sends into a buffered channel and exits if the
+// call ever returns.
+func startToolsetWithTimeout(ctx context.Context, toolset *tools.StartableToolSet, timeout time.Duration) error {
+	if timeout <= 0 {
+		timeout = defaultToolStartTimeout
+	}
+	startCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	done := make(chan error, 1) // buffered so a late send never blocks
+	go func() {
+		done <- toolset.Start(startCtx)
+	}()
+
+	select {
+	case <-startCtx.Done():
+		return startCtx.Err()
+	case err := <-done:
+		return err
 	}
 }
 
