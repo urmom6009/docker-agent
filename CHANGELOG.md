@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 
 
+## [v1.95.0] - 2026-07-02
+
+This release focuses on TUI rendering performance improvements for long conversations, along with a bug fix for test reliability and a configuration version update.
+
+## Improvements
+
+- Memoizes scrollbar rendering across frames to reduce redundant computation during TUI redraws
+- Memoizes content line widths in the scroll view to avoid recalculating unchanged values each frame
+- Replaces `lipgloss.JoinHorizontal` with direct column zipping for scrollbar rendering, reducing allocations per frame
+
+## Bug Fixes
+
+- Fixes restyled lines incorrectly using cached widths instead of re-measuring after style changes
+- Fixes flaky renderer-registry tests that were racing on a shared global registry
+
+## Technical Changes
+
+- Freezes config v11 and promotes v12 as the latest configuration version
+### Pull Requests
+
+- [#3401](https://github.com/docker/docker-agent/pull/3401) - freeze config v11 and start v12 as latest
+- [#3404](https://github.com/docker/docker-agent/pull/3404) - perf(tui): memoize rendering hot paths for long conversations
+- [#3405](https://github.com/docker/docker-agent/pull/3405) - chore: bump direct Go dependencies
+
+
 ## [v1.94.0] - 2026-07-02
 
 This release significantly expands model provider support with 12 new built-in providers, adds mouse support and new commands to the TUI, introduces a SafetyPolicy primitive, and includes numerous bug fixes and performance improvements.
@@ -4249,3 +4274,5 @@ This release improves the terminal user interface with better error handling and
 [v1.93.0]: https://github.com/docker/docker-agent/releases/tag/v1.93.0
 
 [v1.94.0]: https://github.com/docker/docker-agent/releases/tag/v1.94.0
+
+[v1.95.0]: https://github.com/docker/docker-agent/releases/tag/v1.95.0
