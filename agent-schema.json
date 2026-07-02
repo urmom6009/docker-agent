@@ -1327,7 +1327,7 @@
         },
         "env": {
           "type": "object",
-          "description": "Environment variables to add or override for this hook only. Values expand the strict ${env.VAR} form; any other $ is kept literal.",
+          "description": "Environment variables to add or override for this hook only. Values expand the plain ${env.VAR} form from the OS environment; any other $ is kept literal.",
           "additionalProperties": {
             "type": "string"
           }
@@ -2453,7 +2453,7 @@
         },
         "env": {
           "type": "object",
-          "description": "Environment variables for the command, layered over the toolset-level env. Values expand the strict ${env.VAR} form; any other $ is kept literal.",
+          "description": "Environment variables for the command, layered over the toolset-level env. Values expand the plain ${env.VAR} form from the OS environment; any other $ is kept literal. Keys must not collide with args.",
           "additionalProperties": {
             "type": "string"
           }

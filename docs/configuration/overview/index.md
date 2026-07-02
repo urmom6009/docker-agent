@@ -227,7 +227,7 @@ agents:
 
 Unlike the JS-templated fields above, these accept only a plain variable reference: richer JS expressions (e.g. `${env.VAR || 'default'}`) are **not** evaluated here, and the legacy `$VAR` / `${VAR}` forms keep working for backward compatibility.
 
-Hook and script-tool `env` values expand only the strict `${env.VAR}` form; a bare `$VAR` or `${VAR}` is passed through **literally**, so values that legitimately contain `$` (passwords, templates) are never mangled:
+Hook and script-tool `env` values expand only the plain `${env.VAR}` form, resolved against the **OS process environment** (dotenv/secret-provider values are not consulted); a bare `$VAR` or `${VAR}` is passed through **literally**, so values that legitimately contain `$` (passwords, templates) are never mangled:
 
 ```yaml
 agents:

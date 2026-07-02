@@ -169,3 +169,20 @@ func TestExpandEnvRefs(t *testing.T) {
 		})
 	}
 }
+
+func TestExpandWorkingDir(t *testing.T) {
+	t.Setenv("MY_TEST_WD", "/tmp/wd")
+
+	// Expands like ExpandPath.
+	if got := ExpandWorkingDir("test", "${env.MY_TEST_WD}"); got != "/tmp/wd" {
+		t.Errorf("got %q, want /tmp/wd", got)
+	}
+	// Empty input stays empty (no warning path).
+	if got := ExpandWorkingDir("test", ""); got != "" {
+		t.Errorf("got %q, want empty", got)
+	}
+	// Unset variable expands to empty (warning logged as side effect).
+	if got := ExpandWorkingDir("test", "${env.MY_TEST_WD_UNSET}"); got != "" {
+		t.Errorf("got %q, want empty", got)
+	}
+}

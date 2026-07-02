@@ -232,7 +232,7 @@ func TestCommandHookUsesPerHookEnvAndWorkingDir(t *testing.T) {
 
 // TestCommandHookExpandsEnvRefs pins the ${env.X} expansion contract for
 // hook fields (issue #2615): working_dir accepts ${env.X} (and ~/$X via
-// path.ExpandPath), env values expand only the strict ${env.X} form, and
+// path.ExpandPath), env values expand only the plain ${env.X} form, and
 // shell-style $X stays literal so values containing $ are not mangled.
 func TestCommandHookExpandsEnvRefs(t *testing.T) {
 	baseDir := t.TempDir()

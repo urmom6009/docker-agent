@@ -514,11 +514,11 @@ func CreateToolSet(ctx context.Context, toolset latest.Toolset, runConfig *confi
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand the tool's environment variables: %w", err)
 	}
-	// Re-append os.Environ() after expansion so spawned processes inherit the
-	// host environment. EnvProvider is used only to expand ${...} references
-	// in toolset.Env; the subprocess still needs access to the full environment.
-
-	env = append(env, os.Environ()...)
+	// Prepend os.Environ() so spawned processes inherit the host environment
+	// while the configured toolset env still wins on key collisions
+	// (exec.Cmd dedupes with last-wins). EnvProvider is used only to expand
+	// ${...} references in toolset.Env.
+	env = append(os.Environ(), env...)
 
 	ts := New(env, runConfig)
 	if toolset.SudoAskpass != nil && *toolset.SudoAskpass {

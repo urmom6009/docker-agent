@@ -33,7 +33,10 @@ func CreateScriptToolSet(ctx context.Context, toolset latest.Toolset, runConfig 
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand the tool's environment variables: %w", err)
 	}
-	env = append(env, os.Environ()...)
+	// Prepend os.Environ() so spawned processes inherit the host environment
+	// while the configured toolset env still wins on key collisions
+	// (exec.Cmd dedupes with last-wins).
+	env = append(os.Environ(), env...)
 	return NewScript(toolset.Shell, env)
 }
 
@@ -73,6 +76,7 @@ func validateConfig(toolName string, tool latest.ScriptShellToolConfig) error {
 	// Check for typos in args. Keys of the per-tool env are legitimate
 	// references too, since they are set on the spawned process.
 	var missingArgs []string
+	var jsEnvRefs []string
 	os.Expand(tool.Cmd, func(varName string) string {
 		if _, ok := tool.Args[varName]; ok {
 			return ""
@@ -80,11 +84,30 @@ func validateConfig(toolName string, tool latest.ScriptShellToolConfig) error {
 		if _, ok := tool.Env[varName]; ok {
 			return ""
 		}
+		// `${env.X}` in cmd looks like the config-wide JS-template syntax
+		// but cmd is a shell script: report it separately with a fix.
+		if strings.HasPrefix(varName, "env.") {
+			jsEnvRefs = append(jsEnvRefs, varName)
+			return ""
+		}
 		missingArgs = append(missingArgs, varName)
 		return ""
 	})
+	if len(jsEnvRefs) > 0 {
+		return fmt.Errorf("tool '%s' uses ${%s} in cmd; cmd is a shell script, so declare the variable under the tool's env (e.g. env: {%s: \"${%s}\"}) and reference it as $%s",
+			toolName, jsEnvRefs[0], strings.TrimPrefix(jsEnvRefs[0], "env."), jsEnvRefs[0], strings.TrimPrefix(jsEnvRefs[0], "env."))
+	}
 	if len(missingArgs) > 0 {
 		return fmt.Errorf("tool '%s' uses undefined args: %v", toolName, missingArgs)
+	}
+
+	// An arg and an env entry with the same key would race on the spawned
+	// process's environment (args win by exec.Cmd last-wins dedup); reject
+	// the ambiguity instead.
+	for key := range tool.Env {
+		if _, ok := tool.Args[key]; ok {
+			return fmt.Errorf("tool '%s' declares '%s' both in args and env; rename one", toolName, key)
+		}
 	}
 
 	// Check that all required args are defined
@@ -193,7 +216,7 @@ func (t *ScriptToolSet) execute(ctx context.Context, toolConfig *latest.ScriptSh
 
 	// working_dir accepts ~, $VAR, ${VAR} and ${env.VAR} like every other
 	// working_dir field (issue #2615).
-	workingDir := path.ExpandPath(toolConfig.WorkingDir)
+	workingDir := path.ExpandWorkingDir("script shell working_dir", toolConfig.WorkingDir)
 
 	// Stamp the script_shell call shape onto the active span. Cmd
 	// ships unconditionally for the same reason as shell.RunShell —
@@ -221,7 +244,7 @@ func (t *ScriptToolSet) execute(ctx context.Context, toolConfig *latest.ScriptSh
 	envCopy := make([]string, len(base), len(base)+len(toolConfig.Env)+len(toolConfig.Args))
 	copy(envCopy, base)
 	// Per-tool env overrides the toolset-level env (exec.Cmd dedupes with
-	// last-wins). Only the strict ${env.X} form is expanded; $X and ${X}
+	// last-wins). Only the plain ${env.X} form is expanded; $X and ${X}
 	// stay literal because env values may legitimately contain $ (issue
 	// #2615).
 	for _, key := range slices.Sorted(maps.Keys(toolConfig.Env)) {

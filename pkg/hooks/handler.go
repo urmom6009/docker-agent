@@ -163,7 +163,7 @@ func newCommandFactory() HandlerFactory {
 // working_dir field (issue #2615); expansion runs before the absolute
 // check so ~/... overrides win.
 func hookWorkingDir(base, override string) string {
-	override = path.ExpandPath(override)
+	override = path.ExpandWorkingDir("hook working_dir", override)
 	if filepath.IsAbs(override) {
 		return override
 	}
@@ -177,7 +177,8 @@ func hookWorkingDir(base, override string) string {
 }
 
 // hookEnv layers the hook's env overrides onto the executor's env. Only
-// the strict ${env.X} form is expanded in override values; $X and ${X}
+// the plain ${env.X} form is expanded (against the OS environment) in
+// override values; $X and ${X}
 // stay literal because env values may legitimately contain $ (issue #2615).
 func hookEnv(base []string, overrides map[string]string) []string {
 	if len(overrides) == 0 {
