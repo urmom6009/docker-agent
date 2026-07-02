@@ -1,11 +1,9 @@
 package paths
 
 import (
-	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"sync/atomic"
 )
 
@@ -208,68 +206,6 @@ func resolveDefault(dst, legacy string) string {
 		return filepath.Clean(legacy)
 	}
 	return filepath.Clean(dst)
-}
-
-// --- one-time legacy migration ---
-
-var migrateOnce sync.Once
-
-// MigrateLegacy relocates state from the historical layout (~/.cagent for data,
-// ~/.config/cagent for config) to the resolved XDG/native directories. It runs
-// once per process and is idempotent across runs. Overridden directories
-// (via [SetConfigDir]/[SetDataDir]/[SetRoot] or the CLI flags) are skipped, so
-// embedders and explicit --data-dir/--config-dir users are untouched.
-func MigrateLegacy() {
-	migrateOnce.Do(func() {
-		if !configDirOverride.isSet() {
-			migrateDir(legacyConfigDir(), xdgConfigDir())
-		}
-		if !dataDirOverride.isSet() {
-			migrateDir(legacyDataDir(), xdgDataDir())
-		}
-	})
-}
-
-// migrateDir moves src's entries into dst with os.Rename. Existing dst entries
-// are never clobbered (on macOS config and data share one dir, so it must
-// merge), and src is removed only once empty. A failed move is left in place;
-// the getters' legacy fallback then keeps the data reachable, no loss.
-func migrateDir(src, dst string) {
-	if src == "" || src == dst || !dirExists(src) {
-		return
-	}
-
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		slog.Warn("xdg migration: cannot read legacy directory", "dir", src, "error", err)
-		return
-	}
-	if err := os.MkdirAll(dst, 0o700); err != nil {
-		slog.Warn("xdg migration: cannot create destination directory", "dir", dst, "error", err)
-		return
-	}
-
-	var moved int
-	for _, e := range entries {
-		from := filepath.Join(src, e.Name())
-		to := filepath.Join(dst, e.Name())
-		if pathExists(to) {
-			continue
-		}
-		if err := os.Rename(from, to); err != nil {
-			slog.Warn("xdg migration: could not move entry, leaving it in place",
-				"from", from, "to", to, "error", err)
-			continue
-		}
-		moved++
-	}
-
-	if rem, err := os.ReadDir(src); err == nil && len(rem) == 0 {
-		_ = os.Remove(src)
-	}
-	if moved > 0 {
-		slog.Info("relocated docker-agent state to XDG directory", "from", src, "to", dst, "entries", moved)
-	}
 }
 
 // dirExists reports whether p exists and is a directory.
