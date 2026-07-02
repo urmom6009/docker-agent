@@ -1,6 +1,7 @@
 package config
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -131,6 +132,27 @@ func TestMergeHooks_BothNonNil(t *testing.T) {
 	assert.Equal(t, "echo cli-pre", result.PreToolUse[1].Hooks[0].Command)
 }
 
+func TestMergeHooks_MergesEveryHookField(t *testing.T) {
+	t.Parallel()
+	base := hooksConfigWithEveryField(t, "base")
+	cli := hooksConfigWithEveryField(t, "cli")
+
+	result := MergeHooks(base, cli)
+	require.NotNil(t, result)
+
+	resultValue := reflect.ValueOf(result).Elem()
+	baseValue := reflect.ValueOf(base).Elem()
+	cliValue := reflect.ValueOf(cli).Elem()
+	for i := range resultValue.NumField() {
+		fieldName := resultValue.Type().Field(i).Name
+		got := resultValue.Field(i)
+
+		require.Len(t, got.Interface(), 2, fieldName)
+		assert.Equal(t, baseValue.Field(i).Index(0).Interface(), got.Index(0).Interface(), fieldName)
+		assert.Equal(t, cliValue.Field(i).Index(0).Interface(), got.Index(1).Interface(), fieldName)
+	}
+}
+
 func TestMergeHooks_DoesNotMutateOriginals(t *testing.T) {
 	t.Parallel()
 	base := &latest.HooksConfig{
@@ -142,10 +164,37 @@ func TestMergeHooks_DoesNotMutateOriginals(t *testing.T) {
 
 	result := MergeHooks(base, cli)
 
-	// Originals should not be mutated
 	assert.Len(t, base.SessionStart, 1)
 	assert.Len(t, cli.SessionStart, 1)
 	assert.Len(t, result.SessionStart, 2)
+}
+
+func hooksConfigWithEveryField(t *testing.T, label string) *latest.HooksConfig {
+	t.Helper()
+
+	cfg := &latest.HooksConfig{}
+	cfgValue := reflect.ValueOf(cfg).Elem()
+	for i := range cfgValue.NumField() {
+		field := cfgValue.Type().Field(i)
+		value := cfgValue.Field(i)
+		command := label + "-" + field.Name
+		if value.Kind() != reflect.Slice {
+			t.Fatalf("unsupported HooksConfig field %s of type %s", field.Name, value.Type())
+		}
+
+		switch value.Type().Elem() {
+		case reflect.TypeFor[latest.HookDefinition]():
+			value.Set(reflect.ValueOf([]latest.HookDefinition{{Type: "command", Command: command}}))
+		case reflect.TypeFor[latest.HookMatcherConfig]():
+			value.Set(reflect.ValueOf([]latest.HookMatcherConfig{{
+				Matcher: command,
+				Hooks:   []latest.HookDefinition{{Type: "command", Command: command}},
+			}}))
+		default:
+			t.Fatalf("unsupported HooksConfig field %s of type %s", field.Name, value.Type())
+		}
+	}
+	return cfg
 }
 
 func TestRuntimeConfig_CLIHooks(t *testing.T) {
