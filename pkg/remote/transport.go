@@ -17,9 +17,9 @@ import (
 
 var memoizer = memoize.New[bool](1 * time.Minute)
 
-// NewTransport returns an HTTP transport that uses Docker Desktop proxy if available.
-// If the proxy becomes unavailable during the session, it automatically falls back
-// to direct connections.
+// NewTransport returns an HTTP transport that uses the Docker Desktop proxy
+// if available, and falls back to direct connections while re-probing the
+// proxy after a cooldown so long-lived processes recover on their own.
 func NewTransport(ctx context.Context) http.RoundTripper {
 	t, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
@@ -54,15 +54,18 @@ func NewTransport(ctx context.Context) http.RoundTripper {
 	return transport
 }
 
-// fallbackTransport wraps a proxy transport and falls back to a direct transport
-// when the proxy socket becomes unavailable (e.g., Docker Desktop proxy dies).
+// Bounded backoff: one probe per cooldown, not per request.
+const proxyRetryCooldown = 30 * time.Second
+
+// fallbackTransport tries the proxy first, direct second. A socket error
+// disables the proxy for proxyRetryCooldown, so a stale error can't latch
+// the transport into direct mode for the rest of the process's lifetime.
 type fallbackTransport struct {
 	proxy  *http.Transport
 	direct *http.Transport
 
-	// proxyDisabled is set to true when the proxy socket becomes unavailable.
-	// Once set, all subsequent requests go directly without trying the proxy.
-	proxyDisabled atomic.Bool
+	// Zero = enabled. Non-zero = disabled until this UnixNano deadline.
+	disabledUntilUnixNano atomic.Int64
 }
 
 // newFallbackTransport creates a transport that tries the proxy first, then falls back to direct.
@@ -80,47 +83,56 @@ func (f *fallbackTransport) DisableCompression() {
 	f.direct.DisableCompression = true
 }
 
-// RoundTrip implements http.RoundTripper.
+func (f *fallbackTransport) proxyEnabled() bool {
+	until := f.disabledUntilUnixNano.Load()
+	if until == 0 {
+		return true
+	}
+	if time.Now().UnixNano() < until {
+		return false
+	}
+	// CAS (not Store) so a concurrent disableProxy() can't be stomped.
+	f.disabledUntilUnixNano.CompareAndSwap(until, 0)
+	return true
+}
+
+func (f *fallbackTransport) disableProxy() {
+	f.disabledUntilUnixNano.Store(time.Now().Add(proxyRetryCooldown).UnixNano())
+}
+
 func (f *fallbackTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// If proxy is already known to be disabled, go direct
-	if f.proxyDisabled.Load() {
+	if !f.proxyEnabled() {
 		return f.direct.RoundTrip(req)
 	}
 
-	// Try the proxy first
 	resp, err := f.proxy.RoundTrip(req)
 	if err == nil {
 		return resp, nil
 	}
-
-	// Check if this is a proxy socket error (socket gone, connection refused, etc.)
-	if isProxySocketError(err) {
-		slog.Warn("Docker Desktop proxy unavailable, falling back to direct connection",
-			"error", err.Error(),
-			"url", req.URL.String())
-
-		// Disable proxy for future requests
-		f.proxyDisabled.Store(true)
-
-		// Clone the request for retry (the body may have been partially read)
-		// For requests without a body or with GetBody set, we can retry
-		if req.Body == nil || req.GetBody != nil {
-			retryReq := req.Clone(req.Context())
-			if req.GetBody != nil {
-				var bodyErr error
-				retryReq.Body, bodyErr = req.GetBody()
-				if bodyErr != nil {
-					return nil, err // Return original error if we can't get the body
-				}
-			}
-			return f.direct.RoundTrip(retryReq)
-		}
-
-		// Can't retry requests with consumed bodies
+	if !isProxySocketError(err) {
 		return nil, err
 	}
 
-	return nil, err
+	slog.Warn("Docker Desktop proxy unavailable, falling back to direct connection",
+		"error", err.Error(),
+		"url", req.URL.String(),
+		"retry_after", proxyRetryCooldown)
+	f.disableProxy()
+
+	// Retry direct only when the body is safe to replay; otherwise the
+	// proxy may have already consumed it.
+	if req.Body != nil && req.GetBody == nil {
+		return nil, err
+	}
+	retryReq := req.Clone(req.Context())
+	if req.GetBody != nil {
+		body, bodyErr := req.GetBody()
+		if bodyErr != nil {
+			return nil, err
+		}
+		retryReq.Body = body
+	}
+	return f.direct.RoundTrip(retryReq)
 }
 
 // isProxySocketError checks if the error indicates the proxy socket is unavailable.
