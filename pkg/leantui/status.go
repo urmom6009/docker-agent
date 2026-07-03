@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	pathx "github.com/docker/docker-agent/pkg/path"
 	"github.com/docker/docker-agent/pkg/tui/components/toolcommon"
 )
 
@@ -29,7 +30,7 @@ type statusData struct {
 //	<working dir>  ⎇ <branch>                          <agent>
 //	<context bar> <pct> · <tokens> · <cost>  <model> · <effort>
 func renderStatus(d statusData, width int) []string {
-	dir := stSecondary().Render(truncate(shortenPath(d.workingDir), max(10, width/2)))
+	dir := stSecondary().Render(truncate(pathx.ShortenHome(d.workingDir), max(10, width/2)))
 	left1 := dir
 	if d.branch != "" {
 		left1 += stMuted().Render("  ⎇ " + d.branch)

@@ -1,4 +1,6 @@
-package leantui
+// Package gitbranch resolves the current branch of a git working directory by
+// reading .git metadata directly, without shelling out to the git binary.
+package gitbranch
 
 import (
 	"os"
@@ -6,10 +8,14 @@ import (
 	"strings"
 )
 
-// gitBranch returns the current branch name (or short commit for a detached
+// Current returns the current branch name (or the short commit for a detached
 // HEAD) for the repository containing dir, walking up parent directories until
-// a .git entry is found. It returns "" when dir is not inside a repository.
-func gitBranch(dir string) string {
+// a .git entry is found. It returns "" when dir is empty or not inside a
+// repository.
+func Current(dir string) string {
+	if dir == "" {
+		return ""
+	}
 	d := dir
 	for {
 		gitPath := filepath.Join(d, ".git")
@@ -60,19 +66,4 @@ func readHead(headPath string) string {
 		return line[:7] // detached HEAD
 	}
 	return ""
-}
-
-// shortenPath replaces the user's home directory prefix with "~".
-func shortenPath(dir string) string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return dir
-	}
-	if dir == home {
-		return "~"
-	}
-	if rest, ok := strings.CutPrefix(dir, home+string(filepath.Separator)); ok {
-		return "~" + string(filepath.Separator) + rest
-	}
-	return dir
 }

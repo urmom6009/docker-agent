@@ -1,4 +1,4 @@
-package leantui
+package gitbranch
 
 import (
 	"os"
@@ -33,7 +33,7 @@ func TestReadHeadDetached(t *testing.T) {
 	assert.Equal(t, "0123456", readHead(head))
 }
 
-func TestGitBranchWalksUp(t *testing.T) {
+func TestCurrentWalksUp(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, ".git"), 0o755))
@@ -42,19 +42,26 @@ func TestGitBranchWalksUp(t *testing.T) {
 	nested := filepath.Join(root, "a", "b")
 	require.NoError(t, os.MkdirAll(nested, 0o755))
 
-	assert.Equal(t, "dev", gitBranch(nested))
+	assert.Equal(t, "dev", Current(nested))
 }
 
-func TestGitBranchNoRepo(t *testing.T) {
+func TestCurrentWorktreePointer(t *testing.T) {
 	t.Parallel()
-	assert.Empty(t, gitBranch(t.TempDir()))
+	realGitDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(realGitDir, "HEAD"), []byte("ref: refs/heads/wt\n"), 0o644))
+
+	work := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(work, ".git"), []byte("gitdir: "+realGitDir+"\n"), 0o644))
+
+	assert.Equal(t, "wt", Current(work))
 }
 
-func TestShortenPath(t *testing.T) {
+func TestCurrentNoRepo(t *testing.T) {
 	t.Parallel()
-	home, err := os.UserHomeDir()
-	require.NoError(t, err)
-	assert.Equal(t, "~", shortenPath(home))
-	assert.Equal(t, filepath.Join("~", "x"), shortenPath(filepath.Join(home, "x")))
-	assert.Equal(t, "/etc", shortenPath("/etc"))
+	assert.Empty(t, Current(t.TempDir()))
+}
+
+func TestCurrentEmptyDir(t *testing.T) {
+	t.Parallel()
+	assert.Empty(t, Current(""))
 }

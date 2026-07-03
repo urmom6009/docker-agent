@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/docker/docker-agent/pkg/app"
+	"github.com/docker/docker-agent/pkg/gitbranch"
 	"github.com/docker/docker-agent/pkg/tui/service"
 )
 
@@ -185,7 +186,7 @@ func newModel(term *terminal, cfg Config) *model {
 		editor:           newEditor("Type a message, / for commands"),
 		ac:               newAutocomplete(),
 		transcript:       newTranscript(),
-		status:           statusData{workingDir: cfg.WorkingDir, branch: gitBranch(cfg.WorkingDir)},
+		status:           statusData{workingDir: cfg.WorkingDir, branch: gitbranch.Current(cfg.WorkingDir)},
 		sessionState:     sessionState,
 		usage:            newUsageTracker(),
 		appName:          appName,

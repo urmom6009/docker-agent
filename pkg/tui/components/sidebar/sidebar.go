@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"maps"
 	"os"
-	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
@@ -17,7 +16,8 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/docker/docker-agent/pkg/effort"
-	"github.com/docker/docker-agent/pkg/paths"
+	"github.com/docker/docker-agent/pkg/gitbranch"
+	pathx "github.com/docker/docker-agent/pkg/path"
 	"github.com/docker/docker-agent/pkg/runtime"
 	"github.com/docker/docker-agent/pkg/session"
 	"github.com/docker/docker-agent/pkg/tools"
@@ -175,7 +175,7 @@ func New(ctx context.Context, sessionState *service.SessionState) Model {
 	ti.CharLimit = 50
 	ti.Prompt = "" // No prompt to maximize usable width in collapsed sidebar
 
-	wd, branch := getCurrentWorkingDirectory(ctx)
+	wd, branch := getCurrentWorkingDirectory()
 
 	m := &model{
 		ctx:          func() context.Context { return context.WithoutCancel(ctx) },
@@ -496,7 +496,7 @@ func (m *model) LoadFromSession(sess *session.Session) {
 
 	// Load working directory from session
 	if sess.WorkingDir != "" {
-		m.workingDirectory, m.gitBranchName = formatWorkingDirectory(m.ctx(), sess.WorkingDir)
+		m.workingDirectory, m.gitBranchName = formatWorkingDirectory(sess.WorkingDir)
 	}
 
 	// Session has content if it has messages or token usage
@@ -566,48 +566,25 @@ func (m *model) contextPercent() string {
 	return ""
 }
 
-// gitBranch returns the current git branch name for the given directory,
-// or an empty string if the directory is not inside a git repository.
-func gitBranch(ctx context.Context, dir string) string {
-	if dir == "" {
-		return ""
-	}
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--abbrev-ref", "HEAD").Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
-}
-
 // formatWorkingDirectory formats a raw directory path for display,
 // replacing the home prefix with ~/. Returns the display path and the
 // current git branch (empty if not in a repo).
-func formatWorkingDirectory(ctx context.Context, rawDir string) (display, branch string) {
+func formatWorkingDirectory(rawDir string) (display, branch string) {
 	if rawDir == "" {
 		return "", ""
 	}
-
-	branch = gitBranch(ctx, rawDir)
-
-	display = rawDir
-	if homeDir := paths.GetHomeDir(); homeDir != "" && strings.HasPrefix(display, homeDir) {
-		display = "~" + display[len(homeDir):]
-	}
-
-	return display, branch
+	return pathx.ShortenHome(rawDir), gitbranch.Current(rawDir)
 }
 
 // getCurrentWorkingDirectory returns the current working directory with home directory
 // replaced by ~/, along with the current git branch name.
-func getCurrentWorkingDirectory(ctx context.Context) (string, string) {
+func getCurrentWorkingDirectory() (string, string) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return "", ""
 	}
 
-	return formatWorkingDirectory(ctx, pwd)
+	return formatWorkingDirectory(pwd)
 }
 
 // workingDirWithBranch returns the working directory path with the git branch
