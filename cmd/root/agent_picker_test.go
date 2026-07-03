@@ -462,6 +462,19 @@ func TestAgentPickerLeanCheckboxDefaultsUnticked(t *testing.T) {
 	assert.Contains(t, ansi.Strip(m.render()), "[ ] Lean Mode", "checkbox renders unticked by default")
 }
 
+func TestAgentPickerLeanCheckboxSeeded(t *testing.T) {
+	t.Parallel()
+
+	// When the run would already be lean (--lean or user config), the
+	// checkbox must reflect it instead of lying about the run mode.
+	m := newAgentPickerModel([]agentChoice{{ref: "default"}, {ref: "coder"}})
+	m.leanMode = true
+	m.width = 120
+	m.height = 40
+
+	assert.Contains(t, ansi.Strip(m.render()), "[x] Lean Mode")
+}
+
 func TestAgentPickerLeanCheckboxKeyToggle(t *testing.T) {
 	t.Parallel()
 
@@ -485,19 +498,30 @@ func TestAgentPickerLeanCheckboxClickToggle(t *testing.T) {
 	m.width = 120
 	m.height = 40
 
-	// Locate the checkbox on the rendered screen and click it.
+	// Locate the checkbox on the rendered screen and click it. Note:
+	// strings.Index returns a byte offset; convert the prefix to display
+	// columns because border runes (│) are multi-byte.
 	screen := ansi.Strip(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.render()))
 	lines := strings.Split(screen, "\n")
 	var x, y int
 	found := false
 	for row, line := range lines {
-		if col := strings.Index(line, "[ ] Lean Mode"); col >= 0 {
-			x, y, found = col, row, true
+		if prefix, _, ok := strings.Cut(line, "[ ] Lean Mode"); ok {
+			x, y, found = lipgloss.Width(prefix), row, true
 			break
 		}
 	}
 	assert.True(t, found, "checkbox not found on screen")
 	assert.True(t, m.leanCheckboxAt(x, y), "hit zone must match the rendered checkbox")
+
+	// Hit-zone boundaries: both edges are inside; one cell beyond each edge
+	// and the adjacent rows are outside.
+	checkboxWidth := len("[ ] Lean Mode")
+	assert.True(t, m.leanCheckboxAt(x+checkboxWidth-1, y), "right edge must be inside")
+	assert.False(t, m.leanCheckboxAt(x-1, y), "left of the checkbox must miss")
+	assert.False(t, m.leanCheckboxAt(x+checkboxWidth, y), "right of the checkbox must miss")
+	assert.False(t, m.leanCheckboxAt(x, y-1), "row above must miss")
+	assert.False(t, m.leanCheckboxAt(x, y+1), "row below must miss")
 
 	click := tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft}
 	_, cmd := m.Update(click)

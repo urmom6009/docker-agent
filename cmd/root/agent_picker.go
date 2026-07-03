@@ -79,19 +79,22 @@ func loadAgentChoices(ctx context.Context, refs []string, env environment.Provid
 }
 
 // selectAgentRef shows a full-screen picker and returns the chosen agent ref
-// along with whether the user ticked the "Lean Mode" checkbox. When only a
-// single ref is supplied there is nothing to choose, so it is returned
-// directly without showing any UI.
-func selectAgentRef(ctx context.Context, refs []string, env environment.Provider) (ref string, lean bool, err error) {
+// along with whether the user wants lean mode. The "Lean Mode" checkbox is
+// seeded with initialLean (the effective lean state from flags/user config)
+// so what the user sees always matches what will run; the returned value is
+// authoritative. When only a single ref is supplied there is nothing to
+// choose, so it is returned directly without showing any UI.
+func selectAgentRef(ctx context.Context, refs []string, env environment.Provider, initialLean bool) (ref string, lean bool, err error) {
 	if len(refs) == 0 {
 		return "", false, errors.New("no agent refs to choose from")
 	}
 	if len(refs) == 1 {
-		return refs[0], false, nil
+		return refs[0], initialLean, nil
 	}
 
 	choices := loadAgentChoices(ctx, refs, env)
 	m := newAgentPickerModel(choices)
+	m.leanMode = initialLean
 
 	p := tea.NewProgram(m, tea.WithContext(ctx))
 	final, err := p.Run()
@@ -152,7 +155,8 @@ type agentPickerModel struct {
 	cancelled bool
 
 	// leanMode mirrors the "Lean Mode" checkbox: when ticked the chosen
-	// agent runs in the lean TUI instead of the full one. Off by default.
+	// agent runs in the lean TUI instead of the full one. Seeded by the
+	// caller with the effective lean state (off by default).
 	leanMode bool
 
 	// showDetails toggles the scrollable YAML dialog overlay for the
@@ -269,7 +273,7 @@ func (m *agentPickerModel) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, t
 	}
 	if m.leanCheckboxAt(msg.X, msg.Y) {
 		m.leanMode = !m.leanMode
-		m.lastClickIndex = -1
+		m.resetClickTracking()
 		return m, nil
 	}
 	i, ok := m.cardAt(msg.X, msg.Y)
@@ -485,14 +489,24 @@ func (m *agentPickerModel) cardWidth() int {
 	return w
 }
 
+// panelOrigin returns the top-left corner of the centered picker panel.
+func (m *agentPickerModel) panelOrigin() (x, y int) {
+	panelWidth, panelHeight := m.panelSize()
+	return max((m.width-panelWidth)/2, 0), max((m.height-panelHeight)/2, 0)
+}
+
+// cardRows returns the number of rows occupied by the stacked cards,
+// including the gaps between them.
+func (m *agentPickerModel) cardRows() int {
+	return len(m.choices)*agentPickerCardHeight + max(len(m.choices)-1, 0)*agentPickerCardGap
+}
+
 // cardAt maps terminal coordinates to the index of the agent card under them.
 // It mirrors the layout produced by render: the panel is centered, and cards
 // are stacked with no gaps below the title/subtitle. The bool is false when
 // the point is outside every card.
 func (m *agentPickerModel) cardAt(x, y int) (int, bool) {
-	panelWidth, panelHeight := m.panelSize()
-	originX := max((m.width-panelWidth)/2, 0)
-	originY := max((m.height-panelHeight)/2, 0)
+	originX, originY := m.panelOrigin()
 
 	cardWidth := m.cardWidth()
 	relX := x - originX - agentPickerCardsLeft
@@ -517,12 +531,9 @@ func (m *agentPickerModel) cardAt(x, y int) (int, bool) {
 // Mode" checkbox row. It mirrors the layout produced by render: the checkbox
 // sits one blank row below the last card, at the cards' left offset.
 func (m *agentPickerModel) leanCheckboxAt(x, y int) bool {
-	panelWidth, panelHeight := m.panelSize()
-	originX := max((m.width-panelWidth)/2, 0)
-	originY := max((m.height-panelHeight)/2, 0)
+	originX, originY := m.panelOrigin()
 
-	cardRows := len(m.choices)*agentPickerCardHeight + max(len(m.choices)-1, 0)*agentPickerCardGap
-	checkboxY := originY + agentPickerCardsTop + cardRows + 1
+	checkboxY := originY + agentPickerCardsTop + m.cardRows() + 1
 	if y != checkboxY {
 		return false
 	}
@@ -532,7 +543,7 @@ func (m *agentPickerModel) leanCheckboxAt(x, y int) bool {
 
 // leanCheckbox renders the "Lean Mode" checkbox line.
 func (m *agentPickerModel) leanCheckbox() string {
-	box := "[ ]"
+	box := styles.MutedStyle.Render("[ ]")
 	if m.leanMode {
 		box = styles.SuccessStyle.Render("[x]")
 	}
@@ -555,8 +566,7 @@ func (m *agentPickerModel) panelSize() (w, h int) {
 	w = contentWidth + 2*(1+4)
 	// Content rows: title + blank + subtitle + blank + cards (with gaps) +
 	// blank + lean checkbox + blank + help.
-	cardRows := len(m.choices)*agentPickerCardHeight + max(len(m.choices)-1, 0)*agentPickerCardGap
-	rows := 4 + cardRows + 4
+	rows := 4 + m.cardRows() + 4
 	// Vertical chrome: border (2) + padding (2).
 	h = rows + 4
 	return w, h

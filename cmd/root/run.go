@@ -234,6 +234,7 @@ func (f *runExecFlags) runRunCommand(cmd *cobra.Command, args []string) (command
 	}
 
 	useTUI := !f.exec && (f.forceTUI || isatty.IsTerminal(os.Stdout.Fd()))
+	f.leanChanged = cmd.Flags().Changed("lean")
 
 	// When --agent-picker is set, show a full-screen picker up front and use
 	// the chosen ref as the agent to run. Resolving it here (before sandbox
@@ -246,7 +247,11 @@ func (f *runExecFlags) runRunCommand(cmd *cobra.Command, args []string) (command
 		}
 		refs := parseAgentPickerRefs(f.agentPickerSpec)
 		applyTheme(f.theme)
-		chosen, lean, err := selectAgentRef(ctx, refs, f.runConfig.EnvProvider())
+		// Seed the picker's "Lean Mode" checkbox with the lean state the run
+		// would otherwise use (--lean, or the user-config default applied in
+		// applyUserSettings) so the checkbox never lies about the run mode.
+		initialLean := f.lean || (!f.leanChanged && userconfig.Get().Lean && !f.tour)
+		chosen, lean, err := selectAgentRef(ctx, refs, f.runConfig.EnvProvider(), initialLean)
 		if err != nil {
 			if errors.Is(err, errAgentPickerCancelled) {
 				cli.NewPrinter(cmd.OutOrStdout()).Println("Agent selection cancelled.")
@@ -254,11 +259,10 @@ func (f *runExecFlags) runRunCommand(cmd *cobra.Command, args []string) (command
 			}
 			return err
 		}
-		// The picker's "Lean Mode" checkbox opts into the lean TUI; unticked
-		// keeps the normal run mode (whatever the flags/user config decide).
-		if lean {
-			f.lean = true
-		}
+		// The checkbox is the user's explicit choice: it wins over both the
+		// --lean flag and the user-config lean default.
+		f.lean = lean
+		f.leanChanged = true
 		// With --agent-picker the agent comes from the picker, so any
 		// positional args are messages. Prepend the chosen ref so the rest
 		// of the pipeline (which expects args[0] to be the agent) is happy.
@@ -294,7 +298,6 @@ func (f *runExecFlags) runRunCommand(cmd *cobra.Command, args []string) (command
 	if f.worktreeBase != "" && !f.worktree {
 		return errors.New("--worktree-base requires --worktree")
 	}
-	f.leanChanged = cmd.Flags().Changed("lean")
 
 	out := cli.NewPrinter(cmd.OutOrStdout())
 
