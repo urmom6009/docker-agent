@@ -66,7 +66,7 @@ $ docker agent run [config] [message...] [flags]
 | `--hook-stop <cmd>`                     | Add a stop hook command, fired when the model finishes responding (repeatable)                                                            |
 | `--fake <path>`                         | Replay AI responses from a cassette file (for testing). Mutually exclusive with `--record`.                                               |
 | `--fake-stream [ms]`                    | When replaying with `--fake`, simulate streaming with a delay between chunks (defaults to 15ms when given without a value).               |
-| `--record [path]`                       | Record AI API interactions to a cassette file (auto-generates filename if no path given)                                                  |
+| `--record [path]`                       | Record AI API interactions to a cassette file and generate a TUI e2e test from the session (auto-generates filename if no path given)     |
 | `-d, --debug`                           | Enable debug logging                                                                                                                      |
 | `--log-file <path>`                     | Custom debug log location                                                                                                                 |
 | `-o, --otel`                            | Enable OpenTelemetry observability: traces, metrics, and logs. Requires `OTEL_EXPORTER_OTLP_ENDPOINT` to export to a collector. |
