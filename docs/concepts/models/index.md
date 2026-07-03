@@ -79,6 +79,7 @@ for details.
 | Mistral             | `mistral`        | Mistral models                       | `MISTRAL_API_KEY`                   |
 | xAI                 | `xai`            | Grok models                          | `XAI_API_KEY`                       |
 | Nebius              | `nebius`         | Open-source and specialised models   | `NEBIUS_API_KEY`                    |
+| NVIDIA NIM          | `nvidia`         | Nemotron, Llama, Qwen, DeepSeek (open models) | `NVIDIA_API_KEY`               |
 | MiniMax             | `minimax`        | MiniMax models                       | `MINIMAX_API_KEY`                   |
 | Baseten             | `baseten`        | DeepSeek, Kimi, GLM, Llama models    | `BASETEN_API_KEY`                   |
 | OVHcloud            | `ovhcloud`       | Qwen, Llama, Mistral, DeepSeek (EU-hosted) | `OVH_AI_ENDPOINTS_ACCESS_TOKEN` |

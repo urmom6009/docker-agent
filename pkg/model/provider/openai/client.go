@@ -212,6 +212,7 @@ var openModelHostProviders = map[string]bool{
 	"ovhcloud":    true,
 	"openrouter":  true,
 	"nebius":      true,
+	"nvidia":      true,
 	"cerebras":    true,
 	"fireworks":   true,
 	"together":    true,
