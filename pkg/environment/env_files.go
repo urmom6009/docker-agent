@@ -92,7 +92,7 @@ func ReadEnvFile(absolutePath string) ([]KeyValuePair, error) {
 
 		k, v, ok := strings.Cut(line, "=")
 		if !ok {
-			return nil, fmt.Errorf("invalid env file line: %s", line)
+			return nil, fmt.Errorf("invalid line in env file %s: %q (expected KEY=VALUE)", absolutePath, line)
 		}
 
 		k = strings.TrimSpace(k)

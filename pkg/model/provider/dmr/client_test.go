@@ -58,6 +58,34 @@ func TestNewClientReturnsErrNotInstalledWhenDockerModelUnsupported(t *testing.T)
 	require.ErrorIs(t, err, ErrNotInstalled)
 }
 
+// The "not installed" detection must not depend on the docker CLI usage text
+// staying byte-identical: any failure mentioning the unknown --json flag means
+// the installation predates Model Runner (issue #3442).
+func TestNewClientReturnsErrNotInstalledWithVariantUsageText(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping docker CLI shim test on Windows")
+	}
+
+	tempDir := t.TempDir()
+	dockerPath := filepath.Join(tempDir, "docker")
+	script := "#!/bin/sh\n" +
+		"printf 'unknown flag: --json\\n\\nUsage:  docker model COMMAND\\n\\nSee docker model --help\\n' >&2\n" +
+		"exit 1\n"
+	require.NoError(t, os.WriteFile(dockerPath, []byte(script), 0o755))
+
+	t.Setenv("PATH", tempDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("MODEL_RUNNER_HOST", "")
+
+	cfg := &latest.ModelConfig{
+		Provider: "dmr",
+		Model:    "ai/qwen3",
+	}
+
+	_, err := NewClient(t.Context(), cfg)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNotInstalled)
+}
+
 func TestGetDMRFallbackURLs(t *testing.T) {
 	t.Parallel()
 

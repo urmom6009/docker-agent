@@ -180,8 +180,9 @@ func TestResolveFirstAvailableModels_NoCandidateAvailable(t *testing.T) {
 	assert.Contains(t, err.Error(), "Set the environment variables for at least one candidate:")
 	assert.Contains(t, err.Error(), " - anthropic/claude-sonnet-4-6: ANTHROPIC_API_KEY")
 	assert.Contains(t, err.Error(), " - openai/gpt-5: OPENAI_API_KEY")
-	assert.Contains(t, err.Error(), "Set one of those groups of environment variables")
-	assert.Contains(t, err.Error(), "Run docker agent with --env-from-file")
+	assert.Contains(t, err.Error(), "export ANTHROPIC_API_KEY=<value>")
+	assert.Contains(t, err.Error(), "--env-from-file")
+	assert.Contains(t, err.Error(), environment.SecretsDocsURL)
 }
 
 func TestResolveFirstAvailableModels_InvalidCandidate(t *testing.T) {

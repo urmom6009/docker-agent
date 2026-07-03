@@ -283,6 +283,7 @@ func TestCheckRequiredEnvVars(t *testing.T) {
 				var reqErr *environment.RequiredEnvError
 				require.ErrorAs(t, err, &reqErr)
 				assert.Equal(t, test.expectedMissing, reqErr.Missing)
+				assert.True(t, reqErr.MissingModelCredentials, "missing vars are model credentials, so the local-model hint must be offered")
 			}
 		})
 	}

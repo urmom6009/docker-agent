@@ -213,8 +213,10 @@ func Run(ctx context.Context, out *Printer, cfg Config, rt runtime.Runtime, sess
 				if strings.Contains(lowerErr, "context cancel") && ctx.Err() != nil { // treat Ctrl+C cancellations as non-errors
 					lastErr = nil
 				} else {
+					// Not printed here: the error is returned to the command layer,
+					// which prints it exactly once. Printing here too showed every
+					// failure twice in --exec runs.
 					lastErr = fmt.Errorf("%s", e.Error)
-					out.PrintError(lastErr)
 				}
 			case *runtime.MaxIterationsReachedEvent:
 				switch handleMaxIterationsAutoApprove(cfg.AutoApprove, &autoExtensions, e.MaxIterations) {
@@ -274,6 +276,9 @@ func Run(ctx context.Context, out *Printer, cfg Config, rt runtime.Runtime, sess
 		if err != nil {
 			return fmt.Errorf("failed to read from stdin: %w", err)
 		}
+		if strings.TrimSpace(string(buf)) == "" {
+			return errors.New(`no message received on stdin: with "-" the prompt is read from stdin, e.g. echo "Hello" | docker agent run <agent> -`)
+		}
 
 		if err := oneLoop(string(buf), os.Stdin); err != nil {
 			return err
@@ -290,6 +295,11 @@ func Run(ctx context.Context, out *Printer, cfg Config, rt runtime.Runtime, sess
 		buf, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return fmt.Errorf("failed to read from stdin: %w", err)
+		}
+		// Exiting 0 with no output on empty input (e.g. bare `docker agent`
+		// in CI) would be a silent no-op; fail with the next steps instead.
+		if strings.TrimSpace(string(buf)) == "" {
+			return errors.New("no message provided and stdin is not a terminal; pass a message (docker agent run <agent> \"<message>\"), pipe one on stdin, or run from an interactive terminal to use the chat UI")
 		}
 
 		if err := oneLoop(string(buf), os.Stdin); err != nil {

@@ -36,7 +36,7 @@ func ListModels(ctx context.Context) ([]string, error) {
 			// Mirror NewClient: the unknown "--json" flag is the signal that
 			// the Docker installation predates Model Runner, i.e. DMR is not
 			// installed at all.
-			if strings.Contains(err.Error(), "unknown flag: --json") {
+			if errIndicatesNotInstalled(err) {
 				return nil, ErrNotInstalled
 			}
 			// Otherwise the docker CLI plugin may simply be unavailable while

@@ -103,6 +103,13 @@ func addGatewayFlags(cmd *cobra.Command, runConfig *config.RuntimeConfig, loadUs
 
 		env := runConfig.EnvProvider()
 
+		// A missing or malformed --env-from-file must abort the run: the flag
+		// is the documented way to supply credentials, so silently continuing
+		// without it leads to confusing "env var must be set" errors later.
+		if err := runConfig.EnvFilesError(); err != nil {
+			return fmt.Errorf("--env-from-file: %w", err)
+		}
+
 		// Precedence: CLI flag > environment variable > user config
 		if runConfig.ModelsGateway == "" {
 			if gateway, _ := env.Get(ctx, envModelsGateway); gateway != "" {

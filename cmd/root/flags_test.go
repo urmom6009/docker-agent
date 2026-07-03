@@ -2,6 +2,8 @@ package root
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -326,4 +328,60 @@ func TestDefaultModelLogic(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A missing or malformed --env-from-file must abort the run instead of being
+// logged and skipped: the flag is the documented way to supply credentials
+// (issue #3442).
+func TestEnvFromFileErrorsAbortPreRun(t *testing.T) {
+	t.Parallel()
+
+	loadUserConfig := func() (*userconfig.Config, error) {
+		return &userconfig.Config{}, nil
+	}
+
+	t.Run("missing file", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := &cobra.Command{
+			SilenceErrors: true,
+			SilenceUsage:  true,
+			RunE:          func(*cobra.Command, []string) error { return nil },
+		}
+		runConfig := config.RuntimeConfig{
+			Config: config.Config{EnvFiles: []string{filepath.Join(t.TempDir(), "missing.env")}},
+		}
+		addGatewayFlags(cmd, &runConfig, loadUserConfig)
+
+		cmd.SetArgs(nil)
+		err := cmd.Execute()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--env-from-file")
+		assert.Contains(t, err.Error(), "missing.env")
+	})
+
+	t.Run("malformed file", func(t *testing.T) {
+		t.Parallel()
+
+		bad := filepath.Join(t.TempDir(), "bad.env")
+		require.NoError(t, os.WriteFile(bad, []byte("NOT_A_PAIR\n"), 0o600))
+
+		cmd := &cobra.Command{
+			SilenceErrors: true,
+			SilenceUsage:  true,
+			RunE:          func(*cobra.Command, []string) error { return nil },
+		}
+		runConfig := config.RuntimeConfig{
+			Config: config.Config{EnvFiles: []string{bad}},
+		}
+		addGatewayFlags(cmd, &runConfig, loadUserConfig)
+
+		cmd.SetArgs(nil)
+		err := cmd.Execute()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--env-from-file")
+		assert.Contains(t, err.Error(), "bad.env")
+	})
 }

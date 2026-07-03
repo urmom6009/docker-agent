@@ -157,6 +157,9 @@ func TestReadEnvFileInvalid(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Empty(t, lines)
+	// The error names the offending file so multi-file runs stay debuggable.
+	assert.Contains(t, err.Error(), filepath.Join(temp, ".invalid"))
+	assert.Contains(t, err.Error(), "KEY=VALUE")
 }
 
 func write(t *testing.T, path, content string) {

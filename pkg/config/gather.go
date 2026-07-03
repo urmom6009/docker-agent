@@ -16,24 +16,26 @@ import (
 )
 
 // gatherMissingEnvVars finds out which environment variables are required by the models and tools.
-// It returns the missing variables and any non-fatal error encountered during tool discovery.
-func gatherMissingEnvVars(ctx context.Context, cfg *latest.Config, modelsGateway string, env environment.Provider) (missing []string, toolErr error) {
+// It returns the missing variables, whether any of them is a model-provider
+// credential (as opposed to a tool secret), and any non-fatal error
+// encountered during tool discovery.
+func gatherMissingEnvVars(ctx context.Context, cfg *latest.Config, modelsGateway string, env environment.Provider) (missing []string, missingModelCreds bool, toolErr error) {
 	requiredEnv := map[string]bool{}
+	modelEnv := map[string]bool{}
 
 	// Models
+	var modelNames []string
 	if modelsGateway == "" {
-		names := GatherEnvVarsForModels(ctx, cfg, env)
-		for _, e := range names {
-			requiredEnv[e] = true
-		}
+		modelNames = GatherEnvVarsForModels(ctx, cfg, env)
 	} else {
 		// A gateway supplies credentials for routed models, but models that
 		// bypass it dial their provider directly and still need their own
 		// credentials present.
-		names := gatherEnvVarsForModels(ctx, cfg, env, true)
-		for _, e := range names {
-			requiredEnv[e] = true
-		}
+		modelNames = gatherEnvVarsForModels(ctx, cfg, env, true)
+	}
+	for _, e := range modelNames {
+		requiredEnv[e] = true
+		modelEnv[e] = true
 	}
 
 	// Tools
@@ -52,10 +54,11 @@ func gatherMissingEnvVars(ctx context.Context, cfg *latest.Config, modelsGateway
 	for _, e := range sortedKeys(requiredEnv) {
 		if v, _ := env.Get(ctx, e); v == "" {
 			missing = append(missing, e)
+			missingModelCreds = missingModelCreds || modelEnv[e]
 		}
 	}
 
-	return missing, toolErr
+	return missing, missingModelCreds, toolErr
 }
 
 func GatherEnvVarsForModels(ctx context.Context, cfg *latest.Config, env environment.Provider) []string {

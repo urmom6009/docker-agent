@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -480,4 +482,89 @@ func TestPrepareUserMessage_CommandResolution(t *testing.T) {
 	assert.NilError(t, err)
 
 	assert.Equal(t, "Fix the file main.go", msg.Message.Content, "Command should be resolved with args")
+}
+
+// swapStdin replaces os.Stdin with a pipe carrying the given content for the
+// duration of the test. A pipe is never a terminal, so it also exercises the
+// non-TTY stdin paths. Tests using it must not run in parallel: os.Stdin is
+// process-global state.
+func swapStdin(t *testing.T, content string) {
+	t.Helper()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("creating stdin pipe: %v", err)
+	}
+	if _, err := w.WriteString(content); err != nil {
+		t.Fatalf("writing stdin pipe: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("closing stdin pipe: %v", err)
+	}
+
+	old := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = old
+		_ = r.Close()
+	})
+}
+
+// A run that would silently do nothing (no message, empty non-TTY stdin, e.g.
+// bare `docker agent` in CI) must fail with an actionable error instead of
+// exiting 0 with no output (issue #3442).
+func TestRunEmptyStdinNonTTYFails(t *testing.T) {
+	swapStdin(t, "")
+
+	rt := &mockRuntime{}
+	var buf bytes.Buffer
+	sess := session.New()
+
+	err := Run(t.Context(), NewPrinter(&buf), Config{}, rt, sess, nil)
+	assert.ErrorContains(t, err, "no message provided and stdin is not a terminal")
+	assert.ErrorContains(t, err, "interactive terminal")
+}
+
+func TestRunEmptyStdinWithDashFails(t *testing.T) {
+	swapStdin(t, "")
+
+	rt := &mockRuntime{}
+	var buf bytes.Buffer
+	sess := session.New()
+
+	err := Run(t.Context(), NewPrinter(&buf), Config{}, rt, sess, []string{"-"})
+	assert.ErrorContains(t, err, "no message received on stdin")
+}
+
+func TestRunPipedStdinStillWorks(t *testing.T) {
+	swapStdin(t, "hello agent\n")
+
+	rt := &mockRuntime{
+		events: []runtime.Event{&runtime.AgentChoiceEvent{Content: "4"}},
+	}
+	var buf bytes.Buffer
+	sess := session.New()
+
+	err := Run(t.Context(), NewPrinter(&buf), Config{}, rt, sess, nil)
+	assert.NilError(t, err)
+	assert.Equal(t, len(sess.GetAllMessages()) > 0, true)
+}
+
+// An ErrorEvent must surface exactly once: returned to the command layer
+// (which prints it), never also printed by the runner (issue #3442).
+func TestErrorEventReturnedNotPrinted(t *testing.T) {
+	t.Parallel()
+
+	rt := &mockRuntime{
+		events: []runtime.Event{runtime.Error("model failed: HTTP 404")},
+	}
+	var buf bytes.Buffer
+	sess := session.New()
+
+	err := Run(t.Context(), NewPrinter(&buf), Config{}, rt, sess, []string{"hello"})
+	assert.ErrorContains(t, err, "model failed: HTTP 404")
+
+	var runtimeErr RuntimeError
+	assert.Equal(t, errors.As(err, &runtimeErr), true)
+	assert.Equal(t, strings.Contains(buf.String(), "model failed"), false)
 }

@@ -266,11 +266,12 @@ func LoadWithConfig(ctx context.Context, agentSource config.Source, runConfig *c
 		} else {
 			models, err := getModelsForAgent(ctx, cfg, &agentConfig, autoModel, dmrFallbackSelectors, runConfig, loadOpts.providerRegistry)
 			if err != nil {
-				// Return auto model fallback errors, DMR not installed errors, and
-				// DMR pull failures directly without wrapping to provide cleaner,
-				// actionable messages.
+				// Return auto model fallback errors, DMR not installed errors,
+				// DMR pull failures, and DMR model-not-available errors directly
+				// without wrapping to provide cleaner, actionable messages.
 				_, isPull := errors.AsType[*dmr.PullFailedError](err)
-				if _, ok := errors.AsType[*config.AutoModelFallbackError](err); ok || errors.Is(err, dmr.ErrNotInstalled) || isPull {
+				_, isNotAvailable := errors.AsType[*dmr.ModelNotAvailableError](err)
+				if _, ok := errors.AsType[*config.AutoModelFallbackError](err); ok || errors.Is(err, dmr.ErrNotInstalled) || isPull || isNotAvailable {
 					return nil, err
 				}
 				return nil, fmt.Errorf("failed to get models: %w", err)
