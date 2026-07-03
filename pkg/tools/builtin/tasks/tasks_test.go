@@ -392,7 +392,7 @@ func TestTasksTool_NextTask(t *testing.T) {
 	})
 	tool.createTask(t.Context(), CreateTaskArgs{Title: "Free low", Priority: "low"}) //nolint:errcheck // test setup
 
-	result, err := tool.nextTask(t.Context(), tools.ToolCall{})
+	result, err := tool.nextTask(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	var task taskWithEffective
@@ -409,7 +409,7 @@ func TestTasksTool_NextTask_NoneAvailable(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(r1.Output), &task))
 	tool.updateTask(t.Context(), UpdateTaskArgs{ID: task.ID, Status: "done"}) //nolint:errcheck // test setup
 
-	result, err := tool.nextTask(t.Context(), tools.ToolCall{})
+	result, err := tool.nextTask(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.Contains(t, result.Output, "No actionable tasks")
 }

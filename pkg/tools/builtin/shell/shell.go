@@ -93,8 +93,10 @@ type backgroundJob struct {
 	exitCode     int
 	err          error
 	// done is closed by monitorJob when the job finishes (any terminal state).
-	done   chan struct{}
-	recall tools.ToolRecallEmitter
+	done chan struct{}
+	// rt is set only when the caller requested recall; monitorJob uses it
+	// to steer the agent loop once the job finishes.
+	rt tools.Runtime
 }
 
 // limitedWriter wraps a buffer and stops writing after maxSize bytes.
@@ -120,14 +122,17 @@ func (lw *limitedWriter) Write(p []byte) (n int, err error) {
 }
 
 type commandOutput struct {
-	emit tools.ToolOutputEmitter
+	emit func(output string)
 	mu   sync.Mutex
 	buf  bytes.Buffer
 }
 
-func newCommandOutput(ctx context.Context) *commandOutput {
-	emit, _ := tools.ToolOutputEmitterFromContext(ctx)
-	return &commandOutput{emit: emit}
+// newCommandOutput adapts rt.EmitOutput to the ctx-less io.Writer contract
+// of exec.Cmd; the closure scopes ctx to this command run.
+func newCommandOutput(ctx context.Context, rt tools.Runtime) *commandOutput {
+	return &commandOutput{emit: func(output string) {
+		rt.EmitOutput(ctx, output)
+	}}
 }
 
 func (o *commandOutput) Write(p []byte) (int, error) {
@@ -263,7 +268,7 @@ func statusToString(status int32) string {
 	return "unknown"
 }
 
-func (h *shellHandler) RunShell(ctx context.Context, params RunShellArgs) (*tools.ToolCallResult, error) {
+func (h *shellHandler) RunShell(ctx context.Context, params RunShellArgs, rt tools.Runtime) (*tools.ToolCallResult, error) {
 	if strings.TrimSpace(params.Cmd) == "" {
 		return tools.ResultError(`Error: missing or empty "cmd" parameter. Pass the shell command as {"cmd": "..."}.`), nil
 	}
@@ -293,7 +298,7 @@ func (h *shellHandler) RunShell(ctx context.Context, params RunShellArgs) (*tool
 
 	slog.DebugContext(ctx, "Executing native shell command", "command", params.Cmd, "cwd", cwd)
 
-	return h.runNativeCommand(timeoutCtx, ctx, params.Cmd, cwd, timeout), nil
+	return h.runNativeCommand(timeoutCtx, ctx, rt, params.Cmd, cwd, timeout), nil
 }
 
 // waitDelayAfterShellExit caps how long cmd.Wait() blocks on stdout/stderr
@@ -311,7 +316,7 @@ func (h *shellHandler) RunShell(ctx context.Context, params RunShellArgs) (*tool
 // shell itself produced is already flushed by the time it exits.
 const waitDelayAfterShellExit = 500 * time.Millisecond
 
-func (h *shellHandler) runNativeCommand(timeoutCtx, ctx context.Context, command, cwd string, timeout time.Duration) *tools.ToolCallResult {
+func (h *shellHandler) runNativeCommand(timeoutCtx, ctx context.Context, rt tools.Runtime, command, cwd string, timeout time.Duration) *tools.ToolCallResult {
 	// Cancellation is handled manually below (timeoutCtx + Process.Kill +
 	// process group + WaitDelay), so we use exec.Command rather than
 	// exec.CommandContext to keep that flow in one place.
@@ -322,7 +327,7 @@ func (h *shellHandler) runNativeCommand(timeoutCtx, ctx context.Context, command
 	cmd.SysProcAttr = platformSpecificSysProcAttr()
 	cmd.WaitDelay = waitDelayAfterShellExit
 
-	output := newCommandOutput(ctx)
+	output := newCommandOutput(ctx, rt)
 	cmd.Stdout = output
 	cmd.Stderr = output
 
@@ -369,28 +374,25 @@ type runShellBackgroundParams struct {
 	Recall bool
 }
 
-func (h *shellHandler) RunShellBackground(ctx context.Context, params RunShellBackgroundArgs) (*tools.ToolCallResult, error) {
-	return h.runShellBackground(ctx, runShellBackgroundParams{Cmd: params.Cmd, Cwd: params.Cwd})
+func (h *shellHandler) RunShellBackground(ctx context.Context, params RunShellBackgroundArgs, rt tools.Runtime) (*tools.ToolCallResult, error) {
+	return h.runShellBackground(ctx, rt, runShellBackgroundParams{Cmd: params.Cmd, Cwd: params.Cwd})
 }
 
-func (h *shellHandler) RunShellBackgroundWithRecall(ctx context.Context, params RunShellBackgroundRecallArgs) (*tools.ToolCallResult, error) {
-	return h.runShellBackground(ctx, runShellBackgroundParams(params))
+func (h *shellHandler) RunShellBackgroundWithRecall(ctx context.Context, params RunShellBackgroundRecallArgs, rt tools.Runtime) (*tools.ToolCallResult, error) {
+	return h.runShellBackground(ctx, rt, runShellBackgroundParams(params))
 }
 
-func (h *shellHandler) runShellBackground(ctx context.Context, params runShellBackgroundParams) (*tools.ToolCallResult, error) {
+func (h *shellHandler) runShellBackground(ctx context.Context, rt tools.Runtime, params runShellBackgroundParams) (*tools.ToolCallResult, error) {
 	if strings.TrimSpace(params.Cmd) == "" {
 		return tools.ResultError(`Error: missing or empty "cmd" parameter. Pass the shell command as {"cmd": "..."}.`), nil
 	}
 
-	var recall tools.ToolRecallEmitter
 	if params.Recall {
 		if !h.recall {
 			return tools.ResultError(`Error: "recall" is not enabled for this shell toolset. Set recall: true on the shell toolset before requesting recall.`), nil
 		}
-		var ok bool
-		recall, ok = tools.ToolRecallEmitterFromContext(ctx)
-		if !ok {
-			return tools.ResultError(`Error: recall requested but no recall handler is available.`), nil
+		if !rt.Supports(tools.CapabilityRecall) {
+			return tools.ResultError(`Error: recall requested but the host does not support recall.`), nil
 		}
 	}
 
@@ -410,7 +412,9 @@ func (h *shellHandler) runShellBackground(ctx context.Context, params runShellBa
 		output:    &bytes.Buffer{},
 		startTime: time.Now(),
 		done:      make(chan struct{}),
-		recall:    recall,
+	}
+	if params.Recall {
+		job.rt = rt
 	}
 
 	// The limitedWriter shares the job's outputMu so that readers
@@ -437,7 +441,9 @@ func (h *shellHandler) runShellBackground(ctx context.Context, params runShellBa
 	job.status.Store(statusRunning)
 	h.jobs.Store(jobID, job)
 
-	go h.monitorJob(job, cmd)
+	// The job outlives this tool call: keep ctx values (trace, session id)
+	// for the recall but drop cancellation.
+	go h.monitorJob(context.WithoutCancel(ctx), job, cmd)
 
 	var recallStatus string
 	if params.Recall {
@@ -448,7 +454,7 @@ func (h *shellHandler) runShellBackground(ctx context.Context, params runShellBa
 		jobID, params.Cmd, params.Cwd, recallStatus)), nil
 }
 
-func (h *shellHandler) monitorJob(job *backgroundJob, cmd *exec.Cmd) {
+func (h *shellHandler) monitorJob(ctx context.Context, job *backgroundJob, cmd *exec.Cmd) {
 	// close done after all fields are written so WaitBackgroundJob readers see
 	// the final state. Defers are LIFO: Unlock runs before close(done).
 	defer close(job.done)
@@ -477,13 +483,13 @@ func (h *shellHandler) monitorJob(job *backgroundJob, cmd *exec.Cmd) {
 	status := job.status.Load()
 	exitCode := job.exitCode
 	output := job.output.String()
-	recall := job.recall
+	rt := job.rt
 	job.outputMu.Unlock()
 
-	if recall != nil {
+	if rt != nil {
 		message := formatBackgroundJobRecall(job, status, exitCode, output)
-		if !recall(message) {
-			slog.Warn("Failed to enqueue background job recall", "job_id", job.id)
+		if err := rt.Recall(ctx, message); err != nil {
+			slog.WarnContext(ctx, "Failed to enqueue background job recall", "job_id", job.id, "error", err)
 		}
 	}
 }
@@ -757,9 +763,9 @@ func runShellBackgroundParameters(recall bool) any {
 
 func (t *ToolSet) runBackgroundJobHandler() tools.ToolHandler {
 	if t.handler.recall {
-		return tools.NewHandler(t.handler.RunShellBackgroundWithRecall)
+		return tools.NewRuntimeHandler(t.handler.RunShellBackgroundWithRecall)
 	}
-	return tools.NewHandler(t.handler.RunShellBackground)
+	return tools.NewRuntimeHandler(t.handler.RunShellBackground)
 }
 
 func (t *ToolSet) Tools(context.Context) ([]tools.Tool, error) {
@@ -770,7 +776,7 @@ func (t *ToolSet) Tools(context.Context) ([]tools.Tool, error) {
 			Description:             `Executes the given shell command in the user's default shell.`,
 			Parameters:              tools.MustSchemaFor[RunShellArgs](),
 			OutputSchema:            tools.MustSchemaFor[string](),
-			Handler:                 tools.NewHandler(t.handler.RunShell),
+			Handler:                 tools.NewRuntimeHandler(t.handler.RunShell),
 			Annotations:             tools.ToolAnnotations{Title: "Shell"},
 			AddDescriptionParameter: true,
 		},

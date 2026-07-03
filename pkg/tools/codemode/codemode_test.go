@@ -144,7 +144,7 @@ func TestCodeModeTool_CallHello(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"script":"return hello_world();"}`,
 		},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	var scriptResult ScriptResult
@@ -180,7 +180,7 @@ func TestCodeModeTool_CallEcho(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"script":"return echo({'message':'ECHO'});"}`,
 		},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	var scriptResult ScriptResult
@@ -275,7 +275,7 @@ func TestCodeModeTool_SuccessNoToolCalls(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"script":"return get_data();"}`,
 		},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	var scriptResult ScriptResult
@@ -316,7 +316,7 @@ func TestCodeModeTool_FailureIncludesToolCalls(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"script":"var a = first_tool(); var b = second_tool(); throw new Error('runtime error');"}`,
 		},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	var scriptResult ScriptResult
@@ -360,7 +360,7 @@ func TestCodeModeTool_FailureIncludesToolError(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"script":"return failing_tool();"}`,
 		},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	var scriptResult ScriptResult
@@ -404,7 +404,7 @@ func TestCodeModeTool_FailureIncludesToolArguments(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"script":"tool_with_args({'value': 'test123'}); throw new Error('forced error');"}`,
 		},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	var scriptResult ScriptResult

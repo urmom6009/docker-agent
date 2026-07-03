@@ -39,7 +39,7 @@ func recordingTool(name string, executed *bool) []tools.Tool {
 	return []tools.Tool{{
 		Name:       name,
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			*executed = true
 			return tools.ResultSuccess("ok"), nil
 		},

@@ -271,7 +271,7 @@ func executeSingleToolCommand(ctx context.Context, toolMap map[string]tools.Tool
 	toolCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	result, err := tool.Handler(toolCtx, toolCall)
+	result, err := tool.Handler(toolCtx, toolCall, tools.NopRuntime{})
 	if err != nil {
 		slog.WarnContext(ctx, "Tool execution failed", "tool", toolName, "error", err)
 		return "Error executing '" + toolName + "': " + err.Error()

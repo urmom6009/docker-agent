@@ -459,7 +459,7 @@ func (t *ToolSet) listTasks(_ context.Context, params ListTasksArgs) (*tools.Too
 	return tools.ResultJSON(tasks), nil
 }
 
-func (t *ToolSet) nextTask(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+func (t *ToolSet) nextTask(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 

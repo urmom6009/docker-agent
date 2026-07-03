@@ -29,7 +29,7 @@ func TestNewHandler_WithArguments(t *testing.T) {
 			Name:      "greet",
 			Arguments: `{"name":"world"}`,
 		},
-	})
+	}, NopRuntime{})
 	require.NoError(t, err)
 	assert.Equal(t, "hello world", result.Output)
 }
@@ -48,7 +48,7 @@ func TestNewHandler_EmptyArguments(t *testing.T) {
 			Name:      "get_memories",
 			Arguments: "",
 		},
-	})
+	}, NopRuntime{})
 	require.NoError(t, err)
 	assert.Equal(t, "ok", result.Output)
 }
@@ -67,7 +67,7 @@ func TestNewHandler_EmptyObjectArguments(t *testing.T) {
 			Name:      "list_things",
 			Arguments: "{}",
 		},
-	})
+	}, NopRuntime{})
 	require.NoError(t, err)
 	assert.Equal(t, "ok", result.Output)
 }
@@ -86,7 +86,7 @@ func TestNewHandler_InvalidArguments(t *testing.T) {
 			Name:      "broken",
 			Arguments: `{"unterminated`,
 		},
-	})
+	}, NopRuntime{})
 	require.Error(t, err)
 }
 
@@ -116,7 +116,7 @@ func TestNewHandler_DelegatesToAijson(t *testing.T) {
 			Name:      "read_multiple_files",
 			Arguments: `{"paths":"only.txt"}`,
 		},
-	})
+	}, NopRuntime{})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"only.txt"}, got.Paths)
 }
@@ -140,7 +140,7 @@ func TestNewHandler_EmitsRepairTelemetry(t *testing.T) {
 			Name:      "read_multiple_files",
 			Arguments: `{"paths":"only.txt"}`,
 		},
-	})
+	}, NopRuntime{})
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -173,7 +173,7 @@ func TestNewHandler_NoTelemetryOnValidInput(t *testing.T) {
 			Name:      "read_multiple_files",
 			Arguments: `{"paths":["a.txt","b.txt"]}`,
 		},
-	})
+	}, NopRuntime{})
 	require.NoError(t, err)
 	assert.NotContains(t, buf.String(), "tool_input_repaired")
 }

@@ -504,14 +504,14 @@ func lspTool(name, title, description string, readOnly bool, params any, handler
 	// kept under the cagent.* namespace for symmetry with the other
 	// builtin tool annotations and so dashboards have a uniform
 	// `cagent.tool.{kind}.*` query surface across builtins.
-	wrapped := func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+	wrapped := func(ctx context.Context, tc tools.ToolCall, rt tools.Runtime) (*tools.ToolCallResult, error) {
 		if span := trace.SpanFromContext(ctx); span.IsRecording() {
 			span.SetAttributes(
 				attribute.String("cagent.tool.lsp.tool", name),
 				attribute.Bool("cagent.tool.lsp.read_only", readOnly),
 			)
 		}
-		return handler(ctx, tc)
+		return handler(ctx, tc, rt)
 	}
 	return tools.Tool{
 		Name:        name,

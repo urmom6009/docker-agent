@@ -182,7 +182,7 @@ func evalSymlinksAllowMissing(path string) (string, error) {
 	return filepath.Join(realParent, filepath.Base(path)), nil
 }
 
-func (t *FilesystemToolset) handleReadFile(ctx context.Context, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
+func (t *FilesystemToolset) handleReadFile(ctx context.Context, toolCall tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 	var args filesystem.ReadFileArgs
 	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 		return nil, fmt.Errorf("failed to parse arguments: %w", err)
@@ -212,7 +212,7 @@ func (t *FilesystemToolset) handleReadFile(ctx context.Context, toolCall tools.T
 	return tools.ResultSuccess(resp.Content), nil
 }
 
-func (t *FilesystemToolset) handleWriteFile(ctx context.Context, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
+func (t *FilesystemToolset) handleWriteFile(ctx context.Context, toolCall tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 	var args filesystem.WriteFileArgs
 	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 		return nil, fmt.Errorf("failed to parse arguments: %w", err)
@@ -243,7 +243,7 @@ func (t *FilesystemToolset) handleWriteFile(ctx context.Context, toolCall tools.
 	return tools.ResultSuccess("File written successfully"), nil
 }
 
-func (t *FilesystemToolset) handleEditFile(ctx context.Context, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
+func (t *FilesystemToolset) handleEditFile(ctx context.Context, toolCall tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 	data := toolCall.Function.Arguments
 	if data == "" {
 		data = "{}"

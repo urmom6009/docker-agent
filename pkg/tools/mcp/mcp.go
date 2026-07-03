@@ -705,7 +705,7 @@ func (ts *Toolset) refreshPromptCache(ctx context.Context) {
 	}
 }
 
-func (ts *Toolset) callTool(ctx context.Context, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
+func (ts *Toolset) callTool(ctx context.Context, toolCall tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 	slog.DebugContext(ctx, "Calling MCP tool", "tool", toolCall.Function.Name, "arguments", toolCall.Function.Arguments)
 
 	toolCall.Function.Arguments = cmp.Or(toolCall.Function.Arguments, "{}")

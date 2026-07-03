@@ -213,7 +213,7 @@ func (t *Toolset) Stop(_ context.Context) error {
 }
 
 func (t *Toolset) createHandler() tools.ToolHandler {
-	return func(ctx context.Context, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
+	return func(ctx context.Context, toolCall tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 		var args struct {
 			Message string `json:"message"`
 		}

@@ -33,8 +33,8 @@ func (f *toonTools) Tools(ctx context.Context) ([]tools.Tool, error) {
 			}
 
 			handler := tool.Handler
-			tool.Handler = func(ctx context.Context, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
-				res, err := handler(ctx, toolCall)
+			tool.Handler = func(ctx context.Context, toolCall tools.ToolCall, rt tools.Runtime) (*tools.ToolCallResult, error) {
+				res, err := handler(ctx, toolCall, rt)
 				if err != nil {
 					return res, err
 				}

@@ -235,7 +235,7 @@ func TestResolveCommand_ToolCommand(t *testing.T) {
 		tools: []tools.Tool{
 			{
 				Name: "echo_tool",
-				Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+				Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 					return tools.ResultSuccess("hello from tool"), nil
 				},
 			},
@@ -256,7 +256,7 @@ func TestResolveCommand_ToolCommandWithArgs(t *testing.T) {
 		tools: []tools.Tool{
 			{
 				Name: "greet_tool",
-				Handler: func(_ context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+				Handler: func(_ context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 					// Parse the args to verify they're passed correctly
 					return tools.ResultSuccess("Hello, " + tc.Function.Arguments), nil
 				},
@@ -279,7 +279,7 @@ func TestResolveCommand_ToolCommandWithQuotedArgs(t *testing.T) {
 		tools: []tools.Tool{
 			{
 				Name: "search_tool",
-				Handler: func(_ context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+				Handler: func(_ context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 					return tools.ResultSuccess("searched: " + tc.Function.Arguments), nil
 				},
 			},
@@ -318,7 +318,7 @@ func TestResolveCommand_CombinedPositionalAndTool(t *testing.T) {
 		tools: []tools.Tool{
 			{
 				Name: "check_tool",
-				Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+				Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 					return tools.ResultSuccess("check_output"), nil
 				},
 			},
@@ -573,7 +573,7 @@ func TestResolveCommand_NestedParentheses(t *testing.T) {
 		tools: []tools.Tool{
 			{
 				Name: "shell",
-				Handler: func(_ context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+				Handler: func(_ context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 					// Return the arguments to verify they're parsed correctly
 					return tools.ResultSuccess("args: " + tc.Function.Arguments), nil
 				},
@@ -595,7 +595,7 @@ func TestResolveCommand_MultipleNestedParens(t *testing.T) {
 		tools: []tools.Tool{
 			{
 				Name: "tool",
-				Handler: func(_ context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+				Handler: func(_ context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 					return tools.ResultSuccess(tc.Function.Arguments), nil
 				},
 			},

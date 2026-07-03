@@ -320,7 +320,7 @@ func (h *todoHandler) incompleteReminder(ctx context.Context) string {
 	return b.String()
 }
 
-func (h *todoHandler) listTodos(ctx context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+func (h *todoHandler) listTodos(ctx context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 	todos := h.storage.All(ctx)
 	if todos == nil {
 		todos = []Todo{}

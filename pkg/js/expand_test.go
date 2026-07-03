@@ -263,7 +263,7 @@ func TestExpandCommandsThenEvaluate(t *testing.T) {
 	mockTools := []tools.Tool{
 		{
 			Name: "shell",
-			Handler: func(_ context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+			Handler: func(_ context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 				return tools.ResultSuccess("lint output"), nil
 			},
 		},

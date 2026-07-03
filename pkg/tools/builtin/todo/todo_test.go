@@ -100,7 +100,7 @@ func TestTodoTool_ListTodos(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	result, err := tool.handler.listTodos(t.Context(), tools.ToolCall{})
+	result, err := tool.handler.listTodos(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	var output ListTodosOutput
@@ -123,7 +123,7 @@ func TestTodoTool_ListTodos_Empty(t *testing.T) {
 	t.Parallel()
 	tool := New()
 
-	result, err := tool.handler.listTodos(t.Context(), tools.ToolCall{})
+	result, err := tool.handler.listTodos(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	var output ListTodosOutput

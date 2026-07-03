@@ -41,7 +41,7 @@ func (t *toolCallTracker) record(info ToolCallInfo) {
 	t.calls = append(t.calls, info)
 }
 
-func (c *codeModeTool) runJavascript(ctx context.Context, script string) (ScriptResult, error) {
+func (c *codeModeTool) runJavascript(ctx context.Context, rt tools.Runtime, script string) (ScriptResult, error) {
 	vm := goja.New()
 	tracker := &toolCallTracker{}
 
@@ -83,7 +83,7 @@ func (c *codeModeTool) runJavascript(ctx context.Context, script string) (Script
 		}
 
 		for _, tool := range allTools {
-			_ = vm.Set(tool.Name, callTool(ctx, tool, tracker))
+			_ = vm.Set(tool.Name, callTool(ctx, rt, tool, tracker))
 		}
 	}
 
@@ -115,9 +115,12 @@ func (c *codeModeTool) runJavascript(ctx context.Context, script string) (Script
 	}, nil
 }
 
-func callTool(ctx context.Context, tool tools.Tool, tracker *toolCallTracker) func(args map[string]any) (string, error) {
+// callTool wraps a tool as a goja-callable function. rt is forwarded to the
+// inner handler so nested tools keep their runtime capabilities (streaming
+// output, recall) when invoked from a script.
+func callTool(ctx context.Context, rt tools.Runtime, tool tools.Tool, tracker *toolCallTracker) func(args map[string]any) (string, error) {
 	return func(args map[string]any) (string, error) {
-		output, filtered, err := invokeTool(ctx, tool, args)
+		output, filtered, err := invokeTool(ctx, rt, tool, args)
 
 		info := ToolCallInfo{
 			Name:      tool.Name,
@@ -136,7 +139,7 @@ func callTool(ctx context.Context, tool tools.Tool, tracker *toolCallTracker) fu
 
 // invokeTool calls a single tool handler, filtering out nil optional arguments.
 // It returns the output, the filtered arguments actually sent, and any error.
-func invokeTool(ctx context.Context, tool tools.Tool, args map[string]any) (string, map[string]any, error) {
+func invokeTool(ctx context.Context, rt tools.Runtime, tool tools.Tool, args map[string]any) (string, map[string]any, error) {
 	if tool.Handler == nil {
 		return "", args, fmt.Errorf("tool %q is not available in code mode", tool.Name)
 	}
@@ -166,7 +169,7 @@ func invokeTool(ctx context.Context, tool tools.Tool, args map[string]any) (stri
 			Name:      tool.Name,
 			Arguments: string(arguments),
 		},
-	})
+	}, rt)
 	if err != nil {
 		return "", filtered, err
 	}

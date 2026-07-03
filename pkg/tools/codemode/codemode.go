@@ -84,8 +84,8 @@ func (c *codeModeTool) Tools(ctx context.Context) ([]tools.Tool, error) {
 		Category:    "code mode",
 		Description: prompt + strings.Join(functionsDoc, "\n"),
 		Parameters:  tools.MustSchemaFor[RunToolsWithJavascriptArgs](),
-		Handler: tools.NewHandler(func(ctx context.Context, args RunToolsWithJavascriptArgs) (*tools.ToolCallResult, error) {
-			result, err := c.runJavascript(ctx, args.Script)
+		Handler: tools.NewRuntimeHandler(func(ctx context.Context, args RunToolsWithJavascriptArgs, rt tools.Runtime) (*tools.ToolCallResult, error) {
+			result, err := c.runJavascript(ctx, rt, args.Script)
 			if err != nil {
 				return nil, err
 			}

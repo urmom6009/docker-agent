@@ -35,7 +35,7 @@ var (
 	_ tools.Instructable = (*ToolSet)(nil)
 )
 
-func (t *ToolSet) callTool(ctx context.Context, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
+func (t *ToolSet) callTool(ctx context.Context, toolCall tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 	endpoint := t.expander.Expand(ctx, t.config.Endpoint, nil)
 	headers := t.expander.ExpandMap(ctx, t.config.Headers)
 

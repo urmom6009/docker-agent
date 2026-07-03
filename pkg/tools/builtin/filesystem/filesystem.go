@@ -881,7 +881,7 @@ func countTreeNodes(node *fsx.TreeNode) (files, dirs int) {
 // This bypasses tools.NewHandler because Go's json.Unmarshal scanner rejects
 // structurally invalid JSON before calling any custom UnmarshalJSON method.
 func (t *ToolSet) editFileHandler() tools.ToolHandler {
-	return func(ctx context.Context, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
+	return func(ctx context.Context, toolCall tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 		data := toolCall.Function.Arguments
 		if data == "" {
 			data = "{}"

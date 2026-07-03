@@ -77,7 +77,7 @@ func TestAPITool_GET(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"key": "mykey", "value": "myvalue"}`,
 		},
-	})
+	}, tools.NopRuntime{})
 
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"status":"ok"}`, result.Output)
@@ -98,7 +98,7 @@ func TestAPITool_POST(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"name":"John Doe","age":30}`,
 		},
-	})
+	}, tools.NopRuntime{})
 
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"status":"ok"}`, result.Output)
@@ -126,7 +126,7 @@ func TestAPITool_Headers(t *testing.T) {
 		},
 	}, testExpander())
 
-	result, err := tool.callTool(t.Context(), tools.ToolCall{})
+	result, err := tool.callTool(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"status":"ok"}`, result.Output)
@@ -148,7 +148,7 @@ func TestAPITool_IdentityHeaders(t *testing.T) {
 		Endpoint: ts.serverURL,
 	}, testExpander())
 
-	_, err := tool.callTool(t.Context(), tools.ToolCall{})
+	_, err := tool.callTool(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 
 	assert.Equal(t, useragent.Header, ts.receivedHeaders.Get("User-Agent"))
@@ -228,7 +228,7 @@ func TestAPITool_RejectsLocalAddresses(t *testing.T) {
 				Endpoint: target,
 			}, testExpander())
 
-			_, err := tool.callTool(t.Context(), tools.ToolCall{})
+			_, err := tool.callTool(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "non-public address")
 		})
@@ -246,7 +246,7 @@ func TestAPITool_AllowPrivateIPsRestoresLegacyBehaviour(t *testing.T) {
 		Endpoint: ts.serverURL,
 	}, testExpander(), WithAllowPrivateIPs(true))
 
-	_, err := tool.callTool(t.Context(), tools.ToolCall{})
+	_, err := tool.callTool(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err, "WithAllowPrivateIPs(true) must permit dialling 127.0.0.1")
 }
 
@@ -264,7 +264,7 @@ func TestAPITool_TimeoutHonoured(t *testing.T) {
 		Endpoint: slow.URL,
 	}, testExpander(), WithAllowPrivateIPs(true), WithTimeout(50*time.Millisecond))
 
-	_, err := tool.callTool(t.Context(), tools.ToolCall{})
+	_, err := tool.callTool(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.Error(t, err)
 }
 
@@ -298,7 +298,7 @@ func TestAPITool_LazyReplaceHeaders(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"value": "myvalue"}`,
 		},
-	})
+	}, tools.NopRuntime{})
 
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"status":"ok"}`, result.Output)

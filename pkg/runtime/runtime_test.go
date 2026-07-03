@@ -565,8 +565,8 @@ func TestProcessToolCallsRecallEnqueuesSteeringMessage(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "recall_tool",
 		Parameters: map[string]any{},
-		Handler: func(ctx context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
-			require.True(t, tools.EmitRecall(ctx, recallMessage))
+		Handler: func(ctx context.Context, _ tools.ToolCall, rt tools.Runtime) (*tools.ToolCallResult, error) {
+			require.NoError(t, rt.Recall(ctx, recallMessage))
 			return tools.ResultSuccess("started"), nil
 		},
 	}}
@@ -1967,7 +1967,7 @@ func TestPermissions_DenyBlocksToolExecution(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "dangerous_tool",
 		Parameters: map[string]any{},
-		Handler: func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(ctx context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("executed"), nil
 		},
 	}}
@@ -2001,7 +2001,7 @@ func TestPermissions_AllowAutoApprovesTool(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "safe_tool",
 		Parameters: map[string]any{},
-		Handler: func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(ctx context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			executed = true
 			return tools.ResultSuccess("executed"), nil
 		},
@@ -2068,7 +2068,7 @@ func TestPermissions_DenyTakesPriorityOverAllow(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "forbidden_tool",
 		Parameters: map[string]any{},
-		Handler: func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(ctx context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("executed"), nil
 		},
 	}}
@@ -2118,7 +2118,7 @@ func TestSessionPermissions_DenyBlocksToolExecution(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "blocked_tool",
 		Parameters: map[string]any{},
-		Handler: func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(ctx context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("executed"), nil
 		},
 	}}
@@ -2147,7 +2147,7 @@ func TestSessionPermissions_AllowAutoApprovesTool(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "allowed_tool",
 		Parameters: map[string]any{},
-		Handler: func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(ctx context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			executed = true
 			return tools.ResultSuccess("executed"), nil
 		},
@@ -2221,7 +2221,7 @@ func TestSessionPermissions_TakePriorityOverTeamPermissions(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "overridden_tool",
 		Parameters: map[string]any{},
-		Handler: func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(ctx context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("executed"), nil
 		},
 	}}
@@ -2250,7 +2250,7 @@ func TestToolRejectionWithReason(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "shell",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			t.Fatal("tool should not be executed when rejected")
 			return nil, nil
 		},
@@ -2308,7 +2308,7 @@ func TestToolRejectionWithoutReason(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "shell",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			t.Fatal("tool should not be executed when rejected")
 			return nil, nil
 		},
@@ -2529,7 +2529,7 @@ func TestYoloMode_OverridesPermissionsDeny(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "dangerous_tool",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			executed = true
 			return tools.ResultSuccess("executed"), nil
 		},
@@ -2577,7 +2577,7 @@ func TestYoloMode_OverridesForceAsk(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "careful_tool",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			executed = true
 			return tools.ResultSuccess("executed"), nil
 		},
@@ -2621,7 +2621,7 @@ func TestYoloMode_OverridesSessionDeny(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "blocked_tool",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			executed = true
 			return tools.ResultSuccess("executed"), nil
 		},
@@ -2930,7 +2930,7 @@ func TestProcessToolCalls_UsesPinnedAgent(t *testing.T) {
 	workerTool := tools.Tool{
 		Name:       "worker_tool",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			executed = true
 			return tools.ResultSuccess("ok"), nil
 		},
@@ -3296,7 +3296,7 @@ func TestReprobe_NewToolsAvailableAfterToolCall(t *testing.T) {
 	installTool := tools.Tool{
 		Name:       "install_mcp",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("installed"), nil
 		},
 	}
@@ -3374,7 +3374,7 @@ func TestReprobe_NoChangeMeansNoExtraEvents(t *testing.T) {
 	staticTool := tools.Tool{
 		Name:       "do_thing",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("done"), nil
 		},
 	}
@@ -4014,7 +4014,7 @@ func TestPostToolHookReceivesToolResult(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "echo_tool",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("actual tool output"), nil
 		},
 	}}
@@ -4068,7 +4068,7 @@ func TestPostToolHookEmitsLifecycleEvents(t *testing.T) {
 	agentTools := []tools.Tool{{
 		Name:       "echo_tool",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("ok"), nil
 		},
 	}}
@@ -4343,7 +4343,7 @@ func TestEmptyTrailingTurnAfterToolCallsIsSilent(t *testing.T) {
 	doneTool := tools.Tool{
 		Name:       "do_thing",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("done"), nil
 		},
 	}

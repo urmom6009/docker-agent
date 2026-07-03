@@ -66,7 +66,7 @@ func TestToolSetStreamingWithAllowPrivateIPs(t *testing.T) {
 		t.Fatalf("Tools() returned %d tools, want 1", len(toolList))
 	}
 
-	result, err := toolList[0].Handler(t.Context(), tools.ToolCall{Function: tools.FunctionCall{Arguments: `{"message":"hello"}`}})
+	result, err := toolList[0].Handler(t.Context(), tools.ToolCall{Function: tools.FunctionCall{Arguments: `{"message":"hello"}`}}, tools.NopRuntime{})
 	if err != nil {
 		t.Fatalf("Handler() error = %v", err)
 	}

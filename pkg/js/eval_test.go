@@ -15,13 +15,13 @@ func TestEvaluate(t *testing.T) {
 	mockTools := []tools.Tool{
 		{
 			Name: "echo",
-			Handler: func(_ context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+			Handler: func(_ context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 				return tools.ResultSuccess("echoed: " + tc.Function.Arguments), nil
 			},
 		},
 		{
 			Name: "shell",
-			Handler: func(_ context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+			Handler: func(_ context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 				return tools.ResultSuccess("output: " + tc.Function.Arguments), nil
 			},
 		},

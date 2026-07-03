@@ -191,7 +191,7 @@ func TestNewScript_NumberArg(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"message": "hello", "count": 3}`,
 		},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.False(t, result.IsError, "unexpected error: %s", result.Output)
 	assert.Equal(t, "hello\nhello\nhello\n", result.Output)
@@ -228,7 +228,7 @@ func TestScriptShellTool_DropsUndeclaredArgs(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: `{"name": "alice", "LD_PRELOAD": "/tmp/evil.so"}`,
 		},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.False(t, result.IsError, "unexpected error: %s", result.Output)
 	assert.Contains(t, result.Output, "name=alice")
@@ -261,7 +261,7 @@ func TestScriptShellTool_PerToolEnvAndWorkingDir(t *testing.T) {
 
 	result, err := allTools[0].Handler(t.Context(), tools.ToolCall{
 		Function: tools.FunctionCall{Arguments: `{}`},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "unexpected error: %s", result.Output)
 
@@ -316,7 +316,7 @@ func TestCreateScriptToolSet_EnvPrecedence(t *testing.T) {
 
 	result, err := allTools[0].Handler(t.Context(), tools.ToolCall{
 		Function: tools.FunctionCall{Arguments: `{"SCRIPT_PREC_ARG": "from-arg"}`},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "unexpected error: %s", result.Output)
 	// `env` prints the spawned process's effective environment, i.e. what
@@ -345,7 +345,7 @@ func TestScriptShellTool_PerToolEnvOverridesToolsetEnv(t *testing.T) {
 
 	result, err := allTools[0].Handler(t.Context(), tools.ToolCall{
 		Function: tools.FunctionCall{Arguments: `{}`},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 	require.False(t, result.IsError, "unexpected error: %s", result.Output)
 	assert.Equal(t, "per-tool", result.Output)
@@ -377,7 +377,7 @@ func TestScriptShellTool_RejectsNULInValue(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: "{\"name\": \"alice\\u0000extra\"}",
 		},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.True(t, result.IsError)
 	assert.Contains(t, result.Output, "NUL byte")

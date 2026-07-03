@@ -23,7 +23,16 @@ type ToolSet interface {
 // tool_input_repaired log entry so per-(model, tool) repair rates can be
 // tracked.
 func NewHandler[T any](fn func(context.Context, T) (*ToolCallResult, error)) ToolHandler {
-	return func(ctx context.Context, toolCall ToolCall) (*ToolCallResult, error) {
+	return NewRuntimeHandler(func(ctx context.Context, params T, _ Runtime) (*ToolCallResult, error) {
+		return fn(ctx, params)
+	})
+}
+
+// NewRuntimeHandler is [NewHandler] for tools that talk back to the hosting
+// runtime (streaming output, recall). The typed function additionally
+// receives the per-call [Runtime] handle.
+func NewRuntimeHandler[T any](fn func(context.Context, T, Runtime) (*ToolCallResult, error)) ToolHandler {
+	return func(ctx context.Context, toolCall ToolCall, rt Runtime) (*ToolCallResult, error) {
 		var params T
 		args := toolCall.Function.Arguments
 		if args == "" {
@@ -39,86 +48,13 @@ func NewHandler[T any](fn func(context.Context, T) (*ToolCallResult, error)) Too
 		if err != nil {
 			return nil, err
 		}
-		return fn(ctx, params)
+		return fn(ctx, params, rt)
 	}
 }
 
-type ToolHandler func(ctx context.Context, toolCall ToolCall) (*ToolCallResult, error)
-
-// ToolOutputEmitter receives incremental output from a running tool. Tool
-// handlers can retrieve the emitter from their context and call it whenever
-// command output or other long-running progress is available.
-type ToolOutputEmitter func(output string)
-
-// ToolRecallEmitter receives messages that should be injected back into the
-// running agent loop, typically when background work completes after the tool
-// call that started it has already returned.
-type ToolRecallEmitter func(message string) bool
-
-type (
-	toolOutputEmitterKey struct{}
-	toolRecallEmitterKey struct{}
-)
-
-// WithToolOutputEmitter returns a context carrying emit as the callback used
-// by tool handlers to stream incremental output. A nil emitter leaves ctx
-// unchanged.
-func WithToolOutputEmitter(ctx context.Context, emit ToolOutputEmitter) context.Context {
-	if emit == nil {
-		return ctx
-	}
-	return context.WithValue(ctx, toolOutputEmitterKey{}, emit)
-}
-
-// ToolOutputEmitterFromContext returns the incremental-output emitter attached
-// to ctx, if any.
-func ToolOutputEmitterFromContext(ctx context.Context) (ToolOutputEmitter, bool) {
-	emit, ok := ctx.Value(toolOutputEmitterKey{}).(ToolOutputEmitter)
-	return emit, ok
-}
-
-// WithToolRecallEmitter returns a context carrying emit as the callback used
-// by tool handlers to steer the running agent loop when background work
-// finishes. A nil emitter leaves ctx unchanged.
-func WithToolRecallEmitter(ctx context.Context, emit ToolRecallEmitter) context.Context {
-	if emit == nil {
-		return ctx
-	}
-	return context.WithValue(ctx, toolRecallEmitterKey{}, emit)
-}
-
-// ToolRecallEmitterFromContext returns the recall emitter attached to ctx, if any.
-func ToolRecallEmitterFromContext(ctx context.Context) (ToolRecallEmitter, bool) {
-	emit, ok := ctx.Value(toolRecallEmitterKey{}).(ToolRecallEmitter)
-	return emit, ok
-}
-
-// EmitOutput streams output through the emitter in ctx. It returns false when
-// no emitter is attached or output is empty.
-func EmitOutput(ctx context.Context, output string) bool {
-	if output == "" {
-		return false
-	}
-	emit, ok := ToolOutputEmitterFromContext(ctx)
-	if !ok {
-		return false
-	}
-	emit(output)
-	return true
-}
-
-// EmitRecall sends message through the recall emitter in ctx. It returns false
-// when no emitter is attached, message is empty, or the emitter rejects it.
-func EmitRecall(ctx context.Context, message string) bool {
-	if message == "" {
-		return false
-	}
-	emit, ok := ToolRecallEmitterFromContext(ctx)
-	if !ok {
-		return false
-	}
-	return emit(message)
-}
+// ToolHandler executes a single tool call. rt is the handle back to the
+// hosting runtime; hosts without one pass [NopRuntime].
+type ToolHandler func(ctx context.Context, toolCall ToolCall, rt Runtime) (*ToolCallResult, error)
 
 type ToolCall struct {
 	ID       string       `json:"id,omitempty"`

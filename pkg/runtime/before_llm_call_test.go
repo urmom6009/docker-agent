@@ -107,7 +107,7 @@ func TestMaxIterationsBuiltin_TripsAfterConfiguredLimit(t *testing.T) {
 	loopTool := tools.Tool{
 		Name:       "do_thing",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("ok"), nil
 		},
 	}

@@ -197,8 +197,8 @@ func (t *ScriptToolSet) Tools(context.Context) ([]tools.Tool, error) {
 			Description:  description,
 			Parameters:   inputSchema,
 			OutputSchema: tools.MustSchemaFor[string](),
-			Handler: func(ctx context.Context, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
-				return t.execute(ctx, &cfg, toolCall)
+			Handler: func(ctx context.Context, toolCall tools.ToolCall, rt tools.Runtime) (*tools.ToolCallResult, error) {
+				return t.execute(ctx, rt, &cfg, toolCall)
 			},
 		})
 	}
@@ -206,7 +206,7 @@ func (t *ScriptToolSet) Tools(context.Context) ([]tools.Tool, error) {
 	return toolsList, nil
 }
 
-func (t *ScriptToolSet) execute(ctx context.Context, toolConfig *latest.ScriptShellToolConfig, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
+func (t *ScriptToolSet) execute(ctx context.Context, rt tools.Runtime, toolConfig *latest.ScriptShellToolConfig, toolCall tools.ToolCall) (*tools.ToolCallResult, error) {
 	var params map[string]any
 	if toolCall.Function.Arguments != "" {
 		if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &params); err != nil {
@@ -272,7 +272,7 @@ func (t *ScriptToolSet) execute(ctx context.Context, toolConfig *latest.ScriptSh
 	}
 	cmd.Env = envCopy
 
-	output := newCommandOutput(ctx)
+	output := newCommandOutput(ctx, rt)
 	cmd.Stdout = output
 	cmd.Stderr = output
 

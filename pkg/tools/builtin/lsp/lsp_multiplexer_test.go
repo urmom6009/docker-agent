@@ -45,7 +45,7 @@ func callHover(t *testing.T, mux *Multiplexer, args string) *tools.ToolCallResul
 	require.NoError(t, err)
 	hover := findTool(t, allTools, ToolNameLSPHover)
 	tc := tools.ToolCall{Function: tools.FunctionCall{Name: ToolNameLSPHover, Arguments: args}}
-	result, err := hover.Handler(t.Context(), tc)
+	result, err := hover.Handler(t.Context(), tc, tools.NopRuntime{})
 	require.NoError(t, err)
 	return result
 }
@@ -136,7 +136,7 @@ func TestLSPMultiplexer_WorkspaceToolBroadcasts(t *testing.T) {
 
 	args, _ := json.Marshal(WorkspaceArgs{})
 	tc := tools.ToolCall{Function: tools.FunctionCall{Name: ToolNameLSPWorkspace, Arguments: string(args)}}
-	result, err := workspace.Handler(t.Context(), tc)
+	result, err := workspace.Handler(t.Context(), tc, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.NotEmpty(t, result.Output)
 }

@@ -986,7 +986,7 @@ func TestFetch_LazyReplaceHeaders(t *testing.T) {
 		Function: tools.FunctionCall{
 			Arguments: fmt.Sprintf(`{"urls": [%q], "format": "text"}`, server.URL),
 		},
-	})
+	}, tools.NopRuntime{})
 
 	require.NoError(t, err)
 	assert.Contains(t, result.Output, `header value: "REFRESHED"`)

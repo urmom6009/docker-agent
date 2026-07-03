@@ -463,7 +463,7 @@ func (t *ToolSet) readPlan(ctx context.Context, params ReadPlanArgs) (*tools.Too
 	return tools.ResultJSON(plan), nil
 }
 
-func (t *ToolSet) listPlans(ctx context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+func (t *ToolSet) listPlans(ctx context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 	plans, warnings, err := t.storage.List(ctx)
 	if err != nil {
 		return tools.ResultError(err.Error()), nil

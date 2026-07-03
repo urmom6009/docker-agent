@@ -141,7 +141,7 @@ func (m *Multiplexer) Tools(ctx context.Context) ([]tools.Tool, error) {
 // routeByFile returns a handler that extracts the "file" field from the JSON
 // arguments and dispatches to the backend whose file-type filter matches.
 func routeByFile(handlers []lspRouteTarget) tools.ToolHandler {
-	return func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+	return func(ctx context.Context, tc tools.ToolCall, rt tools.Runtime) (*tools.ToolCallResult, error) {
 		var args struct {
 			File string `json:"file"`
 		}
@@ -153,7 +153,7 @@ func routeByFile(handlers []lspRouteTarget) tools.ToolHandler {
 		}
 		for _, h := range handlers {
 			if h.lsp.HandlesFile(args.File) {
-				return h.handler(ctx, tc)
+				return h.handler(ctx, tc, rt)
 			}
 		}
 		return tools.ResultError("no LSP server configured for file: " + args.File), nil
@@ -164,11 +164,11 @@ func routeByFile(handlers []lspRouteTarget) tools.ToolHandler {
 // merges the outputs. Individual backend failures are collected rather than
 // aborting the entire operation.
 func broadcastLSP(handlers []lspRouteTarget) tools.ToolHandler {
-	return func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+	return func(ctx context.Context, tc tools.ToolCall, rt tools.Runtime) (*tools.ToolCallResult, error) {
 		var sections []string
 		var errs []error
 		for _, h := range handlers {
-			result, err := h.handler(ctx, tc)
+			result, err := h.handler(ctx, tc, rt)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("backend %s: %w", h.lsp.handler.command, err))
 				continue

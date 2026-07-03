@@ -348,7 +348,7 @@ func TestTurnEndFiresEveryIteration(t *testing.T) {
 	noopTool := tools.Tool{
 		Name:       "noop",
 		Parameters: map[string]any{},
-		Handler: func(_ context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess("ok"), nil
 		},
 	}

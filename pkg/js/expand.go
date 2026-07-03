@@ -194,7 +194,7 @@ func createToolCaller(ctx context.Context, tool tools.Tool) func(args map[string
 			return "", fmt.Errorf("tool '%s' has no handler", tool.Name)
 		}
 
-		result, err := tool.Handler(ctx, toolCall)
+		result, err := tool.Handler(ctx, toolCall, tools.NopRuntime{})
 		if err != nil {
 			return "", err
 		}

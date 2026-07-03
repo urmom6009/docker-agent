@@ -225,7 +225,7 @@ func TestPlanTool_ListPlans(t *testing.T) {
 	_, err = tool.writePlan(t.Context(), WritePlanArgs{Name: "alpha", Content: "a", Author: "y"})
 	require.NoError(t, err)
 
-	result, err := tool.listPlans(t.Context(), tools.ToolCall{})
+	result, err := tool.listPlans(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.False(t, result.IsError)
 
@@ -242,7 +242,7 @@ func TestPlanTool_ListEmpty(t *testing.T) {
 	t.Parallel()
 	tool := newTestPlanTool(t)
 
-	result, err := tool.listPlans(t.Context(), tools.ToolCall{})
+	result, err := tool.listPlans(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.False(t, result.IsError)
 
@@ -262,7 +262,7 @@ func TestPlanTool_ListSkipsCorrupt(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "bad.json"), []byte("{nope"), 0o600))
 
-	result, err := tool.listPlans(t.Context(), tools.ToolCall{})
+	result, err := tool.listPlans(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.False(t, result.IsError)
 
@@ -286,7 +286,7 @@ func TestPlanTool_ListNameFromFilename(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "real-name.json"), data, 0o600))
 
-	result, err := tool.listPlans(t.Context(), tools.ToolCall{})
+	result, err := tool.listPlans(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.False(t, result.IsError)
 
@@ -432,7 +432,7 @@ func TestPlanTool_ListNilNormalizedToEmptyArray(t *testing.T) {
 	t.Parallel()
 	tool := New(WithStorage(noBumpStorage{}))
 
-	result, err := tool.listPlans(t.Context(), tools.ToolCall{})
+	result, err := tool.listPlans(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.False(t, result.IsError)
 	assert.Contains(t, result.Output, `"plans":[]`)
@@ -457,7 +457,7 @@ func TestPlanTool_StorageErrorsSurfaceAsIsError(t *testing.T) {
 	assert.True(t, read.IsError)
 	assert.Contains(t, read.Output, "backend boom")
 
-	list, err := tool.listPlans(ctx, tools.ToolCall{})
+	list, err := tool.listPlans(ctx, tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 	assert.True(t, list.IsError)
 	assert.Contains(t, list.Output, "backend boom")
@@ -873,7 +873,7 @@ func TestPlanTool_ListIncludesStatus(t *testing.T) {
 	_, err := tool.writePlan(t.Context(), WritePlanArgs{Name: "p", Content: "x", Status: "review"})
 	require.NoError(t, err)
 
-	result, err := tool.listPlans(t.Context(), tools.ToolCall{})
+	result, err := tool.listPlans(t.Context(), tools.ToolCall{}, tools.NopRuntime{})
 	require.NoError(t, err)
 	var list ListResult
 	require.NoError(t, json.Unmarshal([]byte(result.Output), &list))

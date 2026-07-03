@@ -108,7 +108,7 @@ func TestDispatcher_RoutesToToolsetHandler(t *testing.T) {
 	var handlerCalls int
 	tool := tools.Tool{
 		Name: "echo",
-		Handler: func(_ context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(_ context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			handlerCalls++
 			return tools.ResultSuccess("hello " + tc.Function.Arguments), nil
 		},
@@ -142,7 +142,7 @@ func TestDispatcher_RunsToolHandlersInParallel(t *testing.T) {
 	var maxRunning atomic.Int32
 	tool := tools.Tool{
 		Name: "slow",
-		Handler: func(ctx context.Context, tc tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(ctx context.Context, tc tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 			current := running.Add(1)
 			for {
 				observed := maxRunning.Load()
@@ -199,9 +199,9 @@ func TestDispatcher_EmitsToolOutputFromHandlerContext(t *testing.T) {
 
 	tool := tools.Tool{
 		Name: "streamer",
-		Handler: func(ctx context.Context, _ tools.ToolCall) (*tools.ToolCallResult, error) {
-			tools.EmitOutput(ctx, "first\n")
-			tools.EmitOutput(ctx, "second\n")
+		Handler: func(ctx context.Context, _ tools.ToolCall, rt tools.Runtime) (*tools.ToolCallResult, error) {
+			rt.EmitOutput(ctx, "first\n")
+			rt.EmitOutput(ctx, "second\n")
 			return tools.ResultSuccess("done"), nil
 		},
 	}
@@ -228,7 +228,7 @@ func TestDispatcher_RecordsDocumentToolResult(t *testing.T) {
 
 	tool := tools.Tool{
 		Name: "report",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			return &tools.ToolCallResult{
 				Output: "created report",
 				Documents: []tools.DocumentContent{{
@@ -269,7 +269,7 @@ func TestDispatcher_RoutesToRuntimeHandler(t *testing.T) {
 	d := &toolexec.Dispatcher{
 		AgentFor: func(*session.Session) *agent.Agent { return a },
 		Handlers: map[string]toolexec.ToolHandler{
-			"transfer_task": func(_ context.Context, _ *session.Session, _ tools.ToolCall) (*tools.ToolCallResult, error) {
+			"transfer_task": func(_ context.Context, _ *session.Session, _ tools.ToolCall, _ tools.Runtime) (*tools.ToolCallResult, error) {
 				handlerCalls++
 				return tools.ResultSuccess("transferred"), nil
 			},
@@ -281,7 +281,7 @@ func TestDispatcher_RoutesToRuntimeHandler(t *testing.T) {
 	// for the same name.
 	tool := tools.Tool{
 		Name: "transfer_task",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			t.Fatal("toolset handler must not be called when runtime handler exists")
 			return nil, nil
 		},
@@ -333,7 +333,9 @@ func TestDispatcher_UserCancellationStopsBatchAndErrorsAllCalls(t *testing.T) {
 	tool := tools.Tool{
 		Name:     "shell",
 		Category: "shell",
-		Handler:  func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) { panic("must not run") },
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
+			panic("must not run")
+		},
 	}
 
 	// Cancel as soon as the dispatcher asks for confirmation on the first
@@ -369,7 +371,7 @@ func TestDispatcher_ResumeApproveRunsTool(t *testing.T) {
 	var ran bool
 	tool := tools.Tool{
 		Name: "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			ran = true
 			return tools.ResultSuccess("done"), nil
 		},
@@ -402,8 +404,10 @@ func TestDispatcher_ResumeRejectEmitsErrorResponseWithReason(t *testing.T) {
 	sess := session.New()
 
 	tool := tools.Tool{
-		Name:    "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) { panic("must not run") },
+		Name: "shell",
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
+			panic("must not run")
+		},
 	}
 
 	resume := make(chan toolexec.ResumeRequest, 1)
@@ -434,7 +438,7 @@ func TestDispatcher_ResumeApproveToolPersistsToSessionPermissions(t *testing.T) 
 	var ran bool
 	tool := tools.Tool{
 		Name: "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			ran = true
 			return tools.ResultSuccess("ok"), nil
 		},
@@ -470,7 +474,7 @@ func TestDispatcher_ReadOnlyHintAutoApproves(t *testing.T) {
 		Annotations: tools.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			ran = true
 			return tools.ResultSuccess("contents"), nil
 		},
@@ -498,8 +502,10 @@ func TestDispatcher_DenyByPermissionsEmitsErrorResponse(t *testing.T) {
 	sess := session.New()
 
 	tool := tools.Tool{
-		Name:    "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) { panic("must not run") },
+		Name: "shell",
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
+			panic("must not run")
+		},
 	}
 
 	d := &toolexec.Dispatcher{
@@ -542,7 +548,7 @@ func TestDispatcher_ToolResponseTransformRewritesOutput(t *testing.T) {
 	tool := tools.Tool{
 		Name:     "leaky",
 		Category: "filesystem",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess(original), nil
 		},
 	}
@@ -594,7 +600,7 @@ func TestDispatcher_ToolResponseTransformIsNoOpWithoutHooks(t *testing.T) {
 	tool := tools.Tool{
 		Name:     "leaky",
 		Category: "filesystem",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			return tools.ResultSuccess(original), nil
 		},
 	}
@@ -629,8 +635,10 @@ func TestDispatcher_ToolResponseTransformAppliesToErrorResponse(t *testing.T) {
 	sess := session.New()
 
 	tool := tools.Tool{
-		Name:    "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) { panic("must not run") },
+		Name: "shell",
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
+			panic("must not run")
+		},
 	}
 
 	rewritten := "rejected with [REDACTED] secret"
@@ -673,7 +681,9 @@ func TestDispatcher_ConfirmationCarriesToolMetadata(t *testing.T) {
 	tool := tools.Tool{
 		Name:     "shell",
 		Metadata: map[string]string{"danger": "high", "category": "exec"},
-		Handler:  func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) { panic("must not run") },
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
+			panic("must not run")
+		},
 	}
 
 	resume := make(chan toolexec.ResumeRequest, 1)
@@ -706,7 +716,9 @@ func TestDispatcher_ConfirmationMergesHookMetadata(t *testing.T) {
 	tool := tools.Tool{
 		Name:     "shell",
 		Metadata: map[string]string{"danger": "high", "source": "toolset"},
-		Handler:  func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) { panic("must not run") },
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
+			panic("must not run")
+		},
 	}
 
 	// Hook allows the prompt to proceed (no short-circuit) but contributes
@@ -752,8 +764,10 @@ func TestDispatcher_ConfirmationMetadataNilWhenNoneSupplied(t *testing.T) {
 	sess := session.New()
 
 	tool := tools.Tool{
-		Name:    "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) { panic("must not run") },
+		Name: "shell",
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
+			panic("must not run")
+		},
 	}
 
 	resume := make(chan toolexec.ResumeRequest, 1)
@@ -788,7 +802,7 @@ func TestDispatcher_PreToolUsePreYoloAskPreemptsYolo(t *testing.T) {
 
 	tool := tools.Tool{
 		Name: "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			panic("must not run before approval")
 		},
 	}
@@ -847,7 +861,7 @@ func TestDispatcher_PreToolUsePreYoloDenyShortCircuits(t *testing.T) {
 
 	tool := tools.Tool{
 		Name: "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			panic("must not run when denied")
 		},
 	}
@@ -894,7 +908,7 @@ func TestDispatcher_PreToolUsePreYoloAllowIsAdvisory(t *testing.T) {
 	ran := false
 	tool := tools.Tool{
 		Name: "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			ran = true
 			return tools.ResultSuccess("ok"), nil
 		},
@@ -941,7 +955,7 @@ func TestDispatcher_PreToolUseDefaultLaneSkippedUnderYolo(t *testing.T) {
 	ran := false
 	tool := tools.Tool{
 		Name: "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			ran = true
 			return tools.ResultSuccess("ok"), nil
 		},
@@ -993,7 +1007,7 @@ func TestDispatcher_NonInteractiveAskAutoDenies(t *testing.T) {
 
 	tool := tools.Tool{
 		Name: "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			panic("must not run when denied")
 		},
 	}
@@ -1039,7 +1053,7 @@ func TestDispatcher_NonInteractiveDefaultAskAutoDenies(t *testing.T) {
 
 	tool := tools.Tool{
 		Name: "shell",
-		Handler: func(context.Context, tools.ToolCall) (*tools.ToolCallResult, error) {
+		Handler: func(context.Context, tools.ToolCall, tools.Runtime) (*tools.ToolCallResult, error) {
 			panic("must not run when denied")
 		},
 	}

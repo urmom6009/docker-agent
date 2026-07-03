@@ -117,7 +117,7 @@ func callTool(t *testing.T, tool tools.Tool, args string) *tools.ToolCallResult 
 	t.Helper()
 	result, err := tool.Handler(t.Context(), tools.ToolCall{
 		Function: tools.FunctionCall{Arguments: args},
-	})
+	}, tools.NopRuntime{})
 	require.NoError(t, err)
 	return result
 }
