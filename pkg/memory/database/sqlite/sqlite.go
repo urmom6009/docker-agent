@@ -42,14 +42,15 @@ func startMemorySpan(ctx context.Context, op string) (context.Context, trace.Spa
 }
 
 type MemoryDatabase struct {
-	path string
+	path     string
+	lockPath string
 
 	mu sync.Mutex
 	db *sql.DB
 }
 
 func NewMemoryDatabase(path string) (database.Database, error) {
-	return &MemoryDatabase{path: path}, nil
+	return &MemoryDatabase{path: path, lockPath: database.LockPathForDatabase(path)}, nil
 }
 
 func (m *MemoryDatabase) ensureDB(ctx context.Context) (*sql.DB, error) {
@@ -63,6 +64,13 @@ func (m *MemoryDatabase) ensureDB(ctx context.Context) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	lock := database.NewFileLock(m.lockPath)
+	if err := lock.Lock(ctx); err != nil {
+		db.Close()
+		return nil, err
+	}
+	defer func() { _ = lock.Unlock() }()
 
 	if _, err = db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS memories (id TEXT PRIMARY KEY, created_at TEXT, memory TEXT)"); err != nil {
 		db.Close()
@@ -87,9 +95,23 @@ func (m *MemoryDatabase) Close() error {
 	if m.db == nil {
 		return nil
 	}
-	err := m.db.Close()
+	err := sqliteutil.CheckpointAndClose(context.Background(), m.db)
 	m.db = nil
 	return err
+}
+
+func (m *MemoryDatabase) withWriteLock(ctx context.Context, fn func(*sql.DB) error) error {
+	db, err := m.ensureDB(ctx)
+	if err != nil {
+		return err
+	}
+
+	lock := database.NewFileLock(m.lockPath)
+	if err := lock.Lock(ctx); err != nil {
+		return err
+	}
+	defer func() { _ = lock.Unlock() }()
+	return fn(db)
 }
 
 func (m *MemoryDatabase) AddMemory(ctx context.Context, memory database.UserMemory) error {
@@ -99,14 +121,11 @@ func (m *MemoryDatabase) AddMemory(ctx context.Context, memory database.UserMemo
 	if memory.ID == "" {
 		return database.ErrEmptyID
 	}
-	db, err := m.ensureDB(ctx)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+	err := m.withWriteLock(ctx, func(db *sql.DB) error {
+		_, err := db.ExecContext(ctx, "INSERT INTO memories (id, created_at, memory, category) VALUES (?, ?, ?, ?)",
+			memory.ID, memory.CreatedAt, memory.Memory, memory.Category)
 		return err
-	}
-	_, err = db.ExecContext(ctx, "INSERT INTO memories (id, created_at, memory, category) VALUES (?, ?, ?, ?)",
-		memory.ID, memory.CreatedAt, memory.Memory, memory.Category)
+	})
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -149,13 +168,10 @@ func (m *MemoryDatabase) DeleteMemory(ctx context.Context, memory database.UserM
 	ctx, span := startMemorySpan(ctx, "delete")
 	defer span.End()
 
-	db, err := m.ensureDB(ctx)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+	err := m.withWriteLock(ctx, func(db *sql.DB) error {
+		_, err := db.ExecContext(ctx, "DELETE FROM memories WHERE id = ?", memory.ID)
 		return err
-	}
-	_, err = db.ExecContext(ctx, "DELETE FROM memories WHERE id = ?", memory.ID)
+	})
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -244,23 +260,21 @@ func (m *MemoryDatabase) UpdateMemory(ctx context.Context, memory database.UserM
 		return database.ErrEmptyID
 	}
 
-	db, err := m.ensureDB(ctx)
-	if err != nil {
-		return err
-	}
-	result, err := db.ExecContext(ctx, "UPDATE memories SET memory = ?, category = ? WHERE id = ?",
-		memory.Memory, memory.Category, memory.ID)
-	if err != nil {
-		return err
-	}
+	return m.withWriteLock(ctx, func(db *sql.DB) error {
+		result, err := db.ExecContext(ctx, "UPDATE memories SET memory = ?, category = ? WHERE id = ?",
+			memory.Memory, memory.Category, memory.ID)
+		if err != nil {
+			return err
+		}
 
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return fmt.Errorf("%w: %s", database.ErrMemoryNotFound, memory.ID)
-	}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
+			return fmt.Errorf("%w: %s", database.ErrMemoryNotFound, memory.ID)
+		}
 
-	return nil
+		return nil
+	})
 }
