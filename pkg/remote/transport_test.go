@@ -222,10 +222,11 @@ func TestFallbackTransport_ProxyRecoversAfterCooldown(t *testing.T) {
 	require.Equal(t, int32(1), ft.fakeProxy.calls.Load(), "proxy should be skipped during cooldown")
 	require.Equal(t, int32(2), ft.fakeDirect.calls.Load())
 
-	// Simulate the cooldown expiring by clearing the disabled marker directly
-	// (equivalent to time.Now() advancing past disabledUntilUnixNano). Also
-	// swap the proxy to a healthy variant so the retry succeeds.
-	ft.disabledUntilUnixNano.Store(0)
+	// Simulate the cooldown expiring by pushing the deadline into the past.
+	// This exercises the CompareAndSwap clear branch inside proxyEnabled(),
+	// rather than short-circuiting via a zero value. Also swap the proxy to
+	// a healthy variant so the retry succeeds.
+	ft.disabledUntilUnixNano.Store(time.Now().Add(-time.Second).UnixNano())
 	ft.fakeProxy = &countingRoundTripper{}
 
 	// Third request: cooldown has elapsed, proxy is probed again and succeeds.
