@@ -89,6 +89,8 @@ func (m *model) handleInterrupt() {
 			m.runCancel()
 		}
 		m.queue = nil
+		m.pendingUsers = nil
+		m.ignoredUsers = nil
 		m.transcript.addBlock(func(int) []string { return []string{stWarning().Render("⏹ Cancelled")} })
 	case !m.editor.isEmpty():
 		m.editor.reset()
@@ -102,11 +104,11 @@ func (m *model) handleEnter(ctx context.Context) {
 	if m.ac.active {
 		if cmd, ok := m.ac.current(); ok {
 			m.ac.dismiss()
-			m.submit(ctx, "/"+cmd.name)
+			m.submitEditor(ctx, "/"+cmd.name)
 			return
 		}
 	}
-	m.submit(ctx, m.editor.text())
+	m.submitEditor(ctx, m.editor.text())
 }
 
 func (m *model) handleTab() {
@@ -178,32 +180,48 @@ func (m *model) reportThinkingLevelError(action string, err error) {
 	m.addNotice("✗ ", fmt.Sprintf("Failed to %s thinking level: %v", action, err), stError())
 }
 
-func (m *model) submit(ctx context.Context, text string) {
+type busySubmitMode int
+
+const (
+	busySubmitSteer busySubmitMode = iota
+	busySubmitQueue
+)
+
+type submitOptions struct {
+	fromEditor bool
+	busyMode   busySubmitMode
+}
+
+func (m *model) submitEditor(ctx context.Context, text string) {
+	m.submit(ctx, text, submitOptions{fromEditor: true, busyMode: busySubmitSteer})
+}
+
+func (m *model) submitFollowUp(ctx context.Context, text string) {
+	m.submit(ctx, text, submitOptions{busyMode: busySubmitQueue})
+}
+
+func (m *model) submit(ctx context.Context, text string, opts submitOptions) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return
 	}
-	m.editor.rememberHistory(trimmed)
-	m.editor.reset()
-	m.ac.dismiss()
+	if opts.fromEditor {
+		m.editor.rememberHistory(trimmed)
+		m.editor.reset()
+		m.ac.dismiss()
+	}
 
-	if strings.HasPrefix(trimmed, "/") && m.handleSlash(ctx, trimmed) {
+	if strings.HasPrefix(trimmed, "/") && m.handleSlash(ctx, trimmed, opts.busyMode) {
 		return
 	}
 
-	m.addUserEcho(trimmed)
-
-	if m.app.IsReadOnly() {
-		m.addNotice("⚠ ", "This session is read-only.", stWarning())
-		return
-	}
-	m.enqueueOrRun(ctx, trimmed)
+	m.dispatchUserMessage(ctx, trimmed, trimmed, opts.busyMode)
 }
 
 // handleSlash dispatches a slash command. It returns true when the command was
 // fully handled (built-in, skill, or agent command) and false when the input
 // should be treated as a normal message.
-func (m *model) handleSlash(ctx context.Context, text string) bool {
+func (m *model) handleSlash(ctx context.Context, text string, mode busySubmitMode) bool {
 	name, rest := splitCommand(text)
 	switch name {
 	case "exit", "quit":
@@ -237,31 +255,45 @@ func (m *model) handleSlash(ctx context.Context, text string) bool {
 	}
 
 	if _, _, ok := m.app.LookupCommand(ctx, text); ok {
-		m.addUserEcho(text)
-		m.enqueueOrRun(ctx, m.app.ResolveInput(ctx, text))
+		m.dispatchUserMessage(ctx, text, m.app.ResolveInput(ctx, text), mode)
 		return true
 	}
 
 	if resolved, err := m.app.ResolveSkillCommand(ctx, text); err == nil && resolved != "" {
-		m.addUserEcho(text)
-		m.enqueueOrRun(ctx, resolved)
+		m.dispatchUserMessage(ctx, text, resolved, mode)
 		return true
 	}
 
 	return false
 }
 
-// enqueueOrRun starts a run immediately when idle, or queues the message to run
-// after the current response finishes.
-func (m *model) enqueueOrRun(ctx context.Context, message string) {
+func (m *model) dispatchUserMessage(ctx context.Context, display, content string, mode busySubmitMode) {
 	if m.app.IsReadOnly() {
+		m.addUserEcho(display)
+		m.addNotice("⚠ ", "This session is read-only.", stWarning())
 		return
 	}
 	if m.busy {
-		m.queue = append(m.queue, message)
+		if mode == busySubmitSteer {
+			if err := m.app.Steer(ctx, runtime.QueuedMessage{Content: content}); err != nil {
+				m.addNotice("⚠ ", "Could not steer current response: "+err.Error(), stWarning())
+				return
+			}
+			m.addPendingUser(display, content, pendingUserSteer)
+			return
+		}
+		m.enqueueFollowUp(display, content)
 		return
 	}
-	m.startRun(ctx, message, nil)
+	m.addUserEcho(display)
+	m.ignoreUserEcho(content)
+	m.startRun(ctx, content, nil)
+}
+
+func (m *model) enqueueFollowUp(display, content string) {
+	msg := pendingUserMessage{display: display, content: content, kind: pendingUserFollowUp}
+	m.queue = append(m.queue, msg)
+	m.pendingUsers = append(m.pendingUsers, msg)
 }
 
 func (m *model) sendFirstMessage(ctx context.Context, msg, attachPath string) {
@@ -273,20 +305,22 @@ func (m *model) sendFirstMessage(ctx context.Context, msg, attachPath string) {
 	}
 
 	trimmed := strings.TrimSpace(msg)
-	switch {
-	case trimmed != "":
-		m.addUserEcho(trimmed)
-	case len(atts) > 0:
-		m.addNotice("", "(attached "+atts[0].Name+")", stMuted())
-	default:
-		return
-	}
-
 	content := msg
 	if strings.HasPrefix(trimmed, "/") {
 		if resolved := m.app.ResolveInput(ctx, trimmed); resolved != "" {
 			content = resolved
 		}
+	}
+
+	switch {
+	case trimmed != "":
+		m.addUserEcho(trimmed)
+		m.ignoreUserEcho(content)
+	case len(atts) > 0:
+		m.addNotice("", "(attached "+atts[0].Name+")", stMuted())
+		m.ignoreUserEcho(content)
+	default:
+		return
 	}
 	m.startRun(ctx, content, atts)
 }
@@ -361,6 +395,8 @@ func (m *model) resetConversation() {
 	}
 	m.transcript.clearActive()
 	m.queue = nil
+	m.pendingUsers = nil
+	m.ignoredUsers = nil
 	m.busy = false
 	m.confirm = nil
 	m.usage.reset()
@@ -384,6 +420,40 @@ func (m *model) quit() {
 
 func (m *model) addUserEcho(text string) {
 	m.transcript.addBlock(func(w int) []string { return renderUserLines(text, w) })
+}
+
+func (m *model) addPendingUser(display, content string, kind pendingUserKind) {
+	m.pendingUsers = append(m.pendingUsers, pendingUserMessage{display: display, content: content, kind: kind})
+}
+
+func (m *model) consumePendingUser(kind pendingUserKind, content string) (pendingUserMessage, bool) {
+	for i, msg := range m.pendingUsers {
+		if msg.kind != kind || !samePendingUserContent(msg.content, content) {
+			continue
+		}
+		m.pendingUsers = append(m.pendingUsers[:i], m.pendingUsers[i+1:]...)
+		return msg, true
+	}
+	return pendingUserMessage{}, false
+}
+
+func samePendingUserContent(pending, emitted string) bool {
+	return pending == emitted || pending == strings.TrimSuffix(emitted, "\n")
+}
+
+func (m *model) ignoreUserEcho(content string) {
+	m.ignoredUsers = append(m.ignoredUsers, content)
+}
+
+func (m *model) consumeIgnoredUserEcho(content string) bool {
+	for i, msg := range m.ignoredUsers {
+		if msg != content {
+			continue
+		}
+		m.ignoredUsers = append(m.ignoredUsers[:i], m.ignoredUsers[i+1:]...)
+		return true
+	}
+	return false
 }
 
 func (m *model) addNotice(prefix, text string, style lipgloss.Style) {

@@ -13,10 +13,23 @@ var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 
 type blockKind int
 
+type pendingUserKind int
+
 const (
 	blockReasoning blockKind = iota
 	blockAssistant
 )
+
+const (
+	pendingUserSteer pendingUserKind = iota
+	pendingUserFollowUp
+)
+
+type pendingUserMessage struct {
+	display string
+	content string
+	kind    pendingUserKind
+}
 
 // pendingBlock accumulates the text of the block currently being streamed.
 type pendingBlock struct {
@@ -116,9 +129,10 @@ func (t *transcript) finishTool(e *runtime.ToolCallResponseEvent, sessionState s
 }
 
 // lines renders everything that scrolls: finalized blocks, the in-progress
-// streamed block, and any running tool calls. A blank line separates each
-// entry. The spinner is shown only while busy with nothing yet streaming.
-func (t *transcript) lines(width, spinnerFrame int, busy bool, sessionState service.SessionStateReader) []string {
+// streamed block, running tool calls, and user messages waiting to be accepted
+// by the runtime. A blank line separates each entry. The spinner is shown only
+// while busy with nothing yet streaming.
+func (t *transcript) lines(width, spinnerFrame int, busy bool, sessionState service.SessionStateReader, pendingUsers []pendingUserMessage) []string {
 	var lines []string
 	for _, b := range t.blocks {
 		lines = append(lines, b.lines(width)...)
@@ -134,6 +148,10 @@ func (t *transcript) lines(width, spinnerFrame int, busy bool, sessionState serv
 	})
 	if busy && t.pending == nil && t.toolz.empty() {
 		lines = append(lines, spinnerLine(spinnerFrame), "")
+	}
+	for _, msg := range pendingUsers {
+		lines = append(lines, renderPendingUserLines(msg.display, width)...)
+		lines = append(lines, "")
 	}
 	return lines
 }

@@ -6,7 +6,7 @@ package leantui
 func (m *model) buildLines() (lines []string, cursorLine, cursorCol int) {
 	width := m.width
 
-	lines = m.transcript.lines(width, m.spinnerFrame, m.busy, m.sessionState)
+	lines = m.transcript.lines(width, m.spinnerFrame, m.busy, m.sessionState, m.pendingUsers)
 
 	lines = append(lines, m.ac.render(width)...)
 

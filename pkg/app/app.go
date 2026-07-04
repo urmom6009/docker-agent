@@ -817,6 +817,11 @@ func (a *App) Resume(req runtime.ResumeRequest) {
 	a.runtime.Resume(a.ctx(), req)
 }
 
+// Steer queues a user message for mid-turn injection into the running agent.
+func (a *App) Steer(ctx context.Context, msg runtime.QueuedMessage) error {
+	return a.runtime.Steer(ctx, msg)
+}
+
 // TogglePause toggles whether the runtime loop is paused at iteration
 // boundaries. The second return value is false if the underlying runtime
 // doesn't support pausing (e.g. remote runtimes), in which case the first

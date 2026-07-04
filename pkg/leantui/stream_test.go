@@ -77,7 +77,7 @@ func TestConversationLinesShowsSpinnerWhenBusy(t *testing.T) {
 	t.Parallel()
 	m := bareModel(24)
 	m.busy = true
-	lines := m.transcript.lines(80, m.spinnerFrame, m.busy, m.sessionState)
+	lines := m.transcript.lines(80, m.spinnerFrame, m.busy, m.sessionState, nil)
 	assert.Contains(t, strings.Join(lines, ""), "Working")
 }
 
