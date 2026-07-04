@@ -2,6 +2,7 @@ package leantui
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,6 +24,8 @@ type cycleThinkingRuntime struct {
 	cycleCalls int
 	setCalls   int
 	setLevel   effort.Level
+	steered    []runtime.QueuedMessage
+	steerErr   error
 }
 
 func (r *cycleThinkingRuntime) CurrentAgentInfo(context.Context) runtime.CurrentAgentInfo {
@@ -82,9 +85,15 @@ func (r *cycleThinkingRuntime) UpdateSessionTitle(_ context.Context, sess *sessi
 func (r *cycleThinkingRuntime) TitleGenerator(context.Context) *sessiontitle.Generator { return nil }
 func (r *cycleThinkingRuntime) Close() error                                           { return nil }
 func (r *cycleThinkingRuntime) Stop()                                                  {}
-func (r *cycleThinkingRuntime) Steer(context.Context, runtime.QueuedMessage) error     { return nil }
-func (r *cycleThinkingRuntime) FollowUp(context.Context, runtime.QueuedMessage) error  { return nil }
-func (r *cycleThinkingRuntime) QueueStatus() runtime.QueueStatus                       { return runtime.QueueStatus{} }
+func (r *cycleThinkingRuntime) Steer(_ context.Context, msg runtime.QueuedMessage) error {
+	if r.steerErr != nil {
+		return r.steerErr
+	}
+	r.steered = append(r.steered, msg)
+	return nil
+}
+func (r *cycleThinkingRuntime) FollowUp(context.Context, runtime.QueuedMessage) error { return nil }
+func (r *cycleThinkingRuntime) QueueStatus() runtime.QueueStatus                      { return runtime.QueueStatus{} }
 
 func (r *cycleThinkingRuntime) TogglePause(context.Context) (bool, error) {
 	return false, nil
@@ -162,4 +171,48 @@ func TestEffortCommandRejectsUnknownLevel(t *testing.T) {
 	assert.Zero(t, rt.setCalls)
 	assert.Empty(t, m.status.thinking)
 	assert.Len(t, m.transcript.blocks, 1)
+}
+
+func TestEditorSubmitWhileBusySteersAndRendersAtStreamEnd(t *testing.T) {
+	t.Parallel()
+	rt := &cycleThinkingRuntime{}
+	m := bareModel(24)
+	m.app = app.New(t.Context(), rt, session.New())
+	m.busy = true
+	m.transcript.appendPending(blockAssistant, "assistant is still streaming")
+	m.editor.setText("turn left")
+
+	m.handleEnter(t.Context())
+
+	if assert.Len(t, rt.steered, 1) {
+		assert.Equal(t, "turn left", rt.steered[0].Content)
+	}
+	assert.Empty(t, m.queue)
+	assert.Len(t, m.pendingUsers, 1)
+
+	joined := strings.Join(m.transcript.lines(80, 0, true, m.sessionState, m.pendingUsers), "\n")
+	assistantAt := strings.Index(joined, "assistant is still streaming")
+	steerAt := strings.Index(joined, "turn left")
+	assert.NotEqual(t, -1, assistantAt)
+	assert.NotEqual(t, -1, steerAt)
+	assert.Less(t, assistantAt, steerAt)
+}
+
+func TestSteeredUserEventConfirmsPendingAfterAssistant(t *testing.T) {
+	t.Parallel()
+	m := bareModel(24)
+	m.busy = true
+	m.transcript.appendPending(blockAssistant, "assistant response")
+	m.addPendingUser("/change", "resolved steering prompt", pendingUserSteer)
+
+	m.handleEvent(t.Context(), runtime.UserMessage("resolved steering prompt\n", "session", nil, 1))
+
+	assert.Empty(t, m.pendingUsers)
+	assert.Len(t, m.transcript.blocks, 2)
+	joined := strings.Join(m.transcript.lines(80, 0, true, m.sessionState, nil), "\n")
+	assistantAt := strings.Index(joined, "assistant response")
+	steerAt := strings.Index(joined, "/change")
+	assert.NotEqual(t, -1, assistantAt)
+	assert.NotEqual(t, -1, steerAt)
+	assert.Less(t, assistantAt, steerAt)
 }

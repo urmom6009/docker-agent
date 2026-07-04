@@ -80,7 +80,9 @@ func Run(ctx context.Context, cfg Config) error {
 		}
 		m.sendFirstMessage(loopCtx, first, cfg.FirstMessageAttachment)
 	}
-	m.queue = append(m.queue, cfg.QueuedMessages...)
+	for _, msg := range cfg.QueuedMessages {
+		m.enqueueFollowUp(msg, msg)
+	}
 
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -152,7 +154,9 @@ type model struct {
 	busy         bool
 	spinnerFrame int
 	runCancel    context.CancelFunc
-	queue        []string
+	queue        []pendingUserMessage
+	pendingUsers []pendingUserMessage
+	ignoredUsers []string
 
 	confirm *confirmState
 
@@ -205,7 +209,7 @@ func (m *model) render() {
 func (m *model) renderFinal() {
 	m.transcript.flushPending()
 	m.render()
-	m.r.eraseBelow(len(m.transcript.lines(m.width, m.spinnerFrame, m.busy, m.sessionState)))
+	m.r.eraseBelow(len(m.transcript.lines(m.width, m.spinnerFrame, m.busy, m.sessionState, m.pendingUsers)))
 }
 
 func (m *model) commitWelcome() {

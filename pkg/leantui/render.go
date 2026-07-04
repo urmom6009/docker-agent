@@ -11,15 +11,24 @@ import (
 // renderUserLines renders a submitted user message as committed scrollback,
 // echoing it with the same prompt marker used by the input box.
 func renderUserLines(text string, width int) []string {
+	return renderUserLinesWith(text, width, stAccent(), stPrimary())
+}
+
+func renderPendingUserLines(text string, width int) []string {
+	muted := stMuted()
+	return renderUserLinesWith(text, width, muted, muted)
+}
+
+func renderUserLinesWith(text string, width int, promptStyle, textStyle lipgloss.Style) []string {
 	text = strings.TrimRight(text, "\n")
 	wrapped := wrapANSI(text, width-promptWidth)
 	out := make([]string, 0, len(wrapped))
 	for i, line := range wrapped {
-		prefix := stAccent().Render(promptText)
+		prefix := promptStyle.Render(promptText)
 		if i > 0 {
 			prefix = continuation
 		}
-		out = append(out, prefix+stPrimary().Render(line))
+		out = append(out, prefix+textStyle.Render(line))
 	}
 	return out
 }

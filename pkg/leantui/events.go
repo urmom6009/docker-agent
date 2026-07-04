@@ -15,10 +15,16 @@ import (
 func (m *model) handleEvent(ctx context.Context, ev any) {
 	switch e := ev.(type) {
 	case msgtypes.SendMsg:
-		m.submit(ctx, e.Content)
+		if e.BypassQueue {
+			m.submit(ctx, e.Content, submitOptions{busyMode: busySubmitSteer})
+		} else {
+			m.submitFollowUp(ctx, e.Content)
+		}
 	case *runtime.StreamStartedEvent:
 		m.busy = true
 		m.trackStreamStarted(e.SessionID)
+	case *runtime.UserMessageEvent:
+		m.handleUserMessageEvent(e)
 	case *runtime.StreamStoppedEvent:
 		m.trackStreamStopped()
 		m.handleStreamStopped(ctx)
@@ -92,6 +98,19 @@ func (m *model) handleEvent(ctx context.Context, ev any) {
 	}
 }
 
+func (m *model) handleUserMessageEvent(e *runtime.UserMessageEvent) {
+	if m.consumeIgnoredUserEcho(e.Message) {
+		return
+	}
+	if pending, ok := m.consumePendingUser(pendingUserSteer, e.Message); ok {
+		m.transcript.flushPending()
+		m.addUserEcho(pending.display)
+		return
+	}
+	m.transcript.flushPending()
+	m.addUserEcho(e.Message)
+}
+
 func (m *model) handleStreamStopped(ctx context.Context) {
 	if m.finishBusy(ctx) {
 		return
@@ -120,8 +139,14 @@ func (m *model) finishBusy(ctx context.Context) bool {
 
 	if len(m.queue) > 0 {
 		next := m.queue[0]
+		m.queue[0] = pendingUserMessage{}
 		m.queue = m.queue[1:]
-		m.startRun(ctx, next, nil)
+		if pending, ok := m.consumePendingUser(pendingUserFollowUp, next.content); ok {
+			next.display = pending.display
+		}
+		m.addUserEcho(next.display)
+		m.ignoreUserEcho(next.content)
+		m.startRun(ctx, next.content, nil)
 		return true
 	}
 	return false
