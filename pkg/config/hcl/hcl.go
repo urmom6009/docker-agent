@@ -14,7 +14,9 @@
 //     `${...}` interpolation, any literal `${...}` (such as
 //     `${shell({cmd: "..."})}`) must be escaped as `$${...}`.
 //   - The custom `file("path")` function reads a UTF-8 text file and returns
-//     its contents as a string. Relative paths are resolved from the HCL
+//     its contents as a string. An optional second argument renders the file
+//     as an HCL template, e.g. `file("prompt.md", { name = "Ada" })` expands
+//     `${name}` inside the file. Relative paths are resolved from the HCL
 //     config file's directory.
 //
 // The converter does not validate the resulting document against the
