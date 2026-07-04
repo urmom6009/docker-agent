@@ -52,6 +52,11 @@ var Aliases = map[string]Alias{
 		BaseURL:     "https://api.studio.nebius.com/v1",
 		TokenEnvVar: "NEBIUS_API_KEY",
 	},
+	"nvidia": {
+		APIType:     "openai",
+		BaseURL:     "https://integrate.api.nvidia.com/v1",
+		TokenEnvVar: "NVIDIA_API_KEY",
+	},
 	"openrouter": {
 		APIType:     "openai",
 		BaseURL:     "https://openrouter.ai/api/v1",

@@ -89,6 +89,17 @@ var openAIAliasProviders = []openAIAliasProvider{
 		mergesSystemMessages: true,
 	},
 	{
+		// NVIDIA NIM fronts open-weight models (Nemotron, Llama, Qwen, ...),
+		// so its per-source system messages are coalesced like the other
+		// open-model hosts.
+		provider:             "nvidia",
+		envVar:               "NVIDIA_API_KEY",
+		testKey:              "nvapi-test-nvidia-key",
+		model:                "nvidia/llama-3.1-nemotron-70b-instruct",
+		greeting:             "Hello from NVIDIA NIM",
+		mergesSystemMessages: true,
+	},
+	{
 		// Moonshot AI is a first-party API serving its own Kimi lineup, so its
 		// per-source system messages are left untouched (mergesSystemMessages
 		// omitted, like deepseek).
